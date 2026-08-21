@@ -7,6 +7,7 @@ defmodule Leaf.Repo.Migrations.CreateOrganisations do
       add :name, :string, null: false
       add :full_time_week_hours, :decimal, precision: 10, scale: 2, null: false
       add :standard_day_hours, :decimal, precision: 10, scale: 2, null: false
+      add :tracked_from, :date, null: false
       add :year_start_month, :integer, null: false, default: 1
 
       timestamps(type: :utc_datetime)

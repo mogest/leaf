@@ -90,4 +90,7 @@ revision `af87da500` is the reference). In short:
 
 - Leave arithmetic is exact: no floats for balances. Fractional hours are required (a 7.2h grant
   plus 1.8h annual covers a 9h day).
+- Round once, where a number is stored or shown, to 2dp. Never round an intermediate: `Decimal.div`
+  is itself inexact, so pro-rate in one operation, multiplying before dividing, and a year's
+  accrual then sums back to the year's entitlement.
 - Everything year-shaped hangs off the person's own employment anniversary, not a shared year.

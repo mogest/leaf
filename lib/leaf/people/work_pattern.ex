@@ -24,6 +24,10 @@ defmodule Leaf.People.WorkPattern do
 
   @fields [:person_id, :effective_from | @hour_fields]
 
+  @hours_by_day_of_week @hour_fields
+                        |> Enum.with_index(1)
+                        |> Map.new(fn {field, day} -> {day, field} end)
+
   schema "work_patterns" do
     field :effective_from, :date
     field :monday_hours, :decimal
@@ -47,6 +51,37 @@ defmodule Leaf.People.WorkPattern do
     |> validate_hours()
     |> assoc_constraint(:person)
     |> unique_constraint([:person_id, :effective_from])
+  end
+
+  @doc "The hours worked over a full week under this pattern."
+  @spec weekly_hours(t()) :: Decimal.t()
+  def weekly_hours(pattern) do
+    @hour_fields |> Enum.map(&Map.fetch!(pattern, &1)) |> Enum.reduce(&Decimal.add/2)
+  end
+
+  @doc "The hours worked on `date` under this pattern."
+  @spec hours_on(t(), Date.t()) :: Decimal.t()
+  def hours_on(pattern, date) do
+    Map.fetch!(pattern, Map.fetch!(@hours_by_day_of_week, Date.day_of_week(date)))
+  end
+
+  @doc "Whether any hours are worked on `date` under this pattern."
+  @spec working_day?(t(), Date.t()) :: boolean()
+  def working_day?(pattern, date), do: Decimal.positive?(hours_on(pattern, date))
+
+  @doc """
+  The fraction of a full-time week this pattern works, for display.
+
+  `full_time_week_hours` is the organisation's, so the same pattern is a different FTE under an
+  organisation that counts a full week differently.
+
+  Entitlement arithmetic must not route through this. The division is inexact for most part-time
+  weeks, and rounding it here before multiplying loses more than pro-rating an amount in one
+  operation does.
+  """
+  @spec fte(t(), Decimal.t()) :: Decimal.t()
+  def fte(pattern, full_time_week_hours) do
+    Decimal.div(weekly_hours(pattern), full_time_week_hours)
   end
 
   defp validate_hours(changeset) do
