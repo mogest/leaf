@@ -80,16 +80,22 @@ move between policies over time.
 
 For each leave type it includes, a policy defines:
 
-- the **unit** — hours or days
-- the **annual entitlement at 1.0 FTE**
+- the **entitlement per grant period at 1.0 FTE** — 8 hours each quarter, 10 days each year
 - whether the entitlement is **pro-rated by FTE**
-- how it is **granted** — daily accrual, or a block grant on a trigger date (§4.7)
+- how it is **granted** — the grant period, what that period is anchored to, and whether the
+  entitlement accrues across it or lands at its start (§4.7)
 - the **rollover/expiry rule** (§4.8)
+- when the entitlement **starts and stops being offered** (§4.8)
 - whether a **negative balance** is permitted
 - how **public holidays** are treated (§4.9)
 
+The **unit** — hours or days — belongs to the leave type (§4.6) rather than to the policy.
+A sick day is a day under every policy.
+
 ### 4.6 Leave type
-Configurable per organisation. Each has a unit and grant behaviour. A representative set:
+Configurable per organisation. Each has a unit; how it is granted comes from the policy that
+includes it (§4.5), so the same type can behave differently under two policies. A representative
+set:
 
 | Type | Unit | Granted | Expiry | Notes |
 |---|---|---|---|---|
@@ -105,16 +111,29 @@ Configurable per organisation. Each has a unit and grant behaviour. A representa
 ### 4.7 Granting: accrual and block grants
 Two mechanisms, chosen per leave type in the policy.
 
-**Daily accrual.** Runs daily against the person's **own employment start date and
-anniversary** — not a shared financial-year grant. Rate derives from the policy entitlement,
-the person's FTE and the accrual period. This is annual leave's model, and it is the thing
-that removes the parallel spreadsheet.
+**Daily accrual.** The entitlement accrues evenly across its grant period, day by day. Rate
+derives from the policy entitlement, the person's FTE and the length of the period. This is
+annual leave's model, and it is the thing that removes the parallel spreadsheet.
 
-**Block grant.** The whole entitlement lands at once on a trigger date. Trigger dates needed:
-employment anniversary (sick, longevity), first day of each quarter (quarterly), the person's
-birthday (birthday leave). Block grants exist because NZ and UK law grant some leave —
-sick leave in particular — as a block rather than accruing it, and the system has to match
-the law rather than the other way round.
+**Block grant.** The whole entitlement lands at once, on the first day of its grant period.
+Block grants exist because NZ and UK law grant some leave — sick leave in particular — as a
+block rather than accruing it, and the system has to match the law rather than the other way
+round.
+
+Either way the **grant period is configuration**, not a fixed list of trigger dates. It is a
+month, a quarter or a year, anchored to the person's employment start date, their birthday, the
+calendar year, or the organisation's financial year — and the organisation configures which
+month its financial year starts. Calendar-anchored and financial-year-anchored entitlements stay
+distinct even where they currently coincide: moving the organisation's financial year must not
+move a calendar-anchored grant.
+
+So annual leave is a year anchored to the employment date, accruing daily; sick and longevity
+leave the same year, granted as a block; quarterly leave a calendar quarter, granted as a block;
+birthday leave a year anchored to the birthday. Monthly accrual against a financial year, common
+in the UK, needs no new mechanism.
+
+A person who joins part-way through a grant period receives nothing for that period. Their first
+grant lands at the start of the next one (§8).
 
 Balances may go **negative** where the policy allows it (advance leave). The person then
 accrues back to positive; the system doesn't block this, it just shows a negative balance.
@@ -132,11 +151,21 @@ Configured per leave type:
 Expiry is applied automatically and shows in the audit log, so a balance never silently
 disappears.
 
-**"The year" means the person's employment anniversary year**, not a shared financial or
-calendar year. Everything year-shaped hangs off the person's own start date: accrual,
-anniversary block grants, longevity leave lapsing, sick leave rollover caps, and excess-balance
-thresholds. Each person's leave year therefore starts on a different date, which is the price
-of having entitlement tie back to when they actually started.
+**Discontinuing an entitlement.** A policy can stop offering a leave type from a date without
+disturbing anything it granted before then. Two dates matter and they may differ: the date
+granting stops, and the date the leave type stops being usable. Setting the second later than the
+first gives a wind-down — "we are dropping quarterly leave from 1 January, use what you have
+left by 31 March". Whatever balance remains on the final day expires like any other lapse, visibly and
+in the audit log. Leave already taken is untouched, and leave dated while the entitlement was
+still offered can still be filed afterwards (§5.2). An entitlement may also be re-offered later;
+the gap is part of the record.
+
+**"The year" is by default the person's employment anniversary year**, not a shared financial or
+calendar year, and that is the anchor for anything that accrues. Anything anchored that way —
+accrual, anniversary block grants, longevity leave lapsing, sick leave rollover caps,
+excess-balance thresholds — therefore starts on a different date for each person, which is the
+price of having entitlement tie back to when they actually started. Where an entitlement needs a
+shared year instead, that is configuration (§4.7), not an exception in code.
 
 Reporting is unaffected — reports run over whatever date range is asked for (a payroll month,
 a quarter, a financial year). The anniversary year governs *entitlement*, not *reporting
@@ -274,7 +303,8 @@ not an afterthought.
    (calendars, policies, leave types), not code.
 9. **Approved leave is not self-serve-deletable.**
 10. **Employee vs contractor is a policy, not a type.**
-11. **The leave year is the person's employment anniversary year**, not a shared one.
+11. **The leave year is by default the person's employment anniversary year**, not a shared one.
+    Where an entitlement genuinely needs a calendar or financial year, that is configuration.
 
 ## 7. Suggested phasing
 
@@ -298,6 +328,12 @@ assertions, mobile app.
 - **Alternative holidays / time off in lieu.** NZ generates an alternative holiday when someone
   works a public holiday. The system does not model this. For now an administrator manually
   allocates the extra leave. **This is a known gap and should be designed properly later.**
+- **Mid-period joiners.** Someone joining part-way through a grant period gets nothing for that
+  period; their first grant lands at the start of the next one. Pro-rating a first partial period
+  is not modelled, and should be designed later if it turns out to be wanted.
+- **Public holidays worked but not credited.** §4.9's two treatments are the only arrangements
+  available. An arrangement where public holidays are ordinary working days and *no* allowance is
+  credited — a pure contractor who simply does not bill them — cannot be configured.
 - **No payroll integration.** Admins re-key from exports.
 - **No statutory validation.** The system will happily be configured below a legal minimum.
 - **Notification delivery** (email, Slack, in-app) is deliberately unspecified here.
