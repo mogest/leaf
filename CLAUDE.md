@@ -37,6 +37,9 @@ After changing code: `mix format`, `mix test`, `mix credo`.
   Most code needs none. Reader = experienced Elixir dev.
 - Feeling the need to explain *what* the code does means the code isn't simple enough — see above.
 - `@moduledoc` on every module: one line where one line does.
+- `@moduledoc` and `@doc` both start with a summary that occupies the first line and stands by
+  itself. Anything further goes after a blank line. Never let the summary wrap onto a second line
+  or run into a second sentence — it is read on its own, out of context.
 - Never comment CSS unless asked.
 
 ## Elixir style
