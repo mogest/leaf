@@ -263,8 +263,25 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     html = live |> asking_hours(context, %{"amount" => "9"}) |> render_change()
 
-    assert html =~ "You only work 8 hours on Monday 2 March."
+    assert html =~ "Monday 2 March has only 8 hours free."
     assert Leave.requests(context.person) == []
+  end
+
+  test "a day already spoken for is refused before anything is filed again", context do
+    {:ok, live, _html} = live(context.conn, ~p"/leave/new")
+
+    live
+    |> form("form", request: asking(context, %{"to" => to_string(@friday)}))
+    |> render_submit()
+
+    {:ok, again, _html} = live(context.conn, ~p"/leave/new")
+
+    friday = %{"from" => to_string(@friday), "to" => to_string(@friday)}
+
+    html = again |> form("form", request: asking(context, friday)) |> render_change()
+
+    assert html =~ "You already have leave on Friday 6 March."
+    assert [_first] = Leave.requests(context.person)
   end
 
   test "what the one leave type asked for would be left with is shown", context do

@@ -341,11 +341,12 @@ defmodule LeafWeb.RequestLeaveLive do
          {:ok, range} <- range(params["from"], params["to"]),
          {:ok, days} <- workable(Leave.working_days(socket.assigns.person, range), range),
          {:ok, amount, unit} <- asked_for(params["amount"], days),
-         :ok <- within(days, amount, unit) do
-      {Enum.map(days, &entry(&1, leave_type, amount, unit)), []}
+         entries = Enum.map(days, &entry(&1, leave_type, amount, unit)),
+         :ok <- free(socket, entries) do
+      {entries, []}
     else
       :none -> {[], []}
-      {:error, problem} -> {[], [problem]}
+      {:error, problems} -> {[], List.wrap(problems)}
     end
   end
 
@@ -419,14 +420,21 @@ defmodule LeafWeb.RequestLeaveLive do
     end
   end
 
-  # A day off is at most the day, which is however many hours are worked on it.
-  defp within(_days, _amount, :days), do: :ok
+  # A day off is at most what is left of the day: the hours worked on it, less the leave already
+  # filed into it. Every date that will not fit is named, because fixing the first would otherwise
+  # only turn up the next.
+  defp free(socket, entries) do
+    case Leave.clashes(socket.assigns.person, Leave.proposed(entries), socket.assigns.request) do
+      [] -> :ok
+      clashes -> {:error, Enum.map(clashes, &spoken_for/1)}
+    end
+  end
 
-  defp within([{date, hours}], amount, :hours), do: fits(Decimal.lt?(hours, amount), date, hours)
-  defp fits(false, _date, _hours), do: :ok
-
-  defp fits(true, date, hours) do
-    {:error, "You only work #{Wording.figure(hours, :hours)} on #{Wording.weekday(date)}."}
+  defp spoken_for({date, free}) do
+    case Decimal.positive?(free) do
+      true -> "#{Wording.weekday(date)} has only #{Wording.figure(free, :hours)} free."
+      false -> "You already have leave on #{Wording.weekday(date)}."
+    end
   end
 
   # An approved request has nothing to project against: what it already draws is counted, so

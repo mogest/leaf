@@ -60,6 +60,20 @@ defmodule LeafWeb.YourRequestsLiveTest do
     assert [%{status: :cancelled}] = Leave.requests(context.person)
   end
 
+  test "a request over a day already spoken for is still the person's to cancel", context do
+    days = [%{leave_type_id: context.leave_type.id, date: @date, amount: "8", unit: :hours}]
+    both = %{person_id: context.person.id, status: :pending, days: days}
+    over = Fixtures.leave_request(both)
+    Fixtures.leave_request(both)
+
+    {:ok, live, _html} = live(context.conn, ~p"/leave")
+
+    html = live |> element("button[phx-value-id='#{over.id}']") |> render_click()
+
+    assert html =~ "The request is cancelled."
+    assert {:ok, %{status: :cancelled}} = Leave.fetch_request(over.id)
+  end
+
   test "an approved request is not the person's to change", context do
     {:ok, _approved} = context |> file() |> Leave.approve(context.manager)
 

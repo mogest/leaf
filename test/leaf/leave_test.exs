@@ -123,6 +123,49 @@ defmodule Leaf.LeaveTest do
     assert Repo.all(Entry) == []
   end
 
+  test "leave cannot be filed over a day already spoken for, decided or not", context do
+    {:ok, filed} = file(context, [@thursday, @friday], %{amount: "1", unit: :days})
+
+    assert {:error, changeset} = file(context, [@friday], %{amount: "1", unit: :days})
+    assert errors_on(changeset).days == ["ask for more of a day than is left in it"]
+    assert [%{action: "leave_request.requested"}] = Repo.all(Entry)
+
+    {:ok, request} = Leave.fetch_request(filed.id)
+
+    assert {:ok, _amended} =
+             Leave.amend(request, context.person, %{
+               days: [entry(context.leave_type, @friday, %{amount: "1", unit: :days})]
+             })
+  end
+
+  test "a day holds its hours and no more, however many leave types share it", context do
+    sick =
+      Fixtures.leave_type(%{
+        organisation_id: context.organisation.id,
+        name: "Sick leave",
+        position: 2
+      })
+
+    filing = fn leave_type, amount ->
+      Leave.request(context.person, context.person, %{
+        days: [entry(leave_type, @friday, %{amount: amount})]
+      })
+    end
+
+    assert {:ok, _morning} = filing.(context.leave_type, "6")
+    assert {:ok, _afternoon} = filing.(sick, "2")
+    assert {:error, changeset} = filing.(sick, "0.5")
+
+    assert errors_on(changeset).days == ["ask for more of a day than is left in it"]
+  end
+
+  test "a date is free again once the leave on it has been declined", context do
+    {:ok, filed} = file(context, [@friday])
+    {:ok, _declined} = filed |> reload() |> Leave.decline(context.manager)
+
+    assert {:ok, %{status: :pending}} = file(context, [@friday])
+  end
+
   test "a colleague may not file leave for somebody else", context do
     days = [entry(context.leave_type, @thursday)]
     colleague = Fixtures.person(%{organisation_id: context.organisation.id})

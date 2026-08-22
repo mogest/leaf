@@ -42,7 +42,7 @@ defmodule LeafWeb.YourRequestsLive do
             type="button"
             phx-click="cancel"
             phx-value-id={request.id}
-            data-confirm="Cancel this request?"
+            data-confirm="Give this leave back? The request is cancelled and what it drew returned."
           >
             Cancel
           </button>

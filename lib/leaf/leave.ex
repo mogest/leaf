@@ -19,6 +19,7 @@ defmodule Leaf.Leave do
   alias Leaf.Audit
   alias Leaf.Dates
   alias Leaf.Leave.BalanceEntry
+  alias Leaf.Leave.Booked
   alias Leaf.Leave.Day
   alias Leaf.Leave.Diary
   alias Leaf.Leave.Month
@@ -63,6 +64,7 @@ defmodule Leaf.Leave do
     with :ok <- permit(person.id == actor.id or approver?(person, actor)) do
       %Request{person_id: person.id, submitted_by_id: actor.id, status: :pending}
       |> Request.changeset(measured(person, attrs))
+      |> Booked.validate(person)
       |> Audit.write("leave_request.requested", actor, person.id)
     end
   end
@@ -78,6 +80,7 @@ defmodule Leaf.Leave do
     with :ok <- permit(revisable?(request, actor)) do
       request
       |> Request.changeset(measured(request.person, attrs))
+      |> Booked.validate(request.person)
       |> Audit.write("leave_request.amended", actor, request.person_id)
     end
   end
@@ -266,23 +269,26 @@ defmodule Leaf.Leave do
   def proposed(entries), do: Enum.map(entries, &struct!(Day, &1))
 
   @doc """
+  The dates among `days` asking for more of the day than is free, oldest first, with the hours left.
+
+  A date holds the hours worked on it and no more, whatever the leave filed into it is for. What is
+  free is those hours less the leave the person already holds or is waiting on, `request` aside:
+  amending is what a request asks for instead, not on top. This is the rule the write path enforces,
+  asked rather than repeated, so that a form can say what will not be filed before it files it.
+  """
+  @spec clashes(Person.t(), [Day.t()], Request.t() | nil) :: [{Date.t(), Decimal.t()}]
+  def clashes(person, days, request) do
+    Booked.clashing(person, days, request && request.id)
+  end
+
+  @doc """
   Every day of leave a person still holds within `range`, oldest first, with its request.
 
   Approved and pending only. A declined day was never leave and a cancelled one has stopped being
   it, so neither belongs on a calendar; a pending one does, because the person is counting on it.
   """
   @spec days_filed(Person.t(), Date.Range.t()) :: [Day.t()]
-  def days_filed(person, range) do
-    Repo.all(
-      from day in Day,
-        join: request in assoc(day, :leave_request),
-        where: request.person_id == ^person.id,
-        where: request.status in [:approved, :pending],
-        where: day.date >= ^range.first and day.date <= ^range.last,
-        order_by: day.date,
-        preload: [leave_request: request]
-    )
-  end
+  def days_filed(person, range), do: Booked.days(person, range)
 
   @doc """
   Whether `actor` may amend or cancel `request` as it stands.
