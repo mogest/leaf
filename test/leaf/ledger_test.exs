@@ -367,6 +367,27 @@ defmodule Leaf.LedgerTest do
     assert movements(statement) == [{:accrual, ~D[2024-04-30], Decimal.new("7.20"), nil}]
   end
 
+  test "a public holiday allowance may be counted over a shared year", context do
+    person = context.person
+    part_time(person)
+    allowance = leave_type(context, %{name: "Public holiday allowance", position: 2})
+
+    entitlement(context, allowance, %{
+      amount_source: :public_holidays,
+      grant_amount: nil,
+      grant_basis: :calendar_year
+    })
+
+    observes(context, person, [~D[2024-01-01], ~D[2024-04-25], ~D[2024-12-25], ~D[2025-01-01]])
+
+    # The year turns on 1 January rather than the March anniversary, and the holiday before the
+    # person started is none of theirs.
+    assert movements(statement(person, allowance, ~D[2025-01-31])) == [
+             {:accrual, ~D[2024-12-31], Decimal.new("14.40"), nil},
+             {:accrual, ~D[2025-01-31], Decimal.new("7.20"), nil}
+           ]
+  end
+
   test "nothing accrues before tracking started or after employment ended", context do
     annual = leave_type(context, %{})
     entitlement(context, annual, %{grant_amount: "200", effective_from: ~D[2023-01-01]})

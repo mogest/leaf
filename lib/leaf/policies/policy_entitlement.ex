@@ -106,11 +106,13 @@ defmodule Leaf.Policies.PolicyEntitlement do
   end
 
   defp validate_amount_source(changeset, :public_holidays) do
+    basis = get_field(changeset, :grant_basis)
+
     changeset
     |> validate_absent([:grant_amount])
     |> validate_required([:grant_basis, :grant_period, :grant_timing])
-    |> validate_inclusion(:grant_basis, [:employment_date])
-    |> validate_inclusion(:grant_period, [:year])
+    |> validate_grant_period(basis)
+    |> validate_allowance_timing(basis)
   end
 
   defp validate_amount_source(changeset, :none), do: validate_absent(changeset, @grant_fields)
@@ -120,6 +122,16 @@ defmodule Leaf.Policies.PolicyEntitlement do
     do: validate_inclusion(changeset, :grant_period, [:year])
 
   defp validate_grant_period(changeset, _basis), do: changeset
+
+  # A block grant is skipped where its period opened before the person was covered, which is a
+  # deliberate gap for a fixed amount but a wrong count for one measured off the calendar: a
+  # mid-period joiner would be credited none of the holidays they go on to observe. Anchored to
+  # anything but their own start date, the allowance therefore has to be counted as it falls.
+  defp validate_allowance_timing(changeset, :employment_date), do: changeset
+
+  defp validate_allowance_timing(changeset, _basis) do
+    validate_inclusion(changeset, :grant_timing, [:daily])
+  end
 
   defp validate_expiry_rule(changeset) do
     validate_expiry_rule(changeset, get_field(changeset, :expiry_rule))

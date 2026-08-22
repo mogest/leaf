@@ -21,13 +21,32 @@ defmodule Leaf.Ledger.Grant do
   drawn from the holiday calendar is measured in.
   """
   @spec movements(Span.t(), Organisation.t(), [Date.t()]) :: [Movement.t()]
-  def movements(%{granting: nil}, _organisation, _holidays), do: []
-
   def movements(span, organisation, holidays) do
-    span.entitlement.grant_timing
-    |> grant(span, organisation, holidays)
+    span
+    |> measured()
+    |> Enum.map(&arrival(span, &1, organisation, holidays))
     |> Enum.reject(&Decimal.equal?(&1.amount, 0))
   end
+
+  @doc """
+  The range a span's amount is measured over, or none where it grants nothing.
+
+  An accrual is measured over the span it lands at the end of. A block grant is measured over its
+  whole grant period, which can open before the span does and run past the date being asked about,
+  and only a span that starts granting when its period does holds one — which is what leaves
+  someone who joined part-way through a period without one until the next period starts.
+  """
+  @spec measured(Span.t()) :: [Date.Range.t()]
+  def measured(%{granting: nil}), do: []
+
+  def measured(%{entitlement: %{grant_timing: :period_start}} = span) do
+    case Date.compare(span.granting.first, span.period.first) do
+      :eq -> [span.period]
+      _ -> []
+    end
+  end
+
+  def measured(span), do: [span.granting]
 
   @doc """
   The end of each grant period over which a leave type rolls over only up to a cap.
@@ -49,20 +68,9 @@ defmodule Leaf.Ledger.Grant do
 
   defp capped?(_span), do: false
 
-  # Only a span that starts granting when its period does can hold a block grant, which is what
-  # leaves someone who joined part-way through a period without one until the next period starts.
-  defp grant(:period_start, span, organisation, holidays) do
-    case Date.compare(span.granting.first, span.period.first) do
-      :eq -> [arrival(:grant, span.period.first, span, span.period, organisation, holidays)]
-      _ -> []
-    end
-  end
+  defp arrival(span, measured, organisation, holidays) do
+    {kind, date} = lands(span.entitlement.grant_timing, measured)
 
-  defp grant(:daily, span, organisation, holidays) do
-    [arrival(:accrual, span.granting.last, span, span.granting, organisation, holidays)]
-  end
-
-  defp arrival(kind, date, span, measured, organisation, holidays) do
     %Movement{
       date: date,
       kind: kind,
@@ -70,6 +78,9 @@ defmodule Leaf.Ledger.Grant do
       expires_on: expires_on(span.entitlement, span.period, date)
     }
   end
+
+  defp lands(:period_start, measured), do: {:grant, measured.first}
+  defp lands(:daily, measured), do: {:accrual, measured.last}
 
   defp amount(span, measured, organisation, holidays) do
     {base, num, den} = measure(span.entitlement, measured, span.period, organisation, holidays)

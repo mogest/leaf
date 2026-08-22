@@ -127,21 +127,21 @@ defmodule Leaf.Ledger do
 
   defp dates_spanned(days), do: days |> Enum.map(& &1.date) |> Dates.spanning()
 
-  # A public holiday allowance is counted over the whole grant period it belongs to, which can run
-  # past the date being asked about, so the calendar is read over the periods rather than the
-  # range. Nothing else needs it, so nothing else pays for reading it.
+  # A public holiday allowance is counted over the range its grant is measured over, which for a
+  # block grant is a whole period and so may run past the date being asked about, so the calendar
+  # is read over those rather than the range. Nothing else needs it, so nothing else pays for
+  # reading it.
   defp observed_holidays(person, spans) do
-    case Enum.filter(spans, &(&1.entitlement.amount_source == :public_holidays)) do
-      [] -> []
-      counted -> holidays(person, periods_spanned(counted))
-    end
+    spans
+    |> Enum.filter(&(&1.entitlement.amount_source == :public_holidays))
+    |> Enum.flat_map(&Grant.measured/1)
+    |> counted_holidays(person)
   end
 
-  defp periods_spanned(spans) do
-    Date.range(
-      spans |> Enum.map(& &1.period.first) |> Enum.min(Date),
-      spans |> Enum.map(& &1.period.last) |> Enum.max(Date)
-    )
+  defp counted_holidays([], _person), do: []
+
+  defp counted_holidays(ranges, person) do
+    holidays(person, Dates.spanning(Enum.flat_map(ranges, &[&1.first, &1.last])))
   end
 
   # The count claims to be the period's whole share of the calendar, so a period the person

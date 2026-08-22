@@ -67,12 +67,19 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
     assert changeset(attrs).valid?
   end
 
-  test "the public holiday allowance is computed over the person's leave year" do
-    errors = errors_on(changeset(Map.put(@quarterly, :amount_source, :public_holidays)))
+  test "the public holiday allowance takes its amount from the calendar alone" do
+    attrs = Map.merge(@quarterly, %{amount_source: :public_holidays, grant_timing: :daily})
 
-    assert errors.grant_amount == ["must be blank"]
-    assert errors.grant_basis == ["is invalid"]
-    assert errors.grant_period == ["is invalid"]
+    assert errors_on(changeset(attrs)).grant_amount == ["must be blank"]
+  end
+
+  test "a public holiday allowance on a shared year is counted as it falls" do
+    attrs = %{amount_source: :public_holidays, grant_basis: :calendar_year, grant_period: :year}
+
+    assert errors_on(changeset(Map.put(attrs, :grant_timing, :period_start))).grant_timing ==
+             ["is invalid"]
+
+    assert changeset(Map.put(attrs, :grant_timing, :daily)).valid?
   end
 
   test "birthday leave is granted yearly" do
