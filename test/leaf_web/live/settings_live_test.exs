@@ -36,7 +36,7 @@ defmodule LeafWeb.SettingsLiveTest do
     assert amended.tracked_from == ~D[2025-01-01]
   end
 
-  test "a leave type can be added, amended and withdrawn", context do
+  test "a leave type can be added, amended and stopped from being offered", context do
     {:ok, live, _html} = live(context.conn, ~p"/settings/leave-types")
 
     live
@@ -55,11 +55,11 @@ defmodule LeafWeb.SettingsLiveTest do
     assert html =~ "Study"
 
     {:ok, live, _html} = live(context.conn, ~p"/settings/leave-types/#{leave_type}")
-    html = live |> element("button", "Withdraw") |> render_click()
-    assert html =~ "Withdrawn"
+    html = live |> element("button", "Stop offering it in new configuration") |> render_click()
+    assert html =~ "Not offered in new configuration since"
 
-    {:ok, withdrawn} = Policies.fetch_leave_type(leave_type.id)
-    assert withdrawn.archived_at
+    {:ok, archived} = Policies.fetch_leave_type(leave_type.id)
+    assert archived.archived_at
   end
 
   test "a policy grants what its entitlements say, in words", context do
