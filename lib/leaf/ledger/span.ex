@@ -60,7 +60,14 @@ defmodule Leaf.Ledger.Span do
     end
   end
 
-  defp tracked_range(person, organisation, as_at) do
+  @doc """
+  The stretch of the person's history a balance as at `as_at` is worked out over.
+
+  Their employment, bounded below by the date the organisation started tracking leave and above by
+  the date being asked about. `:error` where those leave nothing.
+  """
+  @spec tracked_range(Person.t(), Organisation.t(), Date.t()) :: {:ok, Date.Range.t()} | :error
+  def tracked_range(person, organisation, as_at) do
     bounded(
       Enum.max([organisation.tracked_from, person.employment_start_date], Date),
       earliest(as_at, person.employment_end_date)

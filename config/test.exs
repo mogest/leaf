@@ -23,6 +23,9 @@ config :leaf, LeafWeb.Endpoint,
 # In test we don't send emails
 config :leaf, Leaf.Mailer, adapter: Swoosh.Adapters.Test
 
+# The specimen sheet is where the design system is judged, so a broken one fails the build.
+config :leaf, dev_routes: true
+
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
 

@@ -74,6 +74,23 @@ defmodule Leaf.Ledger do
     end
   end
 
+  @doc """
+  Whether everything a balance is worked out from is on record for the person.
+
+  `statements/3` refuses a stretch of somebody's history with no work pattern behind it, because
+  hours nobody knows cannot be pro-rated and reading them as none would be a wrong figure rather
+  than a small one. A page asks here first, so that somebody half set up reads as half set up.
+  """
+  @spec ready?(Person.t(), Date.t()) :: boolean()
+  def ready?(person, as_at) do
+    {:ok, organisation} = Org.fetch_organisation(person.organisation_id)
+
+    case Span.tracked_range(person, organisation, as_at) do
+      :error -> true
+      {:ok, range} -> People.fetch_work_pattern_on(person, range.first) != :error
+    end
+  end
+
   defp statement(leave_type, context) do
     spans = Enum.filter(context.spans, &(&1.entitlement.leave_type_id == leave_type.id))
     entered = of_type(context.entered, leave_type)

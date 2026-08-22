@@ -39,7 +39,7 @@ defmodule Leaf.SeedTest do
 
     person = people["Mog"]
 
-    assert {:ok, pattern} = People.fetch_work_pattern(person, person.employment_start_date)
+    assert {:ok, pattern} = People.fetch_work_pattern_on(person, person.employment_start_date)
     assert Decimal.equal?(People.fte(pattern, organisation.full_time_week_hours), "0.9")
 
     assert [{_span, calendar_id}] = People.holiday_calendar_segments(person, year)

@@ -29,6 +29,33 @@ defmodule LeafWeb.StyleguideLive do
     {"Cancelled", "cancelled"}
   ]
 
+  @requests [
+    %{
+      id: "pending",
+      dates: "Friday 25 September",
+      amount: "9 hours",
+      standing: :pending,
+      label: "Pending",
+      detail: "Quarterly leave and annual leave · sent to Ari Kelburn on 18 August"
+    },
+    %{
+      id: "approved",
+      dates: "Monday 5 – Friday 9 October",
+      amount: "36 hours",
+      standing: :approved,
+      label: "Approved",
+      detail: "Annual leave · approved by Ari Kelburn on 2 August"
+    },
+    %{
+      id: "declined",
+      dates: "Monday 2 November",
+      amount: "9 hours",
+      standing: :declined,
+      label: "Declined",
+      detail: "Annual leave · Ari Kelburn said three of you are already away that week"
+    }
+  ]
+
   @august ~D[2026-08-01]
   @today ~D[2026-08-22]
 
@@ -61,6 +88,9 @@ defmodule LeafWeb.StyleguideLive do
      |> assign(:page_title, "Specimen sheet")
      |> assign(:swatches, @swatches)
      |> assign(:standings, @standings)
+     |> assign(:requests, @requests)
+     |> assign(:units, [{"hours", "hours"}, {"days", "days"}])
+     |> assign(:form, to_form(%{}, as: :specimen))
      |> assign(:months, [month()])
      |> assign(:today, @today)
      |> assign(:here, @here)
@@ -123,6 +153,82 @@ defmodule LeafWeb.StyleguideLive do
 
       <section>
         <header>
+          <h2>Moving between settings</h2>
+        </header>
+        <Parts.settings_nav here="leave-types" />
+      </section>
+
+      <section>
+        <header>
+          <h2>A form</h2>
+        </header>
+        <.form id="specimen" for={@form}>
+          <section>
+            <header>
+              <h2>What it is</h2>
+              <p>anything quiet the heading wants to say</p>
+            </header>
+            <.input name="specimen[name]" value="Quarterly leave" label="Name" />
+            <.input
+              name="specimen[unit]"
+              type="select"
+              value="hours"
+              label="Counted in"
+              options={@units}
+            />
+            <.input
+              name="specimen[amount]"
+              value="eight"
+              label="Amount per day"
+              errors={["has to be a number"]}
+            />
+            <.input name="specimen[note]" type="textarea" value="" label="Note" />
+            <.input
+              name="specimen[pro_rated]"
+              type="checkbox"
+              checked
+              label="Pro-rated by the hours they work"
+            />
+          </section>
+          <footer>
+            <button class="button" type="button">Save</button>
+            <a href={@here}>Cancel</a>
+          </footer>
+        </.form>
+      </section>
+
+      <section>
+        <header>
+          <h2>A table</h2>
+        </header>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Counted in</th>
+              <th scope="col">Standing</th>
+              <th scope="col"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Annual leave</th>
+              <td>hours</td>
+              <td>offered</td>
+              <td><button type="button">Withdraw</button></td>
+            </tr>
+            <tr data-tone="past">
+              <th scope="row">Quarterly leave</th>
+              <td>hours</td>
+              <td>withdrawn 1 January 2026</td>
+              <td><button type="button">Offer again</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <header>
           <h2>Calendar</h2>
         </header>
         <Parts.calendar months={@months} today={@today} earlier={@here} later={@here} />
@@ -154,38 +260,10 @@ defmodule LeafWeb.StyleguideLive do
         <header>
           <h2>Requests</h2>
         </header>
-        <section class="requests">
-          <header>
-            <h2>Requests</h2>
-          </header>
-          <ol>
-            <li>
-              <p>
-                <span>Friday 25 September</span>
-                <span>9 hours</span>
-                <span class="standing" data-standing="pending">Pending</span>
-              </p>
-              <p>Quarterly leave and annual leave · sent to Ari Kelburn on 18 August</p>
-            </li>
-            <li>
-              <p>
-                <span>Monday 5 – Friday 9 October</span>
-                <span>36 hours</span>
-                <span class="standing" data-standing="approved">Approved</span>
-              </p>
-              <p>Annual leave · approved by Ari Kelburn on 2 August</p>
-            </li>
-            <li>
-              <p>
-                <span>Monday 2 November</span>
-                <span>9 hours</span>
-                <span class="standing" data-standing="declined">Declined</span>
-              </p>
-              <p>Annual leave · Ari Kelburn said three of you are already away that week</p>
-            </li>
-          </ol>
-          <p>Showing your three most recent. <a href="#">See all 23</a>.</p>
-        </section>
+        <Parts.requests requests={@requests}>
+          <:empty>You have not asked for any leave yet.</:empty>
+          <:footer>Showing your three most recent. <a href={@here}>See all 23</a>.</:footer>
+        </Parts.requests>
       </section>
     </Layouts.app>
     """

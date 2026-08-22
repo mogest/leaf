@@ -23,10 +23,24 @@ defmodule LeafWeb.SignIn do
     assign(conn, :current_person, named(get_session(conn, @named)))
   end
 
-  @doc "Puts whoever the session names on the socket."
-  @spec on_mount(atom(), map(), map(), LiveView.Socket.t()) :: {:cont, LiveView.Socket.t()}
+  @doc """
+  Puts whoever the session names on the socket, and turns anybody else away from an admin page.
+
+  `:admin` runs after `:current_person`, so the pages only an administrator may open say so in the
+  router rather than each checking for themselves.
+  """
+  @spec on_mount(atom(), map(), map(), LiveView.Socket.t()) ::
+          {:cont, LiveView.Socket.t()} | {:halt, LiveView.Socket.t()}
   def on_mount(:current_person, _params, session, socket) do
     {:cont, Component.assign(socket, :current_person, named(session[@named]))}
+  end
+
+  def on_mount(:admin, _params, _session, %{assigns: %{current_person: %{role: :admin}}} = socket) do
+    {:cont, socket}
+  end
+
+  def on_mount(:admin, _params, _session, socket) do
+    {:halt, socket |> LiveView.put_flash(:error, refused()) |> LiveView.redirect(to: "/")}
   end
 
   @doc "Names `person` in the session, on a fresh one so nothing carries over."
@@ -46,6 +60,8 @@ defmodule LeafWeb.SignIn do
   end
 
   def require_person(conn, _opts), do: conn
+
+  defp refused, do: "That page is the administrator's."
 
   defp named(nil), do: nil
 

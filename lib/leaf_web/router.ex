@@ -29,18 +29,44 @@ defmodule LeafWeb.Router do
     delete "/sign-out", SignInController, :delete
   end
 
+  # The administrator's pages come first, so that a literal segment wins over `/people/:id`.
   scope "/", LeafWeb do
     pipe_through [:browser, :signed_in]
 
+    live_session :admin,
+      on_mount: [{LeafWeb.SignIn, :current_person}, {LeafWeb.SignIn, :admin}] do
+      live "/people", PeopleLive
+      live "/people/new", PersonFormLive, :new
+      live "/people/:person_id/edit", PersonFormLive, :edit
+      live "/people/:person_id/work-patterns/new", WorkPatternLive, :new
+      live "/people/:person_id/work-patterns/:id", WorkPatternLive, :edit
+      live "/people/:person_id/policy-assignments/new", PolicyAssignmentLive
+      live "/people/:person_id/calendar-assignments/new", CalendarAssignmentLive
+      live "/people/:person_id/balance-entries/new", BalanceEntryLive
+
+      live "/settings", OrganisationLive
+      live "/settings/leave-types", LeaveTypesLive
+      live "/settings/leave-types/:id", LeaveTypeLive
+      live "/settings/policies", PoliciesLive
+      live "/settings/policies/:id", PolicyLive
+      live "/settings/policies/:policy_id/entitlements/new", EntitlementLive, :new
+      live "/settings/policies/:policy_id/entitlements/:id", EntitlementLive, :edit
+      live "/settings/calendars", CalendarsLive
+      live "/settings/calendars/:id", CalendarLive
+      live "/settings/audit", AuditLive
+    end
+
     live_session :signed_in, on_mount: {LeafWeb.SignIn, :current_person} do
       live "/", YourLeaveLive
+      live "/leave", YourRequestsLive
+      live "/leave/new", RequestLeaveLive, :new
+      live "/leave/:id/amend", RequestLeaveLive, :amend
+      live "/approvals", ApprovalsLive
+      live "/away", WhoIsAwayLive
+      live "/people/:person_id", PersonLive
+      live "/people/:person_id/balances/:leave_type_id", BalanceLive
     end
   end
-
-  # Other scopes may use custom stacks.
-  # scope "/api", LeafWeb do
-  #   pipe_through :api
-  # end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:leaf, :dev_routes) do

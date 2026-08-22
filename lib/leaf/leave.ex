@@ -20,10 +20,14 @@ defmodule Leaf.Leave do
   alias Leaf.Dates
   alias Leaf.Leave.BalanceEntry
   alias Leaf.Leave.Day
+  alias Leaf.Leave.Diary
   alias Leaf.Leave.Month
   alias Leaf.Leave.Request
   alias Leaf.Leave.WorkingDay
+  alias Leaf.People
   alias Leaf.People.Person
+  alias Leaf.Policies
+  alias Leaf.Policies.LeaveType
   alias Leaf.Repo
 
   @typedoc """
@@ -117,6 +121,12 @@ defmodule Leaf.Leave do
     end
   end
 
+  @doc "The changeset a balance entry's form binds to."
+  @spec change_balance_entry(Person.t(), map()) :: Ecto.Changeset.t()
+  def change_balance_entry(person, attrs) do
+    BalanceEntry.changeset(%BalanceEntry{person_id: person.id}, attrs)
+  end
+
   @doc """
   Each day in `range` the person works, with the hours they work on it.
 
@@ -160,7 +170,7 @@ defmodule Leaf.Leave do
         where: request.person_id == ^person.id,
         group_by: request.id,
         order_by: [desc: min(day.date)],
-        preload: [:reviewed_by, days: :leave_type]
+        preload: [:person, :reviewed_by, days: :leave_type]
     )
   end
 
@@ -172,6 +182,61 @@ defmodule Leaf.Leave do
   """
   @spec calendar(Person.t(), Date.Range.t()) :: [Month.t()]
   def calendar(person, range), do: Month.over(person, range, days_filed(person, range))
+
+  @doc """
+  Each of `people` and their own dates across `range`, for showing who is around.
+
+  The same days a calendar is drawn from, laid out as a row each rather than as months.
+  """
+  @spec away([Person.t()], Date.Range.t()) :: [{Person.t(), [Diary.day()]}]
+  def away(people, range) do
+    Enum.map(people, &{&1, Diary.over(&1, range, days_filed(&1, range))})
+  end
+
+  @doc """
+  The pending requests `approver` is the one to decide, the leave furthest ahead first.
+
+  An administrator decides for the whole organisation, which is §5.3's fallback for a person whose
+  manager is not there to do it; anybody else decides for the people who report to them.
+  """
+  @spec awaiting(Person.t()) :: [Request.t()]
+  def awaiting(approver) do
+    Repo.all(
+      from request in Request,
+        join: person in assoc(request, :person),
+        left_join: day in assoc(request, :days),
+        where: request.status == :pending,
+        where: ^overseen(approver),
+        group_by: request.id,
+        order_by: [desc: min(day.date)],
+        preload: [:person, days: :leave_type]
+    )
+  end
+
+  @doc """
+  The leave types a person may file against over `range`, in the organisation's order.
+
+  What somebody may ask for comes from the policy they are on, not from what they hold a balance
+  in: a type that grants nothing and is only recorded is still one they may file.
+  """
+  @spec requestable(Person.t(), Date.Range.t()) :: [LeaveType.t()]
+  def requestable(person, range) do
+    person
+    |> People.leave_policy_segments(range)
+    |> Enum.flat_map(fn {span, policy_id} -> Policies.entitlements(policy_id, span) end)
+    |> Enum.map(& &1.leave_type)
+    |> Enum.uniq_by(& &1.id)
+    |> Enum.sort_by(& &1.position)
+  end
+
+  @doc """
+  The days `entries` describe, as days, without filing them.
+
+  What a balance would be were a request approved is `Leaf.Ledger.statements/3` given these, so
+  this is how a form asks the question before there is anything to ask it about.
+  """
+  @spec proposed([entry()]) :: [Day.t()]
+  def proposed(entries), do: Enum.map(entries, &struct!(Day, &1))
 
   @doc """
   Every day of leave a person still holds within `range`, oldest first, with its request.
@@ -192,15 +257,39 @@ defmodule Leaf.Leave do
     )
   end
 
+  @doc """
+  Whether `actor` may amend or cancel `request` as it stands.
+
+  Its person must be loaded. This is the rule §5.4 states, asked rather than repeated: a page
+  showing an amend or a cancel asks here whether to show it, and the write checks it again.
+  """
+  @spec revisable?(Request.t(), Person.t()) :: boolean()
+  def revisable?(%{status: :pending} = request, actor) do
+    actor.id in [request.person_id, request.submitted_by_id] or approver?(request.person, actor)
+  end
+
+  def revisable?(%{status: :approved} = request, actor), do: approver?(request.person, actor)
+  def revisable?(_request, _actor), do: false
+
+  @doc "Every balance figure entered for a person, oldest first, whatever it is dated."
+  @spec balance_entries(Person.t()) :: [BalanceEntry.t()]
+  def balance_entries(person), do: Repo.all(entered(person))
+
   @doc "Every balance figure entered for a person up to and including `date`, oldest first."
   @spec balance_entries(Person.t(), Date.t()) :: [BalanceEntry.t()]
   def balance_entries(person, date) do
-    Repo.all(
-      from entry in BalanceEntry,
-        where: entry.person_id == ^person.id and entry.date <= ^date,
-        order_by: entry.date
-    )
+    Repo.all(from entry in entered(person), where: entry.date <= ^date)
   end
+
+  defp entered(person) do
+    from entry in BalanceEntry, where: entry.person_id == ^person.id, order_by: entry.date
+  end
+
+  defp overseen(%{role: :admin} = approver) do
+    dynamic([_request, person], person.organisation_id == ^approver.organisation_id)
+  end
+
+  defp overseen(approver), do: dynamic([_request, person], person.manager_id == ^approver.id)
 
   defp decide(request, actor, status, comment) do
     with :ok <- permit(request.status == :pending and approver?(request.person, actor)) do
@@ -218,13 +307,6 @@ defmodule Leaf.Leave do
     })
     |> Audit.write("leave_request.#{status}", actor, request.person_id)
   end
-
-  defp revisable?(%{status: :pending} = request, actor) do
-    actor.id in [request.person_id, request.submitted_by_id] or approver?(request.person, actor)
-  end
-
-  defp revisable?(%{status: :approved} = request, actor), do: approver?(request.person, actor)
-  defp revisable?(_request, _actor), do: false
 
   defp approver?(person, actor), do: person.manager_id == actor.id or actor.role == :admin
 

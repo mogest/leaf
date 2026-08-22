@@ -18,6 +18,80 @@ defmodule LeafWeb.Parts do
     {"S", "Sunday"}
   ]
 
+  @settings [
+    {"Organisation", "/settings", "organisation"},
+    {"Leave types", "/settings/leave-types", "leave-types"},
+    {"Policies", "/settings/policies", "policies"},
+    {"Holiday calendars", "/settings/calendars", "calendars"},
+    {"Audit log", "/settings/audit", "audit"}
+  ]
+
+  @doc """
+  The way between the things an administrator configures.
+
+  ## Examples
+
+      <Parts.settings_nav here="leave-types" />
+
+  """
+  attr :here, :string, required: true, doc: "which of them is being looked at"
+
+  def settings_nav(assigns) do
+    assigns = assign(assigns, :entries, @settings)
+
+    ~H"""
+    <nav class="tabs">
+      <ul>
+        <li :for={{label, path, name} <- @entries}>
+          <.link navigate={path} aria-current={name == @here && "page"}>{label}</.link>
+        </li>
+      </ul>
+    </nav>
+    """
+  end
+
+  @doc """
+  Requests as they read: when, how much, where it got to, and how it got there.
+
+  Each one is a `t:LeafWeb.Wording.filed/0`, worked out before it arrives here.
+
+  ## Examples
+
+      <Parts.requests requests={@requests}>
+        <:empty>You have not asked for any leave yet.</:empty>
+      </Parts.requests>
+
+  """
+  attr :requests, :list, required: true, doc: "the requests to show, already put into words"
+  attr :title, :string, default: "Requests", doc: "what to call them"
+
+  slot :empty, required: true, doc: "what to say where there are none"
+  slot :actions, doc: "what can be done to one, given the request"
+  slot :footer, doc: "anything to say under the list"
+
+  def requests(assigns) do
+    ~H"""
+    <section class="requests">
+      <header>
+        <h2>{@title}</h2>
+      </header>
+      <ol :if={@requests != []}>
+        <li :for={request <- @requests}>
+          <p>
+            <span>{request.dates}</span>
+            <span>{request.amount}</span>
+            <span class="standing" data-standing={request.standing}>{request.label}</span>
+          </p>
+          <p>{request.detail}</p>
+          <div :if={@actions != []}>{render_slot(@actions, request)}</div>
+        </li>
+      </ol>
+      <p :if={@requests == []}>{render_slot(@empty)}</p>
+      <p :if={@footer != []}>{render_slot(@footer)}</p>
+    </section>
+    """
+  end
+
   @doc """
   Months side by side, each day marked with what is on it, and a step either way.
 
@@ -95,7 +169,7 @@ defmodule LeafWeb.Parts do
           </svg>
         </.link>
       </nav>
-      <ul>
+      <ul class="legend">
         <li data-leave="approved">Approved</li>
         <li data-leave="pending">Waiting</li>
         <li data-holiday>Public holiday</li>

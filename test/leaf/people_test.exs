@@ -38,9 +38,9 @@ defmodule Leaf.PeopleTest do
              {Date.range(~D[2026-01-01], ~D[2026-06-30]), part_time.id}
            ]
 
-    assert {:ok, %{id: id}} = People.fetch_work_pattern(person, ~D[2025-12-31])
+    assert {:ok, %{id: id}} = People.fetch_work_pattern_on(person, ~D[2025-12-31])
     assert id == full_time.id
-    assert {:ok, %{id: id}} = People.fetch_work_pattern(person, ~D[2026-01-01])
+    assert {:ok, %{id: id}} = People.fetch_work_pattern_on(person, ~D[2026-01-01])
     assert id == part_time.id
   end
 
@@ -90,14 +90,14 @@ defmodule Leaf.PeopleTest do
 
     assert {:ok, _removed} = People.delete_work_pattern(mistake, admin)
 
-    assert {:ok, %{id: id}} = People.fetch_work_pattern(person, ~D[2026-06-01])
+    assert {:ok, %{id: id}} = People.fetch_work_pattern_on(person, ~D[2026-06-01])
     assert id == full_time.id
   end
 
   test "nothing applies before the first work pattern takes effect", %{person: person} do
     Fixtures.work_pattern(%{person_id: person.id})
 
-    assert People.fetch_work_pattern(person, ~D[2024-01-01]) == :error
+    assert People.fetch_work_pattern_on(person, ~D[2024-01-01]) == :error
     assert People.work_pattern_segments(person, Date.range(~D[2024-01-01], ~D[2024-02-01])) == []
   end
 
@@ -107,7 +107,7 @@ defmodule Leaf.PeopleTest do
   } do
     part_time = part_time(person)
 
-    assert {:ok, pattern} = People.fetch_work_pattern(person, ~D[2026-03-01])
+    assert {:ok, pattern} = People.fetch_work_pattern_on(person, ~D[2026-03-01])
     assert pattern.id == part_time.id
     assert Decimal.equal?(People.hours_on(pattern, ~D[2026-01-05]), "9")
     assert Decimal.equal?(People.hours_on(pattern, ~D[2026-01-07]), "4")

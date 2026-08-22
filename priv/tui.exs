@@ -153,7 +153,7 @@ defmodule Tui do
   end
 
   defp print_pattern_on(state, person) do
-    case People.fetch_work_pattern(person, state.as_at) do
+    case People.fetch_work_pattern_on(person, state.as_at) do
       {:ok, pattern} ->
         weekly = People.weekly_hours(pattern)
         fte = People.fte(pattern, state.org.full_time_week_hours)

@@ -36,10 +36,6 @@ defmodule LeafWeb.YourLeaveLiveTest do
     Map.put(context, :conn, sign_in(conn, person))
   end
 
-  defp sign_in(conn, person) do
-    conn |> Plug.Test.init_test_session(%{}) |> put_session("person_id", person.id)
-  end
-
   defp file(context, dates) do
     days =
       Enum.map(dates, fn date ->
@@ -87,6 +83,15 @@ defmodule LeafWeb.YourLeaveLiveTest do
 
     assert html =~ "Declined"
     assert html =~ "Ines Vasquez said Three of you are away"
+  end
+
+  test "somebody with no work pattern yet still has a page, with no balances on it", context do
+    fresh = Fixtures.person(%{organisation_id: context.person.organisation_id, name: "Kit Rua"})
+
+    {:ok, _live, html} = live(sign_in(build_conn(), fresh), ~p"/")
+
+    assert html =~ "Your leave"
+    refute html =~ "Annual leave"
   end
 
   test "somebody who has asked for nothing is told so", context do

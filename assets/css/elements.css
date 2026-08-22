@@ -77,8 +77,9 @@ dd {
 }
 
 table {
-  border-collapse: separate;
-  border-spacing: 3px;
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--size-base);
 }
 
 caption {
@@ -89,23 +90,136 @@ caption {
 }
 
 th {
-  inline-size: var(--day);
-  block-size: 1rem;
-  font-size: var(--size-xs);
   font-weight: 600;
-  color: var(--ink-faint);
+  text-align: start;
+}
+
+thead th {
+  padding-block-end: 0.5rem;
+  border-block-end: 1px solid var(--rule-firm);
+  font-size: var(--size-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+tbody :is(th, td) {
+  padding-block: 0.625rem;
+  padding-inline-end: var(--step-4);
+  border-block-end: 1px solid var(--rule);
+  vertical-align: baseline;
+}
+
+tbody th {
+  font-weight: 500;
 }
 
 td {
-  inline-size: var(--day);
-  block-size: var(--day);
-  border-radius: 0.4375rem;
-  font-size: var(--size-sm);
   font-variant-numeric: tabular-nums;
-  text-align: center;
+}
+
+/* A row for something that is over: a person who has left, a leave type withdrawn. */
+tr[data-tone="past"] :is(th, td) {
+  color: var(--ink-soft);
+}
+
+td[data-tone="spent"] {
+  color: var(--clay-ink);
 }
 
 button {
   font: inherit;
   cursor: pointer;
+}
+
+/* A button that is not the one action on the page reads as the quiet thing it is. */
+button:not(.button) {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--edge);
+  border-radius: var(--pill);
+  background: var(--sheet);
+  color: var(--ink-quiet);
+  font-size: var(--size-sm);
+
+  &:hover {
+    border-color: var(--clay);
+    color: var(--clay-ink);
+  }
+}
+
+input,
+select,
+textarea {
+  inline-size: 100%;
+  padding: 0.4375rem 0.6875rem;
+  border: 1px solid var(--rule-firm);
+  border-radius: var(--radius);
+  background: var(--sheet);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--size-base);
+
+  &:focus-visible {
+    border-color: var(--green);
+    outline: 2px solid var(--green-wash);
+    outline-offset: 0;
+  }
+}
+
+input[type="checkbox"] {
+  inline-size: 1rem;
+  block-size: 1rem;
+  accent-color: var(--green);
+}
+
+textarea {
+  min-block-size: 4.5rem;
+  resize: vertical;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step-6);
+
+  & > section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--step-4);
+  }
+
+  /* Each field is a label over its control, with anything wrong with it underneath. */
+  & div:has(> label) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1875rem;
+    max-inline-size: 28rem;
+  }
+
+  & label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--step-1);
+    font-size: var(--size-base);
+    color: var(--ink-soft);
+  }
+
+  & label:has(input[type="checkbox"]) > span {
+    display: flex;
+    align-items: center;
+    gap: var(--step-2);
+    color: var(--ink);
+  }
+
+  & label + p {
+    font-size: var(--size-sm);
+    color: var(--clay-ink);
+  }
+
+  & > footer {
+    display: flex;
+    align-items: center;
+    gap: var(--step-4);
+    font-size: var(--size-base);
+    color: var(--ink-soft);
+  }
 }

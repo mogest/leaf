@@ -6,6 +6,19 @@ defmodule LeafWeb.Layouts do
 
   embed_templates "layouts/*"
 
+  # Each entry, where it goes, and the pages that light it up. A page reached from an entry stands
+  # under it, so a form opened off "People" leaves the rail where the reader left it.
+  @rail [
+    {"Your leave", "/", ~w(your-leave request-leave your-requests balance)},
+    {"Approvals", "/approvals", ~w(approvals)},
+    {"Who's away", "/away", ~w(who-is-away)}
+  ]
+
+  @administered [
+    {"People", "/people", ~w(people)},
+    {"Settings", "/settings", ~w(settings)}
+  ]
+
   @doc """
   Renders the frame every page sits in: the rail down the side, the page beside it.
 
@@ -48,13 +61,12 @@ defmodule LeafWeb.Layouts do
         <span>Leaf</span>
       </a>
       <ul>
-        <li><a href="/" aria-current={current(@page, "your-leave")}>Your leave</a></li>
-        <li><a href="#" aria-current={current(@page, "your-calendar")}>Your calendar</a></li>
-        <li><a href="#" aria-current={current(@page, "who-is-away")}>Who is away</a></li>
-        <li><a href="#" aria-current={current(@page, "people")}>People</a></li>
+        <li :for={{label, path, pages} <- rail(@current_person)}>
+          <a href={path} aria-current={current(@page, pages)}>{label}</a>
+        </li>
       </ul>
       <p :if={@current_person}>
-        <b>{initials(@current_person.name)}</b>
+        <b>{Wording.initials(@current_person.name)}</b>
         <span>{@current_person.name}</span>
         <.link href="/sign-out" method="delete">Sign out</.link>
       </p>
@@ -66,11 +78,14 @@ defmodule LeafWeb.Layouts do
     """
   end
 
-  defp current(page, page), do: "page"
-  defp current(_page, _other), do: nil
+  defp rail(%{role: :admin}), do: @rail ++ @administered
+  defp rail(_person), do: @rail
 
-  defp initials(name) do
-    name |> String.split(~r/\s+/, trim: true) |> Enum.map_join(&String.first/1)
+  defp current(page, pages) do
+    case page in pages do
+      true -> "page"
+      false -> nil
+    end
   end
 
   @doc """

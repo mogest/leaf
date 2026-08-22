@@ -43,6 +43,49 @@ defmodule Leaf.People do
   end
 
   @doc """
+  The changeset a person's form binds to: a new one for the organisation, or an existing one.
+
+  Every context here offers the same pair, so a form never reaches for a schema itself.
+  """
+  @spec change_person(Organisation.t() | Person.t(), map()) :: Ecto.Changeset.t()
+  def change_person(%Organisation{} = organisation, attrs) do
+    Person.changeset(%Person{organisation_id: organisation.id}, attrs)
+  end
+
+  def change_person(%Person{} = person, attrs), do: Person.changeset(person, attrs)
+
+  @doc "The changeset a work pattern's form binds to."
+  @spec change_work_pattern(Person.t() | WorkPattern.t(), map()) :: Ecto.Changeset.t()
+  def change_work_pattern(%Person{} = person, attrs) do
+    WorkPattern.changeset(%WorkPattern{person_id: person.id}, attrs)
+  end
+
+  def change_work_pattern(%WorkPattern{} = pattern, attrs),
+    do: WorkPattern.changeset(pattern, attrs)
+
+  @doc "The changeset a policy assignment's form binds to."
+  @spec change_policy_assignment(Person.t() | PersonPolicyAssignment.t(), map()) ::
+          Ecto.Changeset.t()
+  def change_policy_assignment(%Person{} = person, attrs) do
+    PersonPolicyAssignment.changeset(%PersonPolicyAssignment{person_id: person.id}, attrs)
+  end
+
+  def change_policy_assignment(%PersonPolicyAssignment{} = assignment, attrs) do
+    PersonPolicyAssignment.changeset(assignment, attrs)
+  end
+
+  @doc "The changeset a calendar assignment's form binds to."
+  @spec change_calendar_assignment(Person.t() | PersonHolidayCalendar.t(), map()) ::
+          Ecto.Changeset.t()
+  def change_calendar_assignment(%Person{} = person, attrs) do
+    PersonHolidayCalendar.changeset(%PersonHolidayCalendar{person_id: person.id}, attrs)
+  end
+
+  def change_calendar_assignment(%PersonHolidayCalendar{} = assignment, attrs) do
+    PersonHolidayCalendar.changeset(assignment, attrs)
+  end
+
+  @doc """
   Amends a person.
 
   Correcting an employment start date moves every anniversary that hangs off it, so this is the
@@ -55,12 +98,7 @@ defmodule Leaf.People do
 
   @doc "The person, or `:error` where no such person exists."
   @spec fetch_person(Ecto.UUID.t()) :: {:ok, Person.t()} | :error
-  def fetch_person(id) do
-    case Repo.get(Person, id) do
-      nil -> :error
-      person -> {:ok, person}
-    end
-  end
+  def fetch_person(id), do: fetched(Repo.get(Person, id))
 
   @doc "The person's manager, or `:error` where they have none."
   @spec fetch_manager(Person.t()) :: {:ok, Person.t()} | :error
@@ -150,9 +188,48 @@ defmodule Leaf.People do
 
   `:error` before their first pattern takes effect.
   """
-  @spec fetch_work_pattern(Person.t(), Date.t()) :: {:ok, WorkPattern.t()} | :error
-  def fetch_work_pattern(person, date) do
+  @spec fetch_work_pattern_on(Person.t(), Date.t()) :: {:ok, WorkPattern.t()} | :error
+  def fetch_work_pattern_on(person, date) do
     person |> succession(WorkPattern) |> Timeline.fetch(date)
+  end
+
+  @doc "The work pattern, or `:error` where no such pattern exists."
+  @spec fetch_work_pattern(Ecto.UUID.t()) :: {:ok, WorkPattern.t()} | :error
+  def fetch_work_pattern(id), do: fetched(Repo.get(WorkPattern, id))
+
+  @doc "The policy assignment, or `:error` where no such assignment exists."
+  @spec fetch_policy_assignment(Ecto.UUID.t()) :: {:ok, PersonPolicyAssignment.t()} | :error
+  def fetch_policy_assignment(id), do: fetched(Repo.get(PersonPolicyAssignment, id))
+
+  @doc "The calendar assignment, or `:error` where no such assignment exists."
+  @spec fetch_calendar_assignment(Ecto.UUID.t()) :: {:ok, PersonHolidayCalendar.t()} | :error
+  def fetch_calendar_assignment(id), do: fetched(Repo.get(PersonHolidayCalendar, id))
+
+  @doc "Every work pattern a person has been on, earliest first."
+  @spec work_patterns(Person.t()) :: [WorkPattern.t()]
+  def work_patterns(person), do: Repo.all(effective_dated(WorkPattern, person))
+
+  @doc "Every policy a person has been on, earliest first, each with the policy."
+  @spec policy_assignments(Person.t()) :: [PersonPolicyAssignment.t()]
+  def policy_assignments(person) do
+    Repo.all(preload(effective_dated(PersonPolicyAssignment, person), :leave_policy))
+  end
+
+  @doc "Every calendar a person has observed, earliest first, each with the calendar."
+  @spec calendar_assignments(Person.t()) :: [PersonHolidayCalendar.t()]
+  def calendar_assignments(person) do
+    Repo.all(preload(effective_dated(PersonHolidayCalendar, person), :holiday_calendar))
+  end
+
+  @doc """
+  Whether `actor` may see and act on `person`'s record.
+
+  Yourself, anyone who reports to you, and anyone at all if you administer the organisation. This
+  is §5.9's privacy line: leave detail is the person's, their manager's and payroll's business.
+  """
+  @spec oversees?(Person.t(), Person.t()) :: boolean()
+  def oversees?(actor, person) do
+    actor.id == person.id or person.manager_id == actor.id or actor.role == :admin
   end
 
   @doc "Each work pattern the person is on over part of `range`, with the span it covers."
@@ -257,6 +334,13 @@ defmodule Leaf.People do
   @doc "The fraction of the organisation's full-time week a work pattern works, for display."
   @spec fte(WorkPattern.t(), Decimal.t()) :: Decimal.t()
   defdelegate fte(work_pattern, full_time_week_hours), to: WorkPattern
+
+  defp fetched(nil), do: :error
+  defp fetched(record), do: {:ok, record}
+
+  defp effective_dated(schema, person) do
+    from row in schema, where: row.person_id == ^person.id, order_by: row.effective_from
+  end
 
   defp succession(person, schema) do
     Repo.all(from row in schema, where: row.person_id == ^person.id)

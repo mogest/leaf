@@ -14,6 +14,8 @@ defmodule Leaf.Audit do
   change, so there is nobody to name.
   """
 
+  import Ecto.Query
+
   alias Ecto.Association.NotLoaded
   alias Ecto.Changeset
   alias Ecto.Multi
@@ -58,6 +60,23 @@ defmodule Leaf.Audit do
     |> Multi.insert(:entry, entry(record, removal(record), action, actor, subject_person_id))
     |> Repo.transaction()
     |> outcome()
+  end
+
+  @doc "The most recently recorded entries, newest first, with who acted and who it was about."
+  @spec entries(pos_integer()) :: [Entry.t()]
+  def entries(limit), do: Repo.all(newest_first(limit))
+
+  @doc "The same, narrowed to the changes recorded about one person."
+  @spec entries(Person.t(), pos_integer()) :: [Entry.t()]
+  def entries(person, limit) do
+    Repo.all(from entry in newest_first(limit), where: entry.subject_person_id == ^person.id)
+  end
+
+  defp newest_first(limit) do
+    from entry in Entry,
+      order_by: [desc: entry.inserted_at],
+      limit: ^limit,
+      preload: [:actor, :subject_person]
   end
 
   defp outcome({:ok, %{record: record}}), do: {:ok, record}

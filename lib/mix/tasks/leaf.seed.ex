@@ -37,7 +37,7 @@ defmodule Mix.Tasks.Leaf.Seed do
   end
 
   defp describe(person, organisation) do
-    {:ok, pattern} = People.fetch_work_pattern(person, person.employment_start_date)
+    {:ok, pattern} = People.fetch_work_pattern_on(person, person.employment_start_date)
     weekly_hours = People.weekly_hours(pattern)
     fte = People.fte(pattern, organisation.full_time_week_hours)
 

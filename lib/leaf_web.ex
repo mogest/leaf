@@ -86,6 +86,7 @@ defmodule LeafWeb do
       alias Phoenix.LiveView.JS
       alias LeafWeb.Layouts
       alias LeafWeb.Parts
+      alias LeafWeb.Wording
 
       # Routes generation with the ~p sigil
       unquote(verified_routes())
