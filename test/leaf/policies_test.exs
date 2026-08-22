@@ -111,7 +111,8 @@ defmodule Leaf.PoliciesTest do
     assert changes["effective_to"] == %{"from" => nil, "to" => "2026-03-31"}
   end
 
-  test "a leave type is withdrawn by archiving it, so what it granted still reads", context do
+  test "a leave type stops being offered by being archived, so what it granted still reads",
+       context do
     %{organisation: organisation, quarterly: quarterly} = context
     admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
     archived_at = DateTime.truncate(DateTime.utc_now(), :second)

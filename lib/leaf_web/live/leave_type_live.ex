@@ -4,6 +4,10 @@ defmodule LeafWeb.LeaveTypeLive do
 
   Changing the unit changes what every amount already recorded against it means, so it is here
   rather than inline on the list, where it would be a click away from an accident.
+
+  Archiving one only takes it out of the pickers that set up new entitlements and balance entries.
+  A policy stops granting a type by closing its entitlement, which is where the dates and the
+  wind-down live, so the wording here says what this does and no more.
   """
 
   use LeafWeb, :live_view
@@ -55,21 +59,27 @@ defmodule LeafWeb.LeaveTypeLive do
         <.link navigate={~p"/settings/leave-types"}>Leave types</.link>
       </header>
 
+      <section>
+        <header>
+          <h2>Whether it is offered</h2>
+          <button type="button" phx-click="archive">{action(@leave_type)}</button>
+        </header>
+        <p>{standing(@leave_type)}</p>
+      </section>
+
       <.form id="leave-type" for={@form} phx-change="validate" phx-submit="save">
         <section>
           <header>
-            <h2>What it is</h2>
-            <p>changing the unit changes what every amount already recorded means</p>
+            <h2>The type itself</h2>
           </header>
           <.input field={@form[:name]} type="text" label="Name" />
           <.input field={@form[:unit]} type="select" label="Counted in" options={@units} />
           <.input field={@form[:position]} type="number" label="Order" />
-          <p>{standing(@leave_type)}</p>
         </section>
 
         <footer>
+          <p>Changing the unit changes what every amount already recorded means.</p>
           <button class="button" type="submit">Save</button>
-          <button type="button" phx-click="archive">{action(@leave_type)}</button>
           <.link navigate={~p"/settings/leave-types"}>Cancel</.link>
         </footer>
       </.form>
@@ -77,13 +87,16 @@ defmodule LeafWeb.LeaveTypeLive do
     """
   end
 
-  defp standing(%{archived_at: nil}), do: "Offered."
+  defp standing(%{archived_at: nil}),
+    do: "Offered when an entitlement or a balance entry is set up."
 
-  defp standing(leave_type),
-    do: "Withdrawn #{Wording.date(DateTime.to_date(leave_type.archived_at))}."
+  defp standing(leave_type) do
+    "Not offered in new configuration since #{Wording.date(DateTime.to_date(leave_type.archived_at))}. " <>
+      "Policies that already include it go on granting it."
+  end
 
-  defp action(%{archived_at: nil}), do: "Withdraw"
-  defp action(_leave_type), do: "Offer again"
+  defp action(%{archived_at: nil}), do: "Stop offering it in new configuration"
+  defp action(_leave_type), do: "Offer it again"
 
   defp archived_at(%{archived_at: nil}), do: DateTime.truncate(DateTime.utc_now(), :second)
   defp archived_at(_leave_type), do: nil

@@ -3,8 +3,10 @@ defmodule LeafWeb.LeaveTypesLive do
   The kinds of leave the organisation offers, and adding another.
 
   A type's unit is what every amount measuring it is counted in; how it is granted belongs to the
-  policies that include it, so none of that is here. Withdrawing one is archiving, because what it
-  granted has to keep making sense.
+  policies that include it, so none of that is here. A type stops being offered by being archived,
+  which takes it out of the pickers that set up new entitlements and balance entries and leaves
+  everything already drawing on it alone — a policy stops granting a type by closing its
+  entitlement, not here.
   """
 
   use LeafWeb, :live_view
@@ -131,7 +133,7 @@ defmodule LeafWeb.LeaveTypesLive do
   defp standing(%{archived_at: nil}), do: "offered"
 
   defp standing(leave_type),
-    do: "withdrawn #{Wording.date(DateTime.to_date(leave_type.archived_at))}"
+    do: "not offered since #{Wording.date(DateTime.to_date(leave_type.archived_at))}"
 
   defp tone(%{archived_at: nil}), do: nil
   defp tone(_leave_type), do: "past"

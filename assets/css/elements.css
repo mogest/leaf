@@ -232,9 +232,16 @@ form {
 
   & > footer {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--step-4);
     font-size: var(--size-base);
     color: var(--ink-soft);
+  }
+
+  /* What has to be known before saving is said where saving is done, on the line above it. */
+  & > footer > p {
+    flex-basis: 100%;
+    color: var(--ochre);
   }
 }

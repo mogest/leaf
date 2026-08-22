@@ -92,18 +92,25 @@ defmodule LeafWeb.PolicyLive do
         <p :if={@entitlements == []}>This policy grants nothing yet.</p>
       </section>
 
+      <section>
+        <header>
+          <h2>Whether it is in use</h2>
+          <button type="button" phx-click="archive">{action(@policy)}</button>
+        </header>
+        <p>{standing(@policy)}</p>
+      </section>
+
       <.form id="policy" for={@form} phx-change="validate" phx-submit="save">
         <section>
           <header>
             <h2>The policy itself</h2>
           </header>
           <.input field={@form[:name]} type="text" label="Name" />
-          <p>{standing(@policy)}</p>
         </section>
 
         <footer>
           <button class="button" type="submit">Save</button>
-          <button type="button" phx-click="archive">{action(@policy)}</button>
+          <.link navigate={~p"/settings/policies"}>Cancel</.link>
         </footer>
       </.form>
     </Layouts.app>
@@ -197,10 +204,12 @@ defmodule LeafWeb.PolicyLive do
     "too much over #{figure(entitlement, entitlement.excess_threshold)}"
   end
 
-  defp standing(%{archived_at: nil}), do: "In use."
+  defp standing(%{archived_at: nil}), do: "In use, and offered when somebody is put on a policy."
 
-  defp standing(policy),
-    do: "Withdrawn #{Wording.date(DateTime.to_date(policy.archived_at))}."
+  defp standing(policy) do
+    "Withdrawn #{Wording.date(DateTime.to_date(policy.archived_at))}. " <>
+      "Nobody new goes on it; whoever is already on it stays, and goes on being granted what it says."
+  end
 
   defp action(%{archived_at: nil}), do: "Withdraw"
   defp action(_policy), do: "Use again"
