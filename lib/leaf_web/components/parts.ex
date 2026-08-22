@@ -53,6 +53,58 @@ defmodule LeafWeb.Parts do
   end
 
   @doc """
+  What somebody holds, a leave type at a time, as at today.
+
+  Each one is a `t:LeafWeb.Wording.held/0` with the ledger it opens onto, worked out before it
+  arrives here.
+
+  ## Examples
+
+      <Parts.balance_sheet balances={@balances} title="Balances" path={~p"/balances"} />
+
+  """
+  attr :balances, :list, required: true, doc: "the balances to show, already put into words"
+  attr :title, :string, required: true, doc: "what to call them"
+  attr :path, :string, default: nil, doc: "where the heading leads, where it leads anywhere"
+
+  slot :empty, doc: "what to say where there are none; without it, none means no card at all"
+
+  def balance_sheet(assigns) do
+    ~H"""
+    <section :if={@balances != [] or @empty != []} class="balance-sheet">
+      <header>
+        <.heading title={@title} path={@path} />
+        <p>as at today</p>
+      </header>
+      <dl :if={@balances != []}>
+        <%= for balance <- @balances do %>
+          <dt><.link navigate={balance.path}>{balance.name}</.link></dt>
+          <dd>{balance.amount} <small>{balance.unit}</small></dd>
+          <dd :if={balance.awaiting} data-awaiting>{balance.awaiting}</dd>
+          <dd :if={balance.expiry}>{balance.expiry}</dd>
+        <% end %>
+      </dl>
+      <p :if={@balances == []}>{render_slot(@empty)}</p>
+    </section>
+    """
+  end
+
+  attr :title, :string, required: true
+  attr :path, :string, default: nil
+
+  defp heading(%{path: nil} = assigns) do
+    ~H"""
+    <h2>{@title}</h2>
+    """
+  end
+
+  defp heading(assigns) do
+    ~H"""
+    <h2><.link navigate={@path}>{@title}</.link></h2>
+    """
+  end
+
+  @doc """
   Requests as a record of them: a row each, a column for every part of one.
 
   Each one is a `t:LeafWeb.Wording.filed/0`, worked out before it arrives here. What can be done

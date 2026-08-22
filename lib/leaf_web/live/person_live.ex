@@ -16,6 +16,16 @@ defmodule LeafWeb.PersonLive do
   alias Leaf.People
   alias Leaf.Policies
 
+  @weekdays [
+    {:monday_hours, "Mon"},
+    {:tuesday_hours, "Tue"},
+    {:wednesday_hours, "Wed"},
+    {:thursday_hours, "Thu"},
+    {:friday_hours, "Fri"},
+    {:saturday_hours, "Sat"},
+    {:sunday_hours, "Sun"}
+  ]
+
   @impl Phoenix.LiveView
   def mount(%{"person_id" => id}, _session, socket) do
     {:ok, person} = People.fetch_person(id)
@@ -50,149 +60,156 @@ defmodule LeafWeb.PersonLive do
     <Layouts.app flash={@flash} page="people" viewer={@viewer}>
       <header>
         <h1>{@person.name}</h1>
-        <.link :if={@admin?} class="button" navigate={~p"/people/#{@person}/edit"}>Amend</.link>
+        <.link :if={@admin?} class="button" navigate={~p"/people/#{@person}/edit"}>Edit</.link>
       </header>
 
-      <section>
-        <header>
-          <h2>Who they are</h2>
-        </header>
-        <dl>
-          <dt>Email</dt>
-          <dd>{@person.email}</dd>
-          <dt>Role</dt>
-          <dd>{@role}</dd>
-          <dt>Employment</dt>
-          <dd>{@employment}</dd>
-          <dt>Born</dt>
-          <dd>{@born}</dd>
-          <dt>Manager</dt>
-          <dd>{@manager}</dd>
-        </dl>
-      </section>
+      <div>
+        <section>
+          <header>
+            <h2>Details</h2>
+          </header>
+          <dl>
+            <dt>Email</dt>
+            <dd>{@person.email}</dd>
+            <dt>Role</dt>
+            <dd>{@role}</dd>
+            <dt>Employment</dt>
+            <dd>{@employment}</dd>
+            <dt>Born</dt>
+            <dd>{@born}</dd>
+            <dt>Manager</dt>
+            <dd>{@manager}</dd>
+          </dl>
+        </section>
 
-      <section>
-        <header>
-          <h2>Balances</h2>
-          <p>as at today</p>
-        </header>
-        <ol :if={@balances != []}>
-          <li :for={balance <- @balances}>
-            <.link navigate={balance.path}>{balance.name}</.link>
-            <span>{balance.amount}</span>
-          </li>
-        </ol>
-        <p :if={@balances == []}>{@nothing_held}</p>
-      </section>
+        <section>
+          <header>
+            <h2>Work patterns</h2>
+            <.link :if={@admin?} class="add" navigate={~p"/people/#{@person}/work-patterns/new"}>
+              Add
+            </.link>
+          </header>
+          <ol :if={@patterns != []}>
+            <li :for={pattern <- @patterns}>
+              <span>{pattern.from}</span>
+              <span>{pattern.days}</span>
+              <span>{pattern.weekly}</span>
+              <div :if={@admin?}>
+                <.link navigate={pattern.path}>Edit</.link>
+                <button
+                  type="button"
+                  phx-click="remove-work-pattern"
+                  phx-value-id={pattern.id}
+                  data-confirm="Remove this work pattern? Whatever preceded it runs on."
+                >
+                  Remove
+                </button>
+              </div>
+            </li>
+          </ol>
+          <p :if={@patterns == []}>No work pattern on record, so no balance can be worked out.</p>
+        </section>
 
-      <section>
-        <header>
-          <h2>Work patterns</h2>
-          <.link :if={@admin?} navigate={~p"/people/#{@person}/work-patterns/new"}>Add one</.link>
-        </header>
-        <ol :if={@patterns != []}>
-          <li :for={pattern <- @patterns}>
-            <span>{pattern.from}</span>
-            <span>{pattern.hours}</span>
-            <span>{pattern.weekly}</span>
-            <.link :if={@admin?} navigate={pattern.path}>Amend</.link>
-            <button
+        <section>
+          <header>
+            <h2>Leave policies</h2>
+            <.link :if={@admin?} class="add" navigate={~p"/people/#{@person}/policy-assignments/new"}>
+              Add
+            </.link>
+          </header>
+          <ol :if={@policies != []}>
+            <li :for={assignment <- @policies}>
+              <span>{assignment.from}</span>
+              <.link navigate={assignment.path}>{assignment.name}</.link>
+              <div :if={@admin?}>
+                <button
+                  type="button"
+                  phx-click="remove-policy-assignment"
+                  phx-value-id={assignment.id}
+                  data-confirm="Remove this assignment? Whatever preceded it runs on."
+                >
+                  Remove
+                </button>
+              </div>
+            </li>
+          </ol>
+          <p :if={@policies == []}>On no policy, so nothing is granted.</p>
+        </section>
+
+        <section>
+          <header>
+            <h2>Holiday calendars</h2>
+            <.link
               :if={@admin?}
-              type="button"
-              phx-click="remove-work-pattern"
-              phx-value-id={pattern.id}
-              data-confirm="Remove this work pattern? Whatever preceded it runs on."
+              class="add"
+              navigate={~p"/people/#{@person}/calendar-assignments/new"}
             >
-              Remove
-            </button>
-          </li>
-        </ol>
-        <p :if={@patterns == []}>No work pattern on record, so no balance can be worked out.</p>
-      </section>
+              Add
+            </.link>
+          </header>
+          <ol :if={@calendars != []}>
+            <li :for={assignment <- @calendars}>
+              <span>{assignment.from}</span>
+              <.link navigate={assignment.path}>{assignment.name}</.link>
+              <div :if={@admin?}>
+                <button
+                  type="button"
+                  phx-click="remove-calendar-assignment"
+                  phx-value-id={assignment.id}
+                  data-confirm="Remove this assignment? Whatever preceded it runs on."
+                >
+                  Remove
+                </button>
+              </div>
+            </li>
+          </ol>
+          <p :if={@calendars == []}>Observing no calendar, so no public holidays.</p>
+        </section>
 
-      <section>
-        <header>
-          <h2>Leave policies</h2>
-          <.link :if={@admin?} navigate={~p"/people/#{@person}/policy-assignments/new"}>
-            Assign one
-          </.link>
-        </header>
-        <ol :if={@policies != []}>
-          <li :for={assignment <- @policies}>
-            <span>{assignment.from}</span>
-            <.link navigate={assignment.path}>{assignment.name}</.link>
-            <button
-              :if={@admin?}
-              type="button"
-              phx-click="remove-policy-assignment"
-              phx-value-id={assignment.id}
-              data-confirm="Remove this assignment? Whatever preceded it runs on."
-            >
-              Remove
-            </button>
-          </li>
-        </ol>
-        <p :if={@policies == []}>On no policy, so nothing is granted.</p>
-      </section>
+        <section>
+          <header>
+            <h2>Balances entered by hand</h2>
+            <.link :if={@admin?} class="add" navigate={~p"/people/#{@person}/balance-entries/new"}>
+              Add
+            </.link>
+          </header>
+          <table :if={@entries != []}>
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">What</th>
+                <th scope="col">Leave type</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Lapses</th>
+                <th scope="col">Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :for={entry <- @entries}>
+                <td>{entry.date}</td>
+                <td>{entry.kind}</td>
+                <td>{entry.leave_type}</td>
+                <td>{entry.amount}</td>
+                <td>{entry.expires}</td>
+                <td>{entry.reason}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p :if={@entries == []}>Nothing has been entered by hand.</p>
+        </section>
 
-      <section>
-        <header>
-          <h2>Holiday calendars</h2>
-          <.link :if={@admin?} navigate={~p"/people/#{@person}/calendar-assignments/new"}>
-            Assign one
-          </.link>
-        </header>
-        <ol :if={@calendars != []}>
-          <li :for={assignment <- @calendars}>
-            <span>{assignment.from}</span>
-            <.link navigate={assignment.path}>{assignment.name}</.link>
-            <button
-              :if={@admin?}
-              type="button"
-              phx-click="remove-calendar-assignment"
-              phx-value-id={assignment.id}
-              data-confirm="Remove this assignment? Whatever preceded it runs on."
-            >
-              Remove
-            </button>
-          </li>
-        </ol>
-        <p :if={@calendars == []}>Observing no calendar, so no public holidays.</p>
-      </section>
+        <Parts.requests requests={@requests} title="Requests">
+          <:empty>They have not asked for any leave.</:empty>
+        </Parts.requests>
+      </div>
 
-      <section>
-        <header>
-          <h2>Balances entered by hand</h2>
-          <.link :if={@admin?} navigate={~p"/people/#{@person}/balance-entries/new"}>Record one</.link>
-        </header>
-        <table :if={@entries != []}>
-          <thead>
-            <tr>
-              <th scope="col">Date</th>
-              <th scope="col">What</th>
-              <th scope="col">Leave type</th>
-              <th scope="col">Amount</th>
-              <th scope="col">Lapses</th>
-              <th scope="col">Reason</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr :for={entry <- @entries}>
-              <td>{entry.date}</td>
-              <td>{entry.kind}</td>
-              <td>{entry.leave_type}</td>
-              <td>{entry.amount}</td>
-              <td>{entry.expires}</td>
-              <td>{entry.reason}</td>
-            </tr>
-          </tbody>
-        </table>
-        <p :if={@entries == []}>Nothing has been entered by hand.</p>
-      </section>
-
-      <Parts.requests requests={@requests} title="Requests">
-        <:empty>They have not asked for any leave.</:empty>
-      </Parts.requests>
+      <Parts.balance_sheet
+        balances={@balances}
+        title="Balances"
+        path={~p"/people/#{@person}/balances"}
+      >
+        <:empty>{@nothing_held}</:empty>
+      </Parts.balance_sheet>
     </Layouts.app>
     """
   end
@@ -251,17 +268,21 @@ defmodule LeafWeb.PersonLive do
 
   defp balances(person, today) do
     case Ledger.ready?(person, today) do
-      true -> person |> Ledger.statements(today) |> Enum.map(&balance(&1, person))
+      true -> held(person, today, Ledger.awaiting(person))
       false -> []
     end
   end
 
-  defp balance(statement, person) do
-    %{
-      name: statement.leave_type.name,
-      amount: Wording.figure(statement.balance, statement.leave_type.unit),
-      path: ~p"/people/#{person}/balances/#{statement.leave_type}"
-    }
+  defp held(person, today, awaiting) do
+    person |> Ledger.statements(today) |> Enum.map(&balance(&1, person, awaiting))
+  end
+
+  defp balance(statement, person, awaiting) do
+    Map.put(
+      Wording.held(statement, awaiting),
+      :path,
+      ~p"/people/#{person}/balances/#{statement.leave_type}"
+    )
   end
 
   defp nothing_held(person, today) do
@@ -274,29 +295,43 @@ defmodule LeafWeb.PersonLive do
   defp pattern(pattern, person, organisation) do
     %{
       id: pattern.id,
-      from: "from #{Wording.date(pattern.effective_from)}",
-      hours: hours(pattern),
+      from: "from #{Wording.brief_date(pattern.effective_from)}",
+      days: days(pattern),
       weekly: weekly(pattern, organisation),
       path: ~p"/people/#{person}/work-patterns/#{pattern}"
     }
   end
 
-  defp hours(pattern) do
-    [:monday, :tuesday, :wednesday, :thursday, :friday, :saturday, :sunday]
-    |> Enum.map_join(" ", &Wording.number(Map.fetch!(pattern, :"#{&1}_hours")))
+  # The days worked, a run of them on the same hours said once: Mon–Fri 8, Sat 4. A day off is
+  # left out, and the run is broken by one, so a week off midweek cannot read as worked through.
+  defp days(pattern) do
+    @weekdays
+    |> Enum.map(fn {key, name} -> {name, Wording.number(Map.fetch!(pattern, key))} end)
+    |> Enum.chunk_by(&elem(&1, 1))
+    |> Enum.reject(&match?([{_name, "0"} | _], &1))
+    |> Enum.map_join(", ", &run/1)
+  end
+
+  defp run([{name, hours}]), do: "#{name} #{hours}"
+
+  defp run(days) do
+    {first, hours} = List.first(days)
+    {last, _hours} = List.last(days)
+
+    "#{first}–#{last} #{hours}"
   end
 
   defp weekly(pattern, organisation) do
     weekly = People.weekly_hours(pattern)
     fte = People.fte(pattern, organisation.full_time_week_hours)
 
-    "#{Wording.number(weekly)} hours a week, #{Wording.number(fte)} FTE"
+    "#{Wording.number(weekly)} h/wk, #{Wording.number(fte)} FTE"
   end
 
   defp policy(assignment) do
     %{
       id: assignment.id,
-      from: "from #{Wording.date(assignment.effective_from)}",
+      from: "from #{Wording.brief_date(assignment.effective_from)}",
       name: assignment.leave_policy.name,
       path: ~p"/settings/policies/#{assignment.leave_policy}"
     }
@@ -305,7 +340,7 @@ defmodule LeafWeb.PersonLive do
   defp calendar(assignment) do
     %{
       id: assignment.id,
-      from: "from #{Wording.date(assignment.effective_from)}",
+      from: "from #{Wording.brief_date(assignment.effective_from)}",
       name: assignment.holiday_calendar.name,
       path: ~p"/settings/calendars/#{assignment.holiday_calendar}"
     }
@@ -321,11 +356,11 @@ defmodule LeafWeb.PersonLive do
     leave_type = Map.fetch!(leave_types, entry.leave_type_id)
 
     %{
-      date: Wording.date(entry.date),
+      date: Wording.brief_date(entry.date),
       kind: kind(entry.kind),
       leave_type: leave_type.name,
       amount: Wording.figure(entry.amount, leave_type.unit),
-      expires: Wording.date(entry.expires_on),
+      expires: Wording.brief_date(entry.expires_on),
       reason: entry.reason
     }
   end

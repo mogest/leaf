@@ -10,6 +10,8 @@ defmodule LeafWeb.Wording do
 
   alias Leaf.Leave.Day
   alias Leaf.Leave.Request
+  alias Leaf.Ledger.Lot
+  alias Leaf.Ledger.Statement
   alias Leaf.People.Person
   alias Leaf.Policies.LeaveType
 
@@ -45,6 +47,33 @@ defmodule LeafWeb.Wording do
       standing: standing,
       label: standing |> Atom.to_string() |> String.capitalize(),
       progress: progress(request, awaiting)
+    }
+  end
+
+  @typedoc "A balance as a page shows it."
+  @type held :: %{
+          name: String.t(),
+          amount: String.t(),
+          unit: String.t(),
+          awaiting: String.t() | nil,
+          expiry: String.t() | nil
+        }
+
+  @doc """
+  What somebody holds in one leave type: the figure, what is waiting on an answer, and what is
+  about to lapse.
+
+  `awaiting` is `Leaf.Ledger.awaiting/1`, keyed by leave type. Nothing waiting and nothing lapsing
+  each say nothing at all.
+  """
+  @spec held(Statement.t(), %{Ecto.UUID.t() => Decimal.t()}) :: held()
+  def held(statement, awaiting) do
+    %{
+      name: statement.leave_type.name,
+      amount: number(statement.balance),
+      unit: unit(statement.balance, statement.leave_type.unit),
+      awaiting: asked(awaiting[statement.leave_type.id], statement.leave_type.unit),
+      expiry: expiry(statement)
     }
   end
 
@@ -103,6 +132,11 @@ defmodule LeafWeb.Wording do
   def date(nil), do: nil
   def date(date), do: Calendar.strftime(date, "%-d %B %Y")
 
+  @doc "A date narrow enough for a column of them, the year kept: 22 Aug 2026."
+  @spec brief_date(Date.t() | DateTime.t() | nil) :: String.t() | nil
+  def brief_date(nil), do: nil
+  def brief_date(at), do: Calendar.strftime(at, "%-d %b %Y")
+
   @doc "A date within the year it is being read in: 18 August."
   @spec day_and_month(Date.t() | DateTime.t()) :: String.t()
   def day_and_month(at), do: Calendar.strftime(at, "%-d %B")
@@ -144,6 +178,35 @@ defmodule LeafWeb.Wording do
   @spec actor(Person.t() | nil) :: String.t()
   def actor(nil), do: "the system"
   def actor(person), do: person.name
+
+  defp asked(nil, _unit), do: nil
+  defp asked(amount, unit), do: "#{figure(amount, unit)} awaiting approval"
+
+  # What is going to happen to the balance, and nothing at all where nothing is. The soonest lot
+  # to lapse is the one worth saying; one that is the whole balance says so without the figure.
+  defp expiry(statement) do
+    case statement.lots |> Lot.soonest_first() |> List.first() do
+      %{expires_on: nil} -> nil
+      nil -> nil
+      lot -> lapsing(lot, statement)
+    end
+  end
+
+  defp lapsing(lot, statement) do
+    date = day_and_month(lot.expires_on)
+
+    case Decimal.equal?(lot.amount, statement.balance) do
+      true -> "Expires #{date}"
+      false -> "#{figure(lot.amount, statement.leave_type.unit)} #{expire(lot.amount)} on #{date}"
+    end
+  end
+
+  defp expire(amount) do
+    case Decimal.equal?(amount, 1) do
+      true -> "expires"
+      false -> "expire"
+    end
+  end
 
   defp brief_span(date, date), do: brief(date)
   defp brief_span(first, last), do: stretch(first, last, "%a %-d", &brief/1)
@@ -193,10 +256,10 @@ defmodule LeafWeb.Wording do
 
   # Whoever it is with or whoever settled it, and when. What they did is the standing's to say.
   defp progress(%{status: :pending} = request, nil),
-    do: "sent #{day_and_month(request.inserted_at)}"
+    do: "sent #{brief_date(request.inserted_at)}"
 
   defp progress(%{status: :pending} = request, awaiting) do
-    "with #{awaiting} since #{day_and_month(request.inserted_at)}"
+    "with #{awaiting} since #{brief_date(request.inserted_at)}"
   end
 
   defp progress(%{status: :declined, review_comment: comment} = request, _awaiting)
@@ -205,6 +268,6 @@ defmodule LeafWeb.Wording do
   end
 
   defp progress(request, _awaiting) do
-    "#{request.reviewed_by.name} · #{day_and_month(request.reviewed_at)}"
+    "#{request.reviewed_by.name} · #{brief_date(request.reviewed_at)}"
   end
 end

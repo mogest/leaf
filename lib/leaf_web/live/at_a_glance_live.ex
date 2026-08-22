@@ -10,7 +10,6 @@ defmodule LeafWeb.AtAGlanceLive do
 
   alias Leaf.Leave
   alias Leaf.Ledger
-  alias Leaf.Ledger.Lot
   alias Leaf.People
 
   @months 3
@@ -59,20 +58,7 @@ defmodule LeafWeb.AtAGlanceLive do
         </Parts.requests>
       </div>
 
-      <section :if={@balances != []} class="balance-sheet">
-        <header>
-          <h2><.link navigate={~p"/balances"}>Balances</.link></h2>
-          <p>as at today</p>
-        </header>
-        <dl>
-          <%= for balance <- @balances do %>
-            <dt><.link navigate={balance.ledger}>{balance.name}</.link></dt>
-            <dd>{balance.amount} <small>{balance.unit}</small></dd>
-            <dd :if={balance.awaiting} data-awaiting>{balance.awaiting}</dd>
-            <dd :if={balance.expiry}>{balance.expiry}</dd>
-          <% end %>
-        </dl>
-      </section>
+      <Parts.balance_sheet balances={@balances} title="Balances" path={~p"/balances"} />
     </Layouts.app>
     """
   end
@@ -124,44 +110,6 @@ defmodule LeafWeb.AtAGlanceLive do
   end
 
   defp balance(statement, awaiting) do
-    %{
-      name: statement.leave_type.name,
-      amount: Wording.number(statement.balance),
-      unit: Wording.unit(statement.balance, statement.leave_type.unit),
-      awaiting: asked(awaiting[statement.leave_type.id], statement.leave_type.unit),
-      expiry: expiry(statement),
-      ledger: ~p"/balances/#{statement.leave_type}"
-    }
-  end
-
-  defp asked(nil, _unit), do: nil
-  defp asked(amount, unit), do: "#{Wording.figure(amount, unit)} awaiting approval"
-
-  # What is going to happen to the balance, and nothing at all where nothing is. The soonest lot
-  # to lapse is the one worth saying; one that is the whole balance says so without the figure.
-  defp expiry(statement) do
-    case statement.lots |> Lot.soonest_first() |> List.first() do
-      %{expires_on: nil} -> nil
-      nil -> nil
-      lot -> lapsing(lot, statement)
-    end
-  end
-
-  defp lapsing(lot, statement) do
-    date = Wording.day_and_month(lot.expires_on)
-
-    case Decimal.equal?(lot.amount, statement.balance) do
-      true -> "Expires #{date}"
-      false -> "#{figure(lot, statement)} #{expire(lot.amount)} on #{date}"
-    end
-  end
-
-  defp figure(lot, statement), do: Wording.figure(lot.amount, statement.leave_type.unit)
-
-  defp expire(amount) do
-    case Decimal.equal?(amount, 1) do
-      true -> "expires"
-      false -> "expire"
-    end
+    Map.put(Wording.held(statement, awaiting), :path, ~p"/balances/#{statement.leave_type}")
   end
 end

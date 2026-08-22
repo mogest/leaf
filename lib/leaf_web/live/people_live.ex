@@ -25,7 +25,7 @@ defmodule LeafWeb.PeopleLive do
     <Layouts.app flash={@flash} page="people" viewer={@viewer}>
       <header>
         <h1>People</h1>
-        <.link class="button" navigate={~p"/people/new"}>Add somebody</.link>
+        <.link class="button" navigate={~p"/people/new"}>Add</.link>
       </header>
 
       <table>

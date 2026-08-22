@@ -30,7 +30,6 @@ defmodule LeafWeb.ApprovalsLiveTest do
   test "a manager sees what their reports have asked for", context do
     {:ok, _live, html} = live(sign_in(context.conn, context.manager), ~p"/approvals")
 
-    assert html =~ "one request waiting"
     assert html =~ "Rae Halloran"
     assert html =~ "Monday 4 March"
     assert html =~ "A wedding"

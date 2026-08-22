@@ -22,6 +22,31 @@ section > header {
   }
 }
 
+/* Adding to what a section lists: a thing to press, told apart from the words beside it. */
+.add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0.1875rem 0.6875rem;
+  border: 1px solid var(--edge);
+  border-radius: var(--pill);
+  background: var(--sheet);
+  color: var(--ink-quiet);
+  font-size: var(--size-sm);
+
+  &::before {
+    content: "+";
+    font-size: var(--size-md);
+    line-height: 1;
+  }
+
+  &:hover {
+    border-color: var(--green);
+    color: var(--green);
+    text-decoration: none;
+  }
+}
+
 .button {
   display: inline-flex;
   align-items: center;

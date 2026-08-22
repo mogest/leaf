@@ -26,7 +26,6 @@ defmodule LeafWeb.ApprovalsLive do
     <Layouts.app flash={@flash} page="approvals" viewer={@viewer}>
       <header>
         <h1>Approvals</h1>
-        <p>{@standing}</p>
       </header>
 
       <ol :if={@waiting != []}>
@@ -52,14 +51,12 @@ defmodule LeafWeb.ApprovalsLive do
   end
 
   defp queued(socket) do
-    waiting = socket.assigns.current_person |> Leave.awaiting() |> Enum.map(&shown/1)
-
-    socket |> assign(:waiting, waiting) |> assign(:standing, standing(waiting))
+    assign(
+      socket,
+      :waiting,
+      socket.assigns.current_person |> Leave.awaiting() |> Enum.map(&shown/1)
+    )
   end
-
-  defp standing([]), do: "nothing waiting"
-  defp standing([_one]), do: "one request waiting"
-  defp standing(waiting), do: "#{length(waiting)} requests waiting"
 
   defp shown(request) do
     %{

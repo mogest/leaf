@@ -105,7 +105,7 @@ defmodule LeafWeb.PagesTest do
     assert length(request.days) == 4
 
     {:ok, _live, html} = live(context.conn, ~p"/approvals")
-    assert html =~ "one request waiting"
+    assert html =~ "Monday 7 – Friday 11 October"
 
     {:ok, _live, html} = live(context.conn, ~p"/away?month=2030-10")
     assert html =~ ~s(data-leave="pending")

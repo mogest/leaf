@@ -78,9 +78,24 @@ defmodule LeafWeb.PeopleLiveTest do
     assert html =~ "Rae Halloran"
     assert html =~ "from 4 March 2024"
     assert html =~ "nobody, so an administrator decides"
-    assert html =~ "8 8 8 8 8 0 0"
-    assert html =~ "40 hours a week, 1 FTE"
+    assert html =~ "Mon–Fri 8"
+    assert html =~ "40 h/wk, 1 FTE"
     assert html =~ "On no policy, so nothing is granted."
+  end
+
+  test "a week worked unevenly is said run by run, the days off left out", context do
+    other = Fixtures.person(%{organisation_id: context.organisation.id, name: "Ines Vasquez"})
+
+    Fixtures.work_pattern(%{
+      person_id: other.id,
+      tuesday_hours: "6",
+      wednesday_hours: "0",
+      saturday_hours: "4"
+    })
+
+    {:ok, _live, html} = live(context.conn, ~p"/people/#{other}")
+
+    assert html =~ "Mon 8, Tue 6, Thu–Fri 8, Sat 4"
   end
 
   test "a work pattern can be added, amended and removed", context do

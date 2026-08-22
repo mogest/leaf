@@ -190,14 +190,23 @@ main section > ol > li {
     color: var(--ink-soft);
     font-variant-numeric: tabular-nums;
   }
+
+  & > div {
+    margin-inline-start: auto;
+    display: flex;
+    align-items: baseline;
+    gap: 0.875rem;
+  }
 }
 
 main section > ol > li[data-tone="wrong"] > span {
   color: var(--clay-ink);
 }
 
-/* When you are away and what came of what you asked for, with the balances alongside them. */
-main.at-a-glance {
+/* A page that keeps what somebody holds beside it: the page down the middle, the card down the
+   side, and everything the middle is made of wrapped so it stays one column. */
+main.at-a-glance,
+main:has(> .balance-sheet) {
   display: grid;
   grid-template-columns: 1fr 15rem;
   column-gap: var(--step-9);
@@ -212,6 +221,12 @@ main.at-a-glance {
     display: flex;
     flex-direction: column;
     gap: var(--step-8);
+
+    & > section {
+      display: flex;
+      flex-direction: column;
+      gap: var(--step-3);
+    }
   }
 }
 
@@ -586,15 +601,31 @@ main.approvals > ol > li {
 
 /* One person's whole record, and the lists it is made of. */
 main.people {
-  & dl {
+  /* Who somebody is, a label against its value. What they hold is a part, and lays itself out. */
+  & section:not(.balance-sheet) > dl {
     display: grid;
     grid-template-columns: 9rem 1fr;
     gap: var(--step-2) var(--step-4);
     font-size: var(--size-base);
+
+    & > dt {
+      color: var(--ink-soft);
+    }
   }
 
-  & dt {
-    color: var(--ink-soft);
+  /* A row that names somebody is the way in to them, so their name's link covers the whole line. */
+  & tbody tr:has(th a) {
+    position: relative;
+
+    &:hover {
+      background: var(--panel);
+    }
+
+    & th a::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+    }
   }
 }
 

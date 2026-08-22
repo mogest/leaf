@@ -56,7 +56,9 @@ defmodule LeafWeb.PolicyLive do
       <section>
         <header>
           <h2>What it grants</h2>
-          <.link navigate={~p"/settings/policies/#{@policy}/entitlements/new"}>Add one</.link>
+          <.link class="add" navigate={~p"/settings/policies/#{@policy}/entitlements/new"}>
+            Add
+          </.link>
         </header>
         <ol :if={@entitlements != []}>
           <li :for={entitlement <- @entitlements}>
