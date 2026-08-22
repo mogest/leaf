@@ -38,6 +38,14 @@ defmodule LeafWeb.LeaveTypeLive do
     {:noreply, saved(socket, written)}
   end
 
+  def handle_event("archive", _params, socket) do
+    leave_type = socket.assigns.leave_type
+    attrs = %{archived_at: archived_at(leave_type)}
+
+    {:noreply,
+     written(socket, Policies.update_leave_type(leave_type, socket.assigns.current_person, attrs))}
+  end
+
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
@@ -56,16 +64,36 @@ defmodule LeafWeb.LeaveTypeLive do
           <.input field={@form[:name]} type="text" label="Name" />
           <.input field={@form[:unit]} type="select" label="Counted in" options={@units} />
           <.input field={@form[:position]} type="number" label="Order" />
+          <p>{standing(@leave_type)}</p>
         </section>
 
         <footer>
           <button class="button" type="submit">Save</button>
+          <button type="button" phx-click="archive">{action(@leave_type)}</button>
           <.link navigate={~p"/settings/leave-types"}>Cancel</.link>
         </footer>
       </.form>
     </Layouts.app>
     """
   end
+
+  defp standing(%{archived_at: nil}), do: "Offered."
+
+  defp standing(leave_type),
+    do: "Withdrawn #{Wording.date(DateTime.to_date(leave_type.archived_at))}."
+
+  defp action(%{archived_at: nil}), do: "Withdraw"
+  defp action(_leave_type), do: "Offer again"
+
+  defp archived_at(%{archived_at: nil}), do: DateTime.truncate(DateTime.utc_now(), :second)
+  defp archived_at(_leave_type), do: nil
+
+  defp written(socket, {:ok, leave_type}) do
+    socket |> assign(:leave_type, leave_type) |> put_flash(:info, "Saved.")
+  end
+
+  defp written(socket, {:error, _changeset}),
+    do: put_flash(socket, :error, "That would not save.")
 
   defp saved(socket, {:ok, _leave_type}) do
     socket

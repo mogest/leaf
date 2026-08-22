@@ -308,7 +308,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     {:ok, amend, html} = live(context.conn, ~p"/leave/#{request}/amend")
 
-    assert html =~ "Amend a request"
+    assert html =~ "Edit a request"
 
     amend
     |> form("form", request: asking(context, %{"to" => to_string(@sunday)}))

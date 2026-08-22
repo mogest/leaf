@@ -84,13 +84,12 @@ defmodule LeafWeb.OrganisationLive do
         <section>
           <header>
             <h2>Tracking</h2>
-            <p>moving this re-works every balance at once</p>
           </header>
           <.input field={@form[:tracked_from]} type="date" label="Leave has been tracked here from" />
           <p>
             Nothing accrues, is granted or lapses before that date — the opening balances account
             for everything up to it. Leave dated earlier still counts, and draws down what was
-            brought in.
+            brought in. Moving the date re-works every balance at once.
           </p>
         </section>
 

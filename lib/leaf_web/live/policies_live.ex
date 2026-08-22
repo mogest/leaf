@@ -41,14 +41,6 @@ defmodule LeafWeb.PoliciesLive do
     {:noreply, saved(socket, created)}
   end
 
-  def handle_event("archive", %{"id" => id}, socket) do
-    {:ok, policy} = Policies.fetch_leave_policy(id)
-    attrs = %{archived_at: archived_at(policy)}
-    written = Policies.update_leave_policy(policy, socket.assigns.current_person, attrs)
-
-    {:noreply, socket |> written(written) |> listed()}
-  end
-
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
@@ -69,7 +61,6 @@ defmodule LeafWeb.PoliciesLive do
               <th scope="col">Name</th>
               <th scope="col">Entitlements</th>
               <th scope="col">Standing</th>
-              <th scope="col"></th>
             </tr>
           </thead>
           <tbody>
@@ -77,11 +68,6 @@ defmodule LeafWeb.PoliciesLive do
               <th scope="row"><.link navigate={policy.path}>{policy.name}</.link></th>
               <td>{policy.entitlements}</td>
               <td>{policy.standing}</td>
-              <td>
-                <button type="button" phx-click="archive" phx-value-id={policy.id}>
-                  {policy.action}
-                </button>
-              </td>
             </tr>
           </tbody>
         </table>
@@ -92,7 +78,6 @@ defmodule LeafWeb.PoliciesLive do
         <section>
           <header>
             <h2>Add a policy</h2>
-            <p>what it grants is set on the policy itself</p>
           </header>
           <.input field={@form[:name]} type="text" label="Name" />
         </section>
@@ -118,7 +103,6 @@ defmodule LeafWeb.PoliciesLive do
       path: ~p"/settings/policies/#{policy}",
       entitlements: counted(Policies.entitlements(policy.id)),
       standing: standing(policy),
-      action: action(policy),
       tone: tone(policy)
     }
   end
@@ -134,19 +118,8 @@ defmodule LeafWeb.PoliciesLive do
   defp standing(%{archived_at: nil}), do: "in use"
   defp standing(policy), do: "withdrawn #{Wording.date(DateTime.to_date(policy.archived_at))}"
 
-  defp action(%{archived_at: nil}), do: "Withdraw"
-  defp action(_policy), do: "Use again"
-
   defp tone(%{archived_at: nil}), do: nil
   defp tone(_policy), do: "past"
-
-  defp archived_at(%{archived_at: nil}), do: DateTime.truncate(DateTime.utc_now(), :second)
-  defp archived_at(_policy), do: nil
-
-  defp written(socket, {:ok, _policy}), do: put_flash(socket, :info, "Saved.")
-
-  defp written(socket, {:error, _changeset}),
-    do: put_flash(socket, :error, "That would not save.")
 
   defp saved(socket, {:ok, policy}) do
     push_navigate(socket, to: ~p"/settings/policies/#{policy}")
