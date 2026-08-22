@@ -356,6 +356,11 @@ assertions, mobile app.
   block grant for that period; their first one lands at the start of the next. Pro-rating a block
   grant across a first partial period is not modelled, and should be designed later if it turns out
   to be wanted. Accrual has no such gap.
+- **A booked day whose hours later fall to zero.** What a whole day off is worth follows from the
+  work pattern on that date, so a day booked in advance moves with a pattern change before it —
+  which is the point. Where the change takes the day to no hours at all, the leave silently stops
+  counting, and nobody is told. The system should surface this rather than let it vanish, and has
+  nowhere to surface it yet.
 - **Public holidays worked but not credited.** §4.9's two treatments are the only arrangements
   available. An arrangement where public holidays are ordinary working days and *no* allowance is
   credited — a pure contractor who simply does not bill them — cannot be configured.
