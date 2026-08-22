@@ -140,18 +140,18 @@ defmodule Leaf.Leave do
   end
 
   @doc """
-  Every day of approved leave a person has taken up to and including `date`, oldest first.
+  Every day of approved leave a person holds, oldest first.
 
-  Leave dated before the organisation started tracking still counts, so this has no floor: it
-  draws down the opening balance that accounts for that period.
+  Bounded at neither end. Leave somebody is already going on is spent whether they have been on it
+  yet or not, and leave dated before the organisation started tracking draws down the opening
+  balance that accounts for that period.
   """
-  @spec days_taken(Person.t(), Date.t()) :: [Day.t()]
-  def days_taken(person, date) do
+  @spec days_approved(Person.t()) :: [Day.t()]
+  def days_approved(person) do
     Repo.all(
       from day in Day,
         join: request in assoc(day, :leave_request),
         where: request.person_id == ^person.id and request.status == :approved,
-        where: day.date <= ^date,
         order_by: day.date
     )
   end

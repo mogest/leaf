@@ -28,15 +28,19 @@ defmodule Leaf.Ledger do
   An account for each leave type the person holds one in, as at `as_at`, in the organisation's
   order.
 
+  `as_at` says how far the person has accrued, and nothing about which of their leave counts: every
+  day of approved leave draws the balance down whether they have been on it yet or not, since leave
+  they are already going on is spent whatever the calendar says.
+
   A leave type appears where the person holds a balance in it — something granted to them, entered
   by hand, or filed against it. A type that grants nothing and is recorded only appears once there
   is leave against it, so what somebody *may* request comes from their policy, not from here.
 
-  `days` are leave to count alongside what has been filed, which is what answers what a balance
-  would be were a request approved. Where they run past `as_at` the account runs on to the last of
-  them, since a balance that stopped short of the leave being asked about would not answer the
-  question. What is already filed stays counted either way, so projecting an *amendment* means
-  leaving that request's own days out of `days`.
+  `days` are leave to count alongside what is approved, which is what answers what a balance would
+  be were a request approved. The account accrues on to the last of them where they run past
+  `as_at`, since leave is affordable out of what will have been accrued by the time it is taken.
+  What is already approved stays counted either way, so projecting an *amendment* means leaving
+  that request's own days out of `days`.
   """
   @spec statements(Person.t(), Date.t(), [Day.t()]) :: [Statement.t()]
   def statements(person, as_at, days \\ []) do
@@ -44,7 +48,7 @@ defmodule Leaf.Ledger do
     {:ok, organisation} = Org.fetch_organisation(person.organisation_id)
     spans = Span.all(person, organisation, as_at)
     leave_types = Policies.leave_types(organisation.id)
-    taken = Leave.days_taken(person, as_at) ++ days
+    taken = Leave.days_approved(person) ++ days
 
     context = %{
       organisation: organisation,
@@ -136,7 +140,7 @@ defmodule Leaf.Ledger do
 
     {movements, lots} = Drawdown.run(movements, Grant.caps(spans), context.as_at)
 
-    Statement.new(leave_type, movements, lots)
+    Statement.new(leave_type, context.as_at, movements, lots)
   end
 
   defp entered_movement(entry) do

@@ -119,9 +119,9 @@ defmodule LeafWeb.RequestLeaveLive do
             </tfoot>
           </table>
           <dl :if={@filing && @filing.balance}>
-            <dt>{@filing.balance.name} left</dt>
+            <dt>{@filing.balance.name} left on {@filing.balance.date}</dt>
             <dd data-tone={@filing.balance.tone}>
-              {@filing.balance.moved} <small>if approved</small>
+              {@filing.balance.left} <small>if approved</small>
             </dd>
           </dl>
           <p :if={@replacing}>{@replacing}</p>
@@ -167,8 +167,8 @@ defmodule LeafWeb.RequestLeaveLive do
     |> filled(params)
   end
 
-  # What the person holds now, read once: the balance a type is offered with is the balance a
-  # projection moves, and neither of them turns on what is typed into the form.
+  # What the person holds now, read once: the balance a type is offered with does not turn on what
+  # is typed into the form.
   defp holding(socket, person, today) do
     ready? = Ledger.ready?(person, today)
     held = held(person, today, ready?)
@@ -177,7 +177,6 @@ defmodule LeafWeb.RequestLeaveLive do
     socket
     |> assign(:person, person)
     |> assign(:ready?, ready?)
-    |> assign(:held, held)
     |> assign(:offered, offered)
     |> assign(:leave_types, Enum.map(offered, &{offering(&1, held[&1.id]), &1.id}))
   end
@@ -437,28 +436,25 @@ defmodule LeafWeb.RequestLeaveLive do
 
   defp projection(%{assigns: %{ready?: false}}, _entries), do: nil
 
-  defp projection(socket, entries) do
-    held = socket.assigns.held
+  defp projection(socket, [entry | _rest] = entries) do
+    %{person: person, today: today} = socket.assigns
 
-    socket.assigns.person
-    |> Ledger.statements(socket.assigns.today, Leave.proposed(entries))
-    |> Enum.map(&{&1, balance(held[&1.leave_type.id])})
-    |> Enum.find(fn {statement, before} -> not Decimal.equal?(statement.balance, before) end)
+    case Ledger.fetch_statement(person, entry.leave_type_id, today, Leave.proposed(entries)) do
+      {:ok, statement} -> statement
+      :error -> nil
+    end
   end
 
-  defp balance(nil), do: Decimal.new(0)
-  defp balance(statement), do: statement.balance
-
-  # One leave type is asked for, so one balance moves: it is a line under the table rather than a
-  # row in it, because what is left afterwards is not one of the days being filed.
+  # One leave type is asked for, so one balance is left: it is a line under the table rather than a
+  # row in it, because what is left afterwards is not one of the days being filed. What the leave
+  # draws is the table's own total, which is why the figure it came off is not shown beside it.
   defp moving(nil), do: nil
 
-  defp moving({statement, before}) do
-    unit = statement.leave_type.unit
-
+  defp moving(statement) do
     %{
       name: statement.leave_type.name,
-      moved: "#{Wording.number(before)} → #{Wording.figure(statement.balance, unit)}",
+      date: Wording.date(statement.as_at),
+      left: Wording.figure(statement.balance, statement.leave_type.unit),
       tone: tone(statement.balance)
     }
   end

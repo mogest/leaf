@@ -267,7 +267,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert Leave.requests(context.person) == []
   end
 
-  test "the one balance that moves is shown as it stands and as it would be", context do
+  test "what the one leave type asked for would be left with is shown", context do
     sick = sick_leave(context)
 
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
@@ -279,8 +279,8 @@ defmodule LeafWeb.RequestLeaveLiveTest do
       )
       |> render_change()
 
-    assert html =~ "Sick leave left"
-    assert html =~ "30 → 25 days"
+    assert html =~ "Sick leave left on 22 August 2026"
+    assert html =~ "25 days"
     refute html =~ "Annual leave left"
   end
 

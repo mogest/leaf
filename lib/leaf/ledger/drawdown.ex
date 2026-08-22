@@ -21,31 +21,41 @@ defmodule Leaf.Ledger.Drawdown do
   @doc """
   The movements in the order they happened, and the lots still held on `as_at`.
 
-  `caps` gives the dates a cap falls due with the cap that applies. Anything dated after `as_at`
-  takes no part in the walk, so a lot due to lapse later is still held.
+  `caps` gives the dates a cap falls due with the cap that applies. Up to `as_at` the whole ledger
+  happens; past it the only movements left are leave already approved for later, which draws on
+  what is held. Nothing arrives after `as_at`, nothing lapses and no cap falls, so a lot due to
+  lapse later is still held.
   """
   @spec run([Movement.t()], [{Date.t(), Decimal.t()}], Date.t()) ::
           {[Movement.t()], [Lot.t()]}
   def run(movements, caps, as_at) do
     by_date = Enum.group_by(movements, & &1.date)
+    {elapsed, ahead} = dates(movements, caps, as_at)
     start = %{lots: [], deficit: Decimal.new(0), movements: []}
 
-    state =
-      Enum.reduce(dates(movements, caps, as_at), start, fn date, state ->
+    held =
+      Enum.reduce(elapsed, start, fn date, state ->
         state
         |> apply_movements(Map.get(by_date, date, []))
         |> expire(date)
         |> trim(date, caps)
       end)
 
+    state = Enum.reduce(ahead, held, &apply_movements(&2, Map.get(by_date, &1, [])))
+
     {Enum.reverse(state.movements), Lot.soonest_first(state.lots)}
   end
 
+  # Every date something happens on, split at `as_at`. A lapse or a cap due after it has not
+  # happened yet and so is left out altogether, rather than falling due at whatever later date the
+  # walk happens to reach.
   defp dates(movements, caps, as_at) do
-    (Enum.flat_map(movements, &[&1.date | lapse_date(&1)]) ++ Enum.map(caps, &elem(&1, 0)))
-    |> Enum.reject(&Date.after?(&1, as_at))
+    losses = Enum.flat_map(movements, &lapse_date/1) ++ Enum.map(caps, &elem(&1, 0))
+
+    (Enum.map(movements, & &1.date) ++ Enum.reject(losses, &Date.after?(&1, as_at)))
     |> Enum.uniq()
     |> Enum.sort(Date)
+    |> Enum.split_while(&(not Date.after?(&1, as_at)))
   end
 
   defp lapse_date(%{expires_on: nil}), do: []

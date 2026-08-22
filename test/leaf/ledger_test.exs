@@ -229,6 +229,39 @@ defmodule Leaf.LedgerTest do
     assert Decimal.equal?(after_lapse.balance, "40.00")
   end
 
+  test "leave approved for later is spent already, and lapses nothing that has not lapsed",
+       context do
+    person = context.person
+    full_time(person)
+    carried = leave_type(context, %{name: "Carried leave", position: 2})
+    entry = %{person_id: person.id, leave_type_id: carried.id}
+
+    Fixtures.balance_entry(Map.put(entry, :amount, "40"))
+
+    Fixtures.balance_entry(
+      Map.merge(entry, %{
+        date: ~D[2024-04-01],
+        kind: :adjustment,
+        amount: "10",
+        expires_on: ~D[2024-06-30],
+        reason: "Top-up to use by June"
+      })
+    )
+
+    take(person, carried, ~D[2024-08-01], "8", :hours)
+
+    statement = statement(person, carried, ~D[2024-05-01])
+
+    assert movements(statement) == [
+             {:opening_balance, ~D[2024-01-01], Decimal.new("40.00"), nil},
+             {:adjustment, ~D[2024-04-01], Decimal.new("10.00"), ~D[2024-06-30]},
+             {:taken, ~D[2024-08-01], Decimal.new("-8.00"), nil}
+           ]
+
+    assert lots(statement) == [{Decimal.new("2.00"), ~D[2024-06-30]}, {Decimal.new("40.00"), nil}]
+    assert Decimal.equal?(statement.balance, "42.00")
+  end
+
   test "a capped leave type is trimmed to the cap, taking from the lots with longest to run",
        context do
     person = context.person
@@ -520,13 +553,14 @@ defmodule Leaf.LedgerTest do
     assert Decimal.equal?(paid_off.balance, "1.00")
   end
 
-  test "a projection counts leave that has not been filed, whenever it falls", context do
+  test "leave counts whenever it falls, and only a projection moves the date accrued to",
+       context do
     person = context.person
     full_time(person)
     annual = leave_type(context, %{})
     entitlement(context, annual, %{grant_amount: "200"})
 
-    [filed] = Ledger.statements(person, ~D[2025-03-03])
+    [whole_year] = Ledger.statements(person, ~D[2025-03-03])
 
     [projected] =
       Ledger.statements(person, ~D[2025-03-03], [day(annual, ~D[2025-03-01], "8", :hours)])
@@ -537,9 +571,14 @@ defmodule Leaf.LedgerTest do
     assert {:ok, projected_ahead} =
              Ledger.fetch_statement(person, annual.id, ~D[2025-02-28], ahead)
 
-    assert Decimal.equal?(filed.balance, "200.00")
+    # Approved for three months' time, so it is spent out of the year that has been accrued and
+    # accrues nothing further.
+    take(person, annual, ~D[2025-06-02], "8", :hours)
+
+    assert Decimal.equal?(whole_year.balance, "200.00")
     assert Decimal.equal?(projected.balance, "192.00")
     assert Decimal.equal?(projected_ahead.balance, "192.00")
+    assert Decimal.equal?(statement(person, annual, ~D[2025-03-03]).balance, "192.00")
   end
 
   test "entitlement is not worked out where the hours are unknown", context do

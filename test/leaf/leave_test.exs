@@ -8,6 +8,7 @@ defmodule Leaf.LeaveTest do
   @thursday ~D[2026-08-20]
   @friday ~D[2026-08-21]
   @saturday ~D[2026-08-22]
+  @ahead ~D[2026-12-01]
 
   setup do
     organisation = Fixtures.organisation()
@@ -197,7 +198,7 @@ defmodule Leaf.LeaveTest do
     assert [%{action: "balance_entry.created"}] = Repo.all(Entry)
   end
 
-  test "only approved leave up to the date asked about counts as taken", context do
+  test "only approved leave counts as taken, whenever it falls", context do
     %{person: person, leave_type: leave_type} = context
 
     Enum.each([:pending, :cancelled], fn status ->
@@ -208,9 +209,10 @@ defmodule Leaf.LeaveTest do
       })
     end)
 
+    Fixtures.leave_request(%{person_id: person.id, days: [entry(leave_type, @ahead)]})
     taken(context)
 
-    assert Enum.map(Leave.days_taken(person, @friday), & &1.date) == [@thursday]
+    assert Enum.map(Leave.days_approved(person), & &1.date) == [@thursday, @ahead]
   end
 
   test "balance entries come back oldest first, up to the date asked about", context do
