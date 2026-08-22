@@ -112,36 +112,7 @@ defmodule LeafWeb.Parts do
     <section class="calendar">
       <header>
         <h2>Calendar</h2>
-        <.link navigate={@earlier} aria-label="Earlier months" title="Earlier months">
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M10 3L5 8l5 5" />
-          </svg>
-        </.link>
-        <.link navigate={@later} aria-label="Later months" title="Later months">
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M6 3l5 5-5 5" />
-          </svg>
-        </.link>
+        <.steps earlier={@earlier} later={@later} what="months" />
       </header>
       <div>
         <table :for={month <- @months}>
@@ -176,6 +147,49 @@ defmodule LeafWeb.Parts do
         <li data-today>Today</li>
       </ul>
     </section>
+    """
+  end
+
+  @doc """
+  A step back and a step on, either side of the stretch of time being shown.
+
+  ## Examples
+
+      <Parts.steps earlier={@earlier} later={@later} what="months" />
+
+  """
+  attr :earlier, :string, required: true, doc: "where the step backwards goes"
+  attr :later, :string, required: true, doc: "where the step forwards goes"
+  attr :what, :string, required: true, doc: "what a step moves by, for the label"
+
+  def steps(assigns) do
+    ~H"""
+    <.link class="step" navigate={@earlier} aria-label={"Earlier #{@what}"} title={"Earlier #{@what}"}>
+      <.arrow d="M10 3L5 8l5 5" />
+    </.link>
+    <.link class="step" navigate={@later} aria-label={"Later #{@what}"} title={"Later #{@what}"}>
+      <.arrow d="M6 3l5 5-5 5" />
+    </.link>
+    """
+  end
+
+  attr :d, :string, required: true
+
+  defp arrow(assigns) do
+    ~H"""
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.7"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d={@d} />
+    </svg>
     """
   end
 

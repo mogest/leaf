@@ -104,6 +104,25 @@ section > header {
   }
 }
 
+/* Moves what is shown to the stretch of time either side of it. */
+.step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--day);
+  block-size: var(--day);
+  flex-shrink: 0;
+  border: 1px solid var(--edge);
+  border-radius: var(--pill);
+  color: var(--ink-soft);
+
+  &:hover {
+    border-color: var(--green);
+    color: var(--green);
+    text-decoration: none;
+  }
+}
+
 /* What each mark on a calendar or a chart means. */
 .legend {
   display: flex;
@@ -154,24 +173,6 @@ section > header {
   & > header {
     align-items: center;
     gap: 0.375rem;
-
-    & > a {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      inline-size: var(--day);
-      block-size: var(--day);
-      flex-shrink: 0;
-      border: 1px solid var(--edge);
-      border-radius: var(--pill);
-      color: var(--ink-soft);
-
-      &:hover {
-        border-color: var(--green);
-        color: var(--green);
-        text-decoration: none;
-      }
-    }
   }
 
   & > div {

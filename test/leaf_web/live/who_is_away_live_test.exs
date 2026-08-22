@@ -24,9 +24,9 @@ defmodule LeafWeb.WhoIsAwayLiveTest do
 
     leave_type = Fixtures.leave_type(%{organisation_id: organisation.id})
     days = [%{leave_type_id: leave_type.id, date: @date, amount: "8", unit: :hours}]
-    {:ok, _request} = Leave.request(person, person, %{days: days})
+    {:ok, request} = Leave.request(person, person, %{days: days})
 
-    %{conn: sign_in(conn, person), person: person}
+    %{conn: sign_in(conn, person), organisation: organisation, person: person, request: request}
   end
 
   test "a month shows everybody's leave, holidays and days off in one grid", context do
@@ -34,9 +34,36 @@ defmodule LeafWeb.WhoIsAwayLiveTest do
 
     assert html =~ "March 2030"
     assert html =~ "Rae Halloran"
-    assert html =~ ~s(data-leave="pending")
+    assert html =~ ~s(<td data-leave="pending")
     assert html =~ "Fair Day"
     assert html =~ ~s(data-working="no")
+  end
+
+  test "leave nobody has decided on reaches only whoever the record is open to", context do
+    colleague =
+      Fixtures.person(%{organisation_id: context.organisation.id, name: "Tova Brandt"})
+
+    Fixtures.work_pattern(%{person_id: colleague.id})
+    conn = sign_in(context.conn, colleague)
+
+    {:ok, _live, html} = live(conn, ~p"/away?month=2030-03")
+
+    assert html =~ "Rae Halloran"
+    refute html =~ ~s(<td data-leave="pending")
+
+    admin =
+      Fixtures.person(%{
+        organisation_id: context.organisation.id,
+        name: "Ines Vasquez",
+        role: :admin
+      })
+
+    {:ok, request} = Leave.fetch_request(context.request.id)
+    {:ok, _approved} = Leave.approve(request, admin)
+
+    {:ok, _live, html} = live(conn, ~p"/away?month=2030-03")
+
+    assert html =~ ~s(<td data-leave="approved")
   end
 
   test "the month steps a month either way", context do

@@ -3,7 +3,8 @@ defmodule LeafWeb.WhoIsAwayLive do
   A month of the whole organisation at once: a row each, a column a day.
 
   The cells are the days a calendar is drawn from, so a person's leave, their public holidays and
-  the days they do not work read here exactly as they read on their own page.
+  the days they do not work read here as they read on their own page. What the viewer may not see
+  of somebody else's record is decided in `Leaf.Leave`, not here.
   """
 
   use LeafWeb, :live_view
@@ -34,47 +35,51 @@ defmodule LeafWeb.WhoIsAwayLive do
     <Layouts.app flash={@flash} page="who-is-away" viewer={@viewer}>
       <header>
         <h1>Who's away</h1>
-        <.link navigate={@earlier}>Earlier</.link>
-        <p>{@month}</p>
-        <.link navigate={@later}>Later</.link>
       </header>
 
-      <div>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Person</th>
-              <th :for={date <- @dates} scope="col" data-today={date.today?}>
-                <abbr title={date.title}>{date.number}</abbr>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr :for={row <- @rows}>
-              <th scope="row">
-                <.link :if={row.path} navigate={row.path}>{row.name}</.link>
-                <span :if={!row.path}>{row.name}</span>
-              </th>
-              <td
-                :for={day <- row.days}
-                data-working={day.working}
-                data-leave={day.leave}
-                data-holiday={day.holiday}
-                data-today={day.today?}
-              >
-                <abbr :if={day.title} title={day.title}>·</abbr>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <section>
+        <header>
+          <h2>{@month}</h2>
+          <Parts.steps earlier={@earlier} later={@later} what="month" />
+        </header>
 
-      <ul class="legend">
-        <li data-leave="approved">Away</li>
-        <li data-leave="pending">Asked for</li>
-        <li data-holiday>Public holiday</li>
-        <li>Faded days are ones they do not work</li>
-      </ul>
+        <div>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Person</th>
+                <th :for={date <- @dates} scope="col" data-today={date.today?}>
+                  <abbr title={date.title}>{date.number}</abbr>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :for={row <- @rows}>
+                <th scope="row">
+                  <.link :if={row.path} navigate={row.path}>{row.name}</.link>
+                  <span :if={!row.path}>{row.name}</span>
+                </th>
+                <td
+                  :for={day <- row.days}
+                  data-working={day.working}
+                  data-leave={day.leave}
+                  data-holiday={day.holiday}
+                  data-today={day.today?}
+                >
+                  <abbr :if={day.title} title={day.title}>·</abbr>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ul class="legend">
+          <li data-leave="approved">Away</li>
+          <li data-leave="pending">Asked for</li>
+          <li data-holiday>Public holiday</li>
+          <li>Faded days are ones they do not work</li>
+        </ul>
+      </section>
     </Layouts.app>
     """
   end
@@ -84,7 +89,7 @@ defmodule LeafWeb.WhoIsAwayLive do
 
     viewer.organisation_id
     |> People.people()
-    |> Leave.away(range)
+    |> Leave.away(viewer, range)
     |> Enum.map(&row(&1, viewer, today))
   end
 

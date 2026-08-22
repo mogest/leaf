@@ -473,7 +473,12 @@ main.request-leave {
 
 /* The whole organisation, a row each, a column a day. */
 main.who-is-away {
-  & > div {
+  & section > header {
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  & section > div {
     overflow-x: auto;
   }
 
@@ -518,8 +523,10 @@ main.who-is-away {
     background: transparent;
   }
 
-  & td[data-leave="approved"] {
-    background: var(--green-wash);
+  /* A chart is read across a room, so a day away is a mark rather than a tint. */
+  & td[data-leave="approved"],
+  & .legend > li[data-leave="approved"]::before {
+    background: var(--green-mark);
   }
 
   & td[data-leave="pending"] {

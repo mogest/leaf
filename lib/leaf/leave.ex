@@ -200,13 +200,24 @@ defmodule Leaf.Leave do
   def calendar(person, range), do: Month.over(person, range, days_filed(person, range))
 
   @doc """
-  Each of `people` and their own dates across `range`, for showing who is around.
+  Each of `people` and their own dates across `range`, as `viewer` may see them.
 
-  The same days a calendar is drawn from, laid out as a row each rather than as months.
+  The same days a calendar is drawn from, laid out as a row each rather than as months. Leave
+  nobody has decided on yet is the person's own business, so it reaches only whoever their record
+  is open to under §5.9; to everybody else the day is one they are not away on.
   """
-  @spec away([Person.t()], Date.Range.t()) :: [{Person.t(), [Diary.day()]}]
-  def away(people, range) do
-    Enum.map(people, &{&1, Diary.over(&1, range, days_filed(&1, range))})
+  @spec away([Person.t()], Person.t(), Date.Range.t()) :: [{Person.t(), [Diary.day()]}]
+  def away(people, viewer, range) do
+    Enum.map(people, &{&1, Diary.over(&1, range, seen(&1, viewer, range))})
+  end
+
+  defp seen(person, viewer, range) do
+    days = days_filed(person, range)
+
+    case People.oversees?(viewer, person) do
+      true -> days
+      false -> Enum.reject(days, &(&1.leave_request.status == :pending))
+    end
   end
 
   @doc """
