@@ -3,14 +3,14 @@ defmodule Leaf.Leave.BalanceEntryTest do
 
   alias Leaf.Leave.BalanceEntry
 
-  @base %{
-    person_id: Ecto.UUID.generate(),
-    leave_type_id: Ecto.UUID.generate(),
-    date: ~D[2026-01-01],
-    amount: "8"
-  }
+  @base %{leave_type_id: Ecto.UUID.generate(), date: ~D[2026-01-01], amount: "8"}
 
-  defp changeset(attrs), do: BalanceEntry.changeset(%BalanceEntry{}, Map.merge(@base, attrs))
+  defp changeset(attrs) do
+    BalanceEntry.changeset(
+      %BalanceEntry{person_id: Ecto.UUID.generate()},
+      Map.merge(@base, attrs)
+    )
+  end
 
   test "an imported opening balance may lapse" do
     assert changeset(%{kind: :opening_balance, expires_on: ~D[2026-03-31]}).valid?

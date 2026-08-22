@@ -20,16 +20,7 @@ defmodule Leaf.Leave.BalanceEntry do
 
   @kinds [:opening_balance, :adjustment]
 
-  @fields [
-    :person_id,
-    :leave_type_id,
-    :created_by_id,
-    :date,
-    :kind,
-    :amount,
-    :expires_on,
-    :reason
-  ]
+  @fields [:leave_type_id, :date, :kind, :amount, :expires_on, :reason]
 
   schema "leave_balance_entries" do
     field :date, :date

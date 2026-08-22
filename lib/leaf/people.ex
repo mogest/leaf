@@ -83,6 +83,19 @@ defmodule Leaf.People do
     person |> work_pattern_segments(range) |> covering!(range, person, "work pattern")
   end
 
+  @doc """
+  The hours the person works on each date in `range`, in order.
+
+  Refuses a range they have no pattern over part of, for the reason `work_pattern_segments!/2`
+  does: a date nobody knows the hours of is not a date they worked none.
+  """
+  @spec hours_per_day(Person.t(), Date.Range.t()) :: [{Date.t(), Decimal.t()}]
+  def hours_per_day(person, range) do
+    person
+    |> work_pattern_segments!(range)
+    |> Enum.flat_map(fn {span, pattern} -> Enum.map(span, &{&1, hours_on(pattern, &1)}) end)
+  end
+
   @doc "The id of the leave policy the person is on over each part of `range`."
   @spec leave_policy_segments(Person.t(), Date.Range.t()) :: [segment(Ecto.UUID.t())]
   def leave_policy_segments(person, range) do

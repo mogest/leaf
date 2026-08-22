@@ -42,6 +42,8 @@ defmodule Leaf.Ledger do
     as_at = Enum.reduce(days, as_at, &Enum.max([&1.date, &2], Date))
     {:ok, organisation} = Org.fetch_organisation(person.organisation_id)
     spans = Span.all(person, organisation, as_at)
+    leave_types = Policies.leave_types(organisation.id)
+    taken = Leave.days_taken(person, as_at) ++ days
 
     context = %{
       organisation: organisation,
@@ -49,10 +51,11 @@ defmodule Leaf.Ledger do
       holidays: observed_holidays(person, spans),
       spans: spans,
       entered: Leave.balance_entries(person, as_at),
-      taken: Leave.days_taken(person, as_at) ++ days
+      taken: taken,
+      hours: hours_taken_against(person, taken, leave_types)
     }
 
-    organisation.id |> Policies.leave_types() |> Enum.flat_map(&statement(&1, context))
+    Enum.flat_map(leave_types, &statement(&1, context))
   end
 
   @doc """
@@ -87,7 +90,7 @@ defmodule Leaf.Ledger do
     movements =
       Enum.flat_map(spans, &Grant.movements(&1, context.organisation, context.holidays)) ++
         Enum.map(entered, &entered_movement/1) ++
-        Enum.map(taken, &taken_movement(&1, leave_type))
+        Enum.map(taken, &taken_movement(&1, leave_type, context.hours))
 
     {movements, lots} = Drawdown.run(movements, Grant.caps(spans), context.as_at)
 
@@ -103,12 +106,29 @@ defmodule Leaf.Ledger do
     }
   end
 
-  defp taken_movement(day, leave_type) do
-    %Movement{date: day.date, kind: :taken, amount: Decimal.negate(in_unit(day, leave_type))}
+  defp taken_movement(day, leave_type, hours) do
+    amount = Day.in_unit(day, leave_type.unit, hours[day.date])
+
+    %Movement{date: day.date, kind: :taken, amount: Decimal.negate(amount)}
   end
 
-  defp in_unit(day, %{unit: :hours}), do: day.hours
-  defp in_unit(day, %{unit: :days}), do: day.days
+  # A day asked for in the unit its leave type counts in converts through nothing, and most are,
+  # so the work patterns are read only where one is not. A day older than the person's pattern
+  # history still counts for as much as it says, so long as nobody has to say how long it was.
+  defp hours_taken_against(person, taken, leave_types) do
+    units = Map.new(leave_types, &{&1.id, &1.unit})
+
+    case Enum.reject(taken, &(&1.unit == Map.fetch!(units, &1.leave_type_id))) do
+      [] -> %{}
+      converting -> person |> People.hours_per_day(dates_spanned(converting)) |> Map.new()
+    end
+  end
+
+  defp dates_spanned(days) do
+    dates = Enum.map(days, & &1.date)
+
+    Date.range(Enum.min(dates, Date), Enum.max(dates, Date))
+  end
 
   # A public holiday allowance is counted over the whole grant period it belongs to, which can run
   # past the date being asked about, so the calendar is read over the periods rather than the

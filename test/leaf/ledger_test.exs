@@ -54,21 +54,15 @@ defmodule Leaf.LedgerTest do
   # 36 hours: 0.9 of it.
   defp part_time(person), do: weekdays(person, @started, "7.2")
 
-  defp take(person, leave_type, date, hours, days) do
+  defp take(person, leave_type, date, amount, unit) do
     Fixtures.leave_request(%{
       person_id: person.id,
-      submitted_by_id: person.id,
-      days: [%{leave_type_id: leave_type.id, date: date, hours: hours, days: days}]
+      days: [%{leave_type_id: leave_type.id, date: date, amount: amount, unit: unit}]
     })
   end
 
-  defp day(leave_type, date, hours, days) do
-    %Day{
-      leave_type_id: leave_type.id,
-      date: date,
-      hours: Decimal.new(hours),
-      days: Decimal.new(days)
-    }
+  defp day(leave_type, date, amount, unit) do
+    %Day{leave_type_id: leave_type.id, date: date, amount: Decimal.new(amount), unit: unit}
   end
 
   defp observes(context, person, dates) do
@@ -130,6 +124,23 @@ defmodule Leaf.LedgerTest do
     assert movements(whole_year) == [{:accrual, ~D[2025-03-03], Decimal.new("180.00"), nil}]
     assert Decimal.equal?(whole_year.balance, "180.00")
     assert Decimal.equal?(part_year.balance, "90.74")
+  end
+
+  test "a day off is worth what a day is worth when it comes round", context do
+    person = context.person
+    full_time(person)
+    weekdays(person, ~D[2024-04-01], "7")
+    annual = leave_type(context, %{})
+    entitlement(context, annual, %{grant_amount: "200"})
+
+    # Both asked for on eight-hour days, both taken after the person went down to seven.
+    take(person, annual, ~D[2024-05-01], "1", :days)
+    take(person, annual, ~D[2024-05-02], "8", :hours)
+
+    taken = Enum.filter(statement(person, annual, ~D[2024-05-31]).movements, &(&1.kind == :taken))
+
+    assert Enum.map(taken, &Decimal.round(&1.amount, 2)) ==
+             [Decimal.new("-7.00"), Decimal.new("-8.00")]
   end
 
   test "a block grant lands whole at the start of its period, or not at all", context do
@@ -199,7 +210,7 @@ defmodule Leaf.LedgerTest do
       })
     )
 
-    take(person, carried, ~D[2024-05-01], "8", "1")
+    take(person, carried, ~D[2024-05-01], "8", :hours)
 
     before_lapse = statement(person, carried, ~D[2024-06-29])
     after_lapse = statement(person, carried, ~D[2024-06-30])
@@ -241,7 +252,7 @@ defmodule Leaf.LedgerTest do
       reason: "Alternative holiday worked"
     })
 
-    take(person, sick, ~D[2024-05-01], "9", "1")
+    take(person, sick, ~D[2024-05-01], "1", :days)
 
     statement = statement(person, sick, ~D[2026-03-03])
 
@@ -467,7 +478,7 @@ defmodule Leaf.LedgerTest do
       allow_negative: true
     })
 
-    take(person, bereavement, ~D[2024-05-01], "8", "1")
+    take(person, bereavement, ~D[2024-05-01], "1", :days)
 
     Fixtures.balance_entry(%{
       person_id: person.id,
@@ -496,10 +507,10 @@ defmodule Leaf.LedgerTest do
     [filed] = Ledger.statements(person, ~D[2025-03-03])
 
     [projected] =
-      Ledger.statements(person, ~D[2025-03-03], [day(annual, ~D[2025-03-01], "8", "1")])
+      Ledger.statements(person, ~D[2025-03-03], [day(annual, ~D[2025-03-01], "8", :hours)])
 
     # Dated past the date asked about, so the account has to run on to it to answer at all.
-    ahead = [day(annual, ~D[2025-03-03], "8", "1")]
+    ahead = [day(annual, ~D[2025-03-03], "8", :hours)]
 
     assert {:ok, projected_ahead} =
              Ledger.fetch_statement(person, annual.id, ~D[2025-02-28], ahead)

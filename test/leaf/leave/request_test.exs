@@ -12,39 +12,40 @@ defmodule Leaf.Leave.RequestTest do
     %{person: person, leave_type: leave_type}
   end
 
-  defp day(leave_type, date),
-    do: %{leave_type_id: leave_type.id, date: date, hours: "8", days: "1"}
+  defp day(leave_type, date, attrs \\ %{}) do
+    Map.merge(
+      %{leave_type_id: leave_type.id, date: date, amount: "8", unit: :hours, hours_in_day: "8"},
+      attrs
+    )
+  end
 
-  defp request(person, leave_type, dates) do
-    %Request{}
-    |> Request.changeset(%{
-      person_id: person.id,
-      submitted_by_id: person.id,
-      status: :pending,
-      days: Enum.map(dates, &day(leave_type, &1))
-    })
-    |> Repo.insert!()
+  defp changeset(person, days) do
+    Request.changeset(
+      %Request{person_id: person.id, submitted_by_id: person.id, status: :pending},
+      %{days: days}
+    )
   end
 
   test "a request must cover at least one day", %{person: person} do
-    changeset =
-      Request.changeset(%Request{}, %{
-        person_id: person.id,
-        submitted_by_id: person.id,
-        status: :pending
-      })
+    assert errors_on(changeset(person, [])).days == ["can't be blank"]
+  end
 
-    assert errors_on(changeset).days == ["can't be blank"]
+  test "a day the person does not work is refused", %{person: person, leave_type: leave_type} do
+    days = [day(leave_type, ~D[2026-08-22], %{hours_in_day: "0"})]
+
+    assert [%{date: ["is not a working day"]}] = errors_on(changeset(person, days)).days
   end
 
   test "amending a request may shorten it", %{person: person, leave_type: leave_type} do
-    request = request(person, leave_type, [~D[2026-08-20], ~D[2026-08-21]])
+    request =
+      Repo.insert!(
+        changeset(person, [day(leave_type, ~D[2026-08-20]), day(leave_type, ~D[2026-08-21])])
+      )
+
     assert length(request.days) == 2
 
     {:ok, amended} =
-      request
-      |> Request.changeset(%{days: [day(leave_type, ~D[2026-08-20])]})
-      |> Repo.update()
+      request |> Request.changeset(%{days: [day(leave_type, ~D[2026-08-20])]}) |> Repo.update()
 
     assert [%{date: ~D[2026-08-20]}] = amended.days
   end
@@ -57,39 +58,42 @@ defmodule Leaf.Leave.RequestTest do
         position: 2
       })
 
-    request =
-      %Request{}
-      |> Request.changeset(%{
-        person_id: person.id,
-        submitted_by_id: person.id,
-        status: :pending,
-        days: [
-          %{leave_type_id: other.id, date: ~D[2026-08-20], hours: "7.20", days: "0.80"},
-          %{leave_type_id: leave_type.id, date: ~D[2026-08-20], hours: "1.80", days: "0.20"}
-        ]
-      })
-      |> Repo.insert!()
+    days = [
+      day(other, ~D[2026-08-20], %{amount: "7.20"}),
+      day(leave_type, ~D[2026-08-20], %{amount: "1.80"})
+    ]
 
-    assert length(request.days) == 2
+    assert length(Repo.insert!(changeset(person, days)).days) == 2
   end
 
-  test "deciding a request does not need its days loaded", %{
+  test "a decision must say who made it", %{person: person, leave_type: leave_type} do
+    request = Repo.insert!(changeset(person, [day(leave_type, ~D[2026-08-20])]))
+
+    errors = errors_on(Request.review_changeset(request, %{status: :approved}))
+
+    assert errors.reviewed_by_id == ["can't be blank"]
+    assert errors.reviewed_at == ["can't be blank"]
+  end
+
+  test "a decided request cannot be put back to pending", %{
     person: person,
     leave_type: leave_type
   } do
-    request = request(person, leave_type, [~D[2026-08-20]])
-    manager = Fixtures.person(%{organisation_id: person.organisation_id})
+    decided = %{
+      status: :approved,
+      reviewed_by_id: person.id,
+      reviewed_at: DateTime.truncate(DateTime.utc_now(), :second)
+    }
 
-    {:ok, decided} =
-      Request
-      |> Repo.get!(request.id)
-      |> Request.review_changeset(%{
-        status: :approved,
-        reviewed_by_id: manager.id,
-        reviewed_at: DateTime.utc_now() |> DateTime.truncate(:second)
-      })
-      |> Repo.update()
+    approved =
+      person
+      |> changeset([day(leave_type, ~D[2026-08-20])])
+      |> Repo.insert!()
+      |> Request.review_changeset(decided)
+      |> Repo.update!()
 
-    assert decided.status == :approved
+    changeset = Request.review_changeset(approved, %{decided | status: :pending})
+
+    assert errors_on(changeset).status == ["is invalid"]
   end
 end

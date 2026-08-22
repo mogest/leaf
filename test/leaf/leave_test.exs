@@ -1,49 +1,162 @@
 defmodule Leaf.LeaveTest do
   use Leaf.DataCase, async: true
 
+  alias Leaf.Audit.Entry
   alias Leaf.Fixtures
   alias Leaf.Leave
 
+  @thursday ~D[2026-08-20]
+  @friday ~D[2026-08-21]
+  @saturday ~D[2026-08-22]
+
   setup do
     organisation = Fixtures.organisation()
-    person = Fixtures.person(%{organisation_id: organisation.id})
+    manager = Fixtures.person(%{organisation_id: organisation.id, name: "Ines Vasquez"})
+
+    admin =
+      Fixtures.person(%{organisation_id: organisation.id, name: "Toma Ferrer", role: :admin})
+
+    person =
+      Fixtures.person(%{organisation_id: organisation.id, manager_id: manager.id})
+
+    Fixtures.work_pattern(%{person_id: person.id})
     leave_type = Fixtures.leave_type(%{organisation_id: organisation.id})
 
-    %{organisation: organisation, person: person, leave_type: leave_type}
+    %{
+      organisation: organisation,
+      person: person,
+      manager: manager,
+      admin: admin,
+      leave_type: leave_type
+    }
   end
 
-  defp request(person, leave_type, status, dates) do
+  defp entry(leave_type, date, attrs \\ %{}) do
+    Map.merge(%{leave_type_id: leave_type.id, date: date, amount: "8", unit: :hours}, attrs)
+  end
+
+  defp file(context, dates, attrs \\ %{}) do
+    days = Enum.map(dates, &entry(context.leave_type, &1, attrs))
+
+    Leave.request(context.person, context.person, %{days: days, note: "Away"})
+  end
+
+  defp taken(context) do
     Fixtures.leave_request(%{
-      person_id: person.id,
-      submitted_by_id: person.id,
-      status: status,
-      days: Enum.map(dates, &%{leave_type_id: leave_type.id, date: &1, hours: "8", days: "1"})
+      person_id: context.person.id,
+      days: [entry(context.leave_type, @thursday)]
     })
+  end
+
+  test "a request is filed pending, in the unit it was asked for, and audited", context do
+    assert {:ok, request} = file(context, [@thursday, @friday], %{amount: "1", unit: :days})
+
+    assert request.status == :pending
+    assert [%{amount: amount, unit: :days}, _friday] = Enum.sort_by(request.days, & &1.date)
+    assert Decimal.equal?(amount, "1.00")
+
+    assert [%{action: "leave_request.requested", subject_person_id: subject}] = Repo.all(Entry)
+    assert subject == context.person.id
+  end
+
+  test "leave cannot be filed on a day the person does not work", context do
+    assert {:error, changeset} = file(context, [@saturday])
+
+    assert [%{date: ["is not a working day"]}] = errors_on(changeset).days
+    assert Repo.all(Entry) == []
+  end
+
+  test "a colleague may not file leave for somebody else", context do
+    days = [entry(context.leave_type, @thursday)]
+    colleague = Fixtures.person(%{organisation_id: context.organisation.id})
+
+    assert Leave.request(context.person, colleague, %{days: days}) == {:error, :forbidden}
+  end
+
+  test "the person may revise their own request only while it is pending", context do
+    {:ok, pending} = file(context, [@thursday, @friday])
+    {:ok, request} = Leave.fetch_request(pending.id)
+
+    assert {:ok, shortened} =
+             Leave.amend(request, context.person, %{
+               days: [entry(context.leave_type, @thursday)]
+             })
+
+    assert length(shortened.days) == 1
+
+    {:ok, request} = Leave.fetch_request(shortened.id)
+    {:ok, approved} = Leave.approve(request, context.manager)
+    {:ok, request} = Leave.fetch_request(approved.id)
+
+    assert Leave.cancel(request, context.person) == {:error, :forbidden}
+    assert {:ok, %{status: :cancelled}} = Leave.cancel(request, context.manager)
+  end
+
+  test "a decision records who made it, and only their manager or an admin may make it",
+       context do
+    {:ok, pending} = file(context, [@thursday])
+    {:ok, request} = Leave.fetch_request(pending.id)
+
+    assert Leave.approve(request, context.person) == {:error, :forbidden}
+    assert {:ok, declined} = Leave.decline(request, context.admin, "Covering a release")
+
+    assert declined.status == :declined
+    assert declined.reviewed_by_id == context.admin.id
+    assert declined.reviewed_at
+
+    {:ok, request} = Leave.fetch_request(declined.id)
+
+    assert Leave.approve(request, context.manager) == {:error, :forbidden}
+  end
+
+  test "only an administrator may enter a balance figure", context do
+    attrs = %{leave_type_id: context.leave_type.id, date: @thursday, amount: "40"}
+
+    assert Leave.create_balance_entry(context.person, context.manager, attrs) ==
+             {:error, :forbidden}
+
+    assert {:ok, opening} =
+             Leave.create_balance_entry(
+               context.person,
+               context.admin,
+               Map.put(attrs, :kind, :opening_balance)
+             )
+
+    assert opening.created_by_id == context.admin.id
+    assert [%{action: "balance_entry.created"}] = Repo.all(Entry)
   end
 
   test "only approved leave up to the date asked about counts as taken", context do
     %{person: person, leave_type: leave_type} = context
-    request(person, leave_type, :approved, [~D[2023-11-02], ~D[2024-03-05]])
-    request(person, leave_type, :pending, [~D[2024-03-06]])
-    request(person, leave_type, :cancelled, [~D[2024-03-07]])
-    request(person, leave_type, :approved, [~D[2024-06-01]])
 
-    taken = Leave.days_taken(person, ~D[2024-03-31])
+    Enum.each([:pending, :cancelled], fn status ->
+      Fixtures.leave_request(%{
+        person_id: person.id,
+        status: status,
+        days: [entry(leave_type, @friday)]
+      })
+    end)
 
-    assert Enum.map(taken, & &1.date) == [~D[2023-11-02], ~D[2024-03-05]]
+    taken(context)
+
+    assert Enum.map(Leave.days_taken(person, @friday), & &1.date) == [@thursday]
   end
 
   test "balance entries come back oldest first, up to the date asked about", context do
-    %{person: person, leave_type: leave_type} = context
-    base = %{person_id: person.id, leave_type_id: leave_type.id}
+    %{person: person, leave_type: leave_type, admin: admin} = context
+    base = %{leave_type_id: leave_type.id}
 
     {:ok, _opening} =
       Leave.create_balance_entry(
+        person,
+        admin,
         Map.merge(base, %{date: ~D[2024-01-01], kind: :opening_balance, amount: "40"})
       )
 
     {:ok, _adjustment} =
       Leave.create_balance_entry(
+        person,
+        admin,
         Map.merge(base, %{
           date: ~D[2024-06-01],
           kind: :adjustment,
@@ -54,11 +167,20 @@ defmodule Leaf.LeaveTest do
 
     {:ok, _later} =
       Leave.create_balance_entry(
+        person,
+        admin,
         Map.merge(base, %{date: ~D[2025-01-01], kind: :opening_balance, amount: "8"})
       )
 
     entries = Leave.balance_entries(person, ~D[2024-12-31])
 
     assert Enum.map(entries, & &1.kind) == [:opening_balance, :adjustment]
+  end
+
+  test "a working day carries the hours the person works on it", context do
+    assert Leave.working_days(context.person, Date.range(@thursday, @saturday)) == [
+             {@thursday, Decimal.new("8.00")},
+             {@friday, Decimal.new("8.00")}
+           ]
   end
 end

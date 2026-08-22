@@ -27,8 +27,8 @@ defmodule Leaf.Repo.Migrations.CreateLeaveRequests do
 
       add :leave_type_id, references(:leave_types, type: :binary_id), null: false
       add :date, :date, null: false
-      add :hours, :decimal, precision: 10, scale: 2, null: false
-      add :days, :decimal, precision: 10, scale: 2, null: false
+      add :amount, :decimal, precision: 10, scale: 2, null: false
+      add :unit, :string, null: false
 
       timestamps(type: :utc_datetime)
     end

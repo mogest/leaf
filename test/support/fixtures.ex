@@ -111,19 +111,35 @@ defmodule Leaf.Fixtures do
     })
   end
 
+  @doc """
+  An approved request, whose `:days` are `t:Leaf.Leave.entry/0` maps.
+
+  Who a request belongs to is not cast, so it is set on the struct here as `Leaf.Leave` does. Each
+  day falls on a full day of the default pattern unless it says otherwise.
+  """
   @spec leave_request(map()) :: Request.t()
   def leave_request(attrs) do
-    insert(%Request{}, &Request.changeset/2, attrs, %{status: :approved})
+    {identity, attrs} = Map.split(attrs, [:person_id, :submitted_by_id, :status])
+
+    %Request{status: :approved, submitted_by_id: identity[:person_id]}
+    |> struct!(identity)
+    |> Request.changeset(Map.update!(attrs, :days, &Enum.map(&1, fn day -> worked(day) end)))
+    |> Repo.insert!()
   end
 
   @spec balance_entry(map()) :: BalanceEntry.t()
   def balance_entry(attrs) do
-    insert(%BalanceEntry{}, &BalanceEntry.changeset/2, attrs, %{
-      date: ~D[2024-01-01],
-      kind: :opening_balance,
-      amount: "0"
-    })
+    {identity, attrs} = Map.split(attrs, [:person_id, :created_by_id])
+
+    %BalanceEntry{}
+    |> struct!(identity)
+    |> BalanceEntry.changeset(
+      Map.merge(%{date: ~D[2024-01-01], kind: :opening_balance, amount: "0"}, attrs)
+    )
+    |> Repo.insert!()
   end
+
+  defp worked(day), do: Map.put_new(day, :hours_in_day, "8")
 
   defp insert(struct, changeset, attrs, defaults) do
     struct |> changeset.(Map.merge(defaults, attrs)) |> Repo.insert!()
