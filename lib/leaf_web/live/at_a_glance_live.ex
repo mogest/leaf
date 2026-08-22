@@ -112,7 +112,7 @@ defmodule LeafWeb.AtAGlanceLive do
         person
         |> Ledger.statements(today)
         |> Enum.reject(&nothing?(&1, awaiting))
-        |> Enum.map(&balance(&1, today, awaiting))
+        |> Enum.map(&balance(&1, awaiting))
 
       false ->
         []
@@ -123,13 +123,13 @@ defmodule LeafWeb.AtAGlanceLive do
     Decimal.equal?(statement.balance, 0) and not Map.has_key?(awaiting, statement.leave_type.id)
   end
 
-  defp balance(statement, today, awaiting) do
+  defp balance(statement, awaiting) do
     %{
       name: statement.leave_type.name,
       amount: Wording.number(statement.balance),
       unit: Wording.unit(statement.balance, statement.leave_type.unit),
       awaiting: asked(awaiting[statement.leave_type.id], statement.leave_type.unit),
-      expiry: expiry(statement, today),
+      expiry: expiry(statement),
       ledger: ~p"/balances/#{statement.leave_type}"
     }
   end
@@ -139,16 +139,16 @@ defmodule LeafWeb.AtAGlanceLive do
 
   # What is going to happen to the balance, and nothing at all where nothing is. The soonest lot
   # to lapse is the one worth saying; one that is the whole balance says so without the figure.
-  defp expiry(statement, today) do
+  defp expiry(statement) do
     case statement.lots |> Lot.soonest_first() |> List.first() do
       %{expires_on: nil} -> nil
       nil -> nil
-      lot -> lapsing(lot, statement, today)
+      lot -> lapsing(lot, statement)
     end
   end
 
-  defp lapsing(lot, statement, today) do
-    date = lapse_date(lot.expires_on, today)
+  defp lapsing(lot, statement) do
+    date = Wording.day_and_month(lot.expires_on)
 
     case Decimal.equal?(lot.amount, statement.balance) do
       true -> "Expires #{date}"
@@ -162,14 +162,6 @@ defmodule LeafWeb.AtAGlanceLive do
     case Decimal.equal?(amount, 1) do
       true -> "expires"
       false -> "expire"
-    end
-  end
-
-  # Within the week, the day it falls on is what somebody acts on rather than the date.
-  defp lapse_date(date, today) do
-    case Date.diff(date, today) < 7 do
-      true -> Wording.weekday(date)
-      false -> Wording.day_and_month(date)
     end
   end
 end
