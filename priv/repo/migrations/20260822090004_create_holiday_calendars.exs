@@ -25,7 +25,7 @@ defmodule Leaf.Repo.Migrations.CreateHolidayCalendars do
       timestamps(type: :utc_datetime)
     end
 
-    create index(:public_holidays, [:holiday_calendar_id, :date])
+    create unique_index(:public_holidays, [:holiday_calendar_id, :date])
 
     create table(:person_holiday_calendars, primary_key: false) do
       add :id, :binary_id, primary_key: true

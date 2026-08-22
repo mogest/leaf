@@ -48,9 +48,20 @@ defmodule Leaf.People.Person do
     |> validate_required([:organisation_id, :name, :email, :role, :employment_start_date])
     |> validate_format(:email, ~r/^[^@\s]+@[^@\s]+$/)
     |> validate_date_order(:employment_start_date, :employment_end_date)
+    |> validate_manager_is_someone_else()
     |> unique_constraint(:email)
     |> unique_constraint(:google_sub)
     |> assoc_constraint(:organisation)
     |> assoc_constraint(:manager)
+  end
+
+  # A longer loop — A reports to B reports to A — needs a walk of the reporting lines, so it
+  # belongs wherever those are edited rather than here.
+  defp validate_manager_is_someone_else(changeset) do
+    case {changeset.data.id, get_field(changeset, :manager_id)} do
+      {nil, _manager_id} -> changeset
+      {id, id} -> add_error(changeset, :manager_id, "cannot be the person themselves")
+      _ -> changeset
+    end
   end
 end

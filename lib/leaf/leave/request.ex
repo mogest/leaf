@@ -2,8 +2,7 @@ defmodule Leaf.Leave.Request do
   @moduledoc """
   A request for leave.
 
-  It carries no dates of its own: the `days` are the record of what was taken, and a display range
-  is derived from them.
+  It carries no dates of its own: the `days` are the record of what was taken.
 
   `changeset/2` covers requesting and amending, and always owns the days. Deciding one is a
   distinct state, so `review_changeset/2` handles it separately and cannot touch the days.

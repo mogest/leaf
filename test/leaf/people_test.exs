@@ -3,6 +3,7 @@ defmodule Leaf.PeopleTest do
 
   alias Leaf.Fixtures
   alias Leaf.People
+  alias Leaf.People.Person
 
   setup do
     organisation = Fixtures.organisation()
@@ -81,6 +82,16 @@ defmodule Leaf.PeopleTest do
     refute People.working_day?(pattern, ~D[2026-01-03])
     assert Decimal.equal?(People.weekly_hours(pattern), "22")
     assert Decimal.equal?(People.fte(pattern, organisation.full_time_week_hours), "0.55")
+  end
+
+  test "a person cannot report to themselves", %{person: person} do
+    changeset = Person.changeset(person, %{manager_id: person.id})
+
+    assert errors_on(changeset).manager_id == ["cannot be the person themselves"]
+
+    manager = Fixtures.person(%{organisation_id: person.organisation_id})
+
+    assert Person.changeset(person, %{manager_id: manager.id}).valid?
   end
 
   test "the policy a person is on comes back as the id in force over each span", %{

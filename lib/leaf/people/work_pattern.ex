@@ -22,11 +22,7 @@ defmodule Leaf.People.WorkPattern do
     :sunday_hours
   ]
 
-  @fields [:person_id, :effective_from | @hour_fields]
-
-  @hours_by_day_of_week @hour_fields
-                        |> Enum.with_index(1)
-                        |> Map.new(fn {field, day} -> {day, field} end)
+  @fields [:person_id, :effective_from] ++ @hour_fields
 
   schema "work_patterns" do
     field :effective_from, :date
@@ -62,7 +58,7 @@ defmodule Leaf.People.WorkPattern do
   @doc "The hours worked on `date` under this pattern."
   @spec hours_on(t(), Date.t()) :: Decimal.t()
   def hours_on(pattern, date) do
-    Map.fetch!(pattern, Map.fetch!(@hours_by_day_of_week, Date.day_of_week(date)))
+    Map.fetch!(pattern, Enum.at(@hour_fields, Date.day_of_week(date) - 1))
   end
 
   @doc "Whether any hours are worked on `date` under this pattern."

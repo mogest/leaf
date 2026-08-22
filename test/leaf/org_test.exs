@@ -48,4 +48,15 @@ defmodule Leaf.OrgTest do
 
     assert Enum.map(holidays, & &1.date) == [~D[2026-01-01], ~D[2026-02-06]]
   end
+
+  test "a calendar cannot hold the same date twice, so an allowance cannot double-count it" do
+    organisation = Fixtures.organisation()
+    calendar = Fixtures.holiday_calendar(%{organisation_id: organisation.id})
+    Fixtures.public_holiday(%{holiday_calendar_id: calendar.id, date: ~D[2026-01-01]})
+
+    attrs = %{holiday_calendar_id: calendar.id, date: ~D[2026-01-01], name: "New Year"}
+
+    assert {:error, changeset} = Org.create_public_holiday(attrs)
+    assert errors_on(changeset).holiday_calendar_id == ["has already been taken"]
+  end
 end
