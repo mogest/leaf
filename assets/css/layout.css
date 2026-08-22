@@ -167,6 +167,19 @@ main > header {
   }
 }
 
+/* A page reached from another one says where it came from first, so the two read as one trail. */
+main > header:has(> a:first-child) {
+  gap: 0;
+
+  & > h1::before {
+    content: "\203a";
+    margin-inline: var(--step-3);
+    font-family: var(--font-text);
+    font-size: var(--size-base);
+    color: var(--ink-faint);
+  }
+}
+
 main > section {
   display: flex;
   flex-direction: column;
