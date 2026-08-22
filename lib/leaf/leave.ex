@@ -267,7 +267,7 @@ defmodule Leaf.Leave do
     |> Enum.flat_map(fn {span, policy_id} -> Policies.entitlements(policy_id, span) end)
     |> Enum.map(& &1.leave_type)
     |> Enum.uniq_by(& &1.id)
-    |> Enum.sort_by(& &1.position)
+    |> Enum.sort_by(&{&1.position, &1.name})
   end
 
   @doc """

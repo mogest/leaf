@@ -115,13 +115,13 @@ defmodule Leaf.Policies do
     Audit.delete(entitlement, "policy_entitlement.deleted", actor)
   end
 
-  @doc "Every leave type the organisation offers, archived ones included, in its own order."
+  @doc "Every leave type the organisation offers, archived ones included, in its own order then by name."
   @spec leave_types(Ecto.UUID.t()) :: [LeaveType.t()]
   def leave_types(organisation_id) do
     Repo.all(
       from type in LeaveType,
         where: type.organisation_id == ^organisation_id,
-        order_by: type.position
+        order_by: [type.position, type.name]
     )
   end
 
@@ -180,7 +180,12 @@ defmodule Leaf.Policies do
     from entitlement in PolicyEntitlement,
       join: leave_type in assoc(entitlement, :leave_type),
       where: entitlement.leave_policy_id == ^leave_policy_id,
-      order_by: [leave_type.position, entitlement.leave_type_id, entitlement.effective_from],
+      order_by: [
+        leave_type.position,
+        leave_type.name,
+        entitlement.leave_type_id,
+        entitlement.effective_from
+      ],
       preload: [leave_type: leave_type]
   end
 

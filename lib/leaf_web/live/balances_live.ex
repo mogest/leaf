@@ -196,7 +196,7 @@ defmodule LeafWeb.BalancesLive do
     |> Enum.map(& &1.leave_type)
     |> Enum.concat(Leave.requestable(person, Date.range(as_at, as_at)))
     |> Enum.uniq_by(& &1.id)
-    |> Enum.sort_by(& &1.position)
+    |> Enum.sort_by(&{&1.position, &1.name})
     |> Enum.map(&{&1, statements[&1.id]})
   end
 
@@ -222,12 +222,12 @@ defmodule LeafWeb.BalancesLive do
   defp theirs(accounts, %{organisation_id: organisation_id} = leave_type, organisation_id) do
     chosen = {leave_type, nil}
 
-    {:ok, Enum.sort_by([chosen | accounts], &position/1), chosen}
+    {:ok, Enum.sort_by([chosen | accounts], &order/1), chosen}
   end
 
   defp theirs(_accounts, _leave_type, _organisation_id), do: :error
 
-  defp position({leave_type, _statement}), do: leave_type.position
+  defp order({leave_type, _statement}), do: {leave_type.position, leave_type.name}
 
   defp selected(nil), do: nil
   defp selected({leave_type, _statement}), do: leave_type.id
