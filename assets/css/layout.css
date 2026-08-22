@@ -301,14 +301,79 @@ main.sign-in {
   }
 }
 
-/* One balance, and every movement that made it. */
-main.balance {
-  & > .balances {
-    max-inline-size: 18rem;
+/* Everything held down one side, and the account behind whichever is being read down the other. */
+main.balances {
+  display: grid;
+  grid-template-columns: 15rem 1fr;
+  column-gap: var(--step-9);
+  align-content: start;
+  align-items: start;
+
+  & > :is(header, form, p) {
+    grid-column: 1 / -1;
   }
 
   & > form {
     max-inline-size: 12rem;
+  }
+
+  & > nav > ul {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    & a {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--step-3);
+      padding: 0.4375rem var(--step-3);
+      border-radius: var(--radius);
+      font-size: var(--size-base);
+      font-variant-numeric: tabular-nums;
+
+      /* A long name wraps; the figure it is read against never does. */
+      & > span:last-child {
+        white-space: nowrap;
+      }
+
+      &:hover {
+        background: var(--ground);
+        color: var(--ink);
+        text-decoration: none;
+      }
+
+      &[aria-current="page"] {
+        background: var(--green-wash);
+        color: var(--green-ink);
+        font-weight: 600;
+      }
+    }
+  }
+
+  /* The account stands in the second column, and reads as the stack of sections a page is. */
+  & > div {
+    display: flex;
+    flex-direction: column;
+    gap: var(--step-8);
+
+    & > section {
+      display: flex;
+      flex-direction: column;
+      gap: var(--step-3);
+    }
+  }
+
+  /* One account is named by its heading already, so what it holds reads across a single line. */
+  & .balance-sheet > dl {
+    display: flex;
+    align-items: baseline;
+    gap: var(--step-3);
+    padding-block-start: var(--step-3);
+
+    & > :is(dt, dd) {
+      padding-block: 0;
+    }
   }
 }
 

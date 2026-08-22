@@ -116,7 +116,7 @@ defmodule LeafWeb.AtAGlanceLiveTest do
     {:ok, _live, html} = live(sign_in(build_conn(), fresh), ~p"/")
 
     assert html =~ "At a glance"
-    refute html =~ "Balances"
+    refute html =~ ~s(class="balance-sheet")
     refute html =~ "Annual leave"
   end
 

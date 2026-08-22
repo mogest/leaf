@@ -243,7 +243,7 @@ defmodule LeafWeb.StyleguideLive do
         <header>
           <h2>Balances</h2>
         </header>
-        <section class="balances">
+        <section class="balance-sheet">
           <header>
             <h2>Balances</h2>
             <p>as at today</p>

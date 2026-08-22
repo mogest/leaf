@@ -13,7 +13,8 @@ defmodule LeafWeb.Layouts do
   @approvals {"Approvals", "/approvals", ~w(approvals)}
 
   @rail [
-    {"At a glance", "/", ~w(at-a-glance request-leave balance)},
+    {"At a glance", "/", ~w(at-a-glance request-leave)},
+    {"Balances", "/balances", ~w(balances)},
     {"Your requests", "/leave", ~w(your-requests)},
     @approvals,
     {"Who's away", "/away", ~w(who-is-away)}

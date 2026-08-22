@@ -59,9 +59,9 @@ defmodule LeafWeb.AtAGlanceLive do
         </Parts.requests>
       </div>
 
-      <section :if={@balances != []} class="balances">
+      <section :if={@balances != []} class="balance-sheet">
         <header>
-          <h2>Balances</h2>
+          <h2><.link navigate={~p"/balances"}>Balances</.link></h2>
           <p>as at today</p>
         </header>
         <dl>
@@ -112,7 +112,7 @@ defmodule LeafWeb.AtAGlanceLive do
         person
         |> Ledger.statements(today)
         |> Enum.reject(&nothing?(&1, awaiting))
-        |> Enum.map(&balance(&1, person, today, awaiting))
+        |> Enum.map(&balance(&1, today, awaiting))
 
       false ->
         []
@@ -123,14 +123,14 @@ defmodule LeafWeb.AtAGlanceLive do
     Decimal.equal?(statement.balance, 0) and not Map.has_key?(awaiting, statement.leave_type.id)
   end
 
-  defp balance(statement, person, today, awaiting) do
+  defp balance(statement, today, awaiting) do
     %{
       name: statement.leave_type.name,
       amount: Wording.number(statement.balance),
       unit: Wording.unit(statement.balance, statement.leave_type.unit),
       awaiting: asked(awaiting[statement.leave_type.id], statement.leave_type.unit),
       expiry: expiry(statement, today),
-      ledger: ~p"/people/#{person}/balances/#{statement.leave_type}"
+      ledger: ~p"/balances/#{statement.leave_type}"
     }
   end
 

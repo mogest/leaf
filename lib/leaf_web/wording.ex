@@ -120,7 +120,7 @@ defmodule LeafWeb.Wording do
 
   @doc "A unit named for the amount it counts."
   @spec unit(Decimal.t(), Day.unit()) :: String.t()
-  def unit(amount, unit), do: named(unit, Decimal.equal?(amount, 1))
+  def unit(amount, unit), do: named(unit, Decimal.equal?(Decimal.abs(amount), 1))
 
   @doc "The name a leave type is chosen by, and what it counts in."
   @spec leave_type(LeaveType.t()) :: String.t()

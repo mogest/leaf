@@ -239,7 +239,7 @@ section > header {
 
 }
 
-.balances {
+.balance-sheet {
   padding: 1.125rem var(--step-5) var(--step-5);
   border-radius: var(--radius-panel);
   background: var(--panel);
