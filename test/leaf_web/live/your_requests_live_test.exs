@@ -43,10 +43,10 @@ defmodule LeafWeb.YourRequestsLiveTest do
 
     {:ok, _live, html} = live(context.conn, ~p"/leave")
 
-    assert html =~ "Monday 4 March"
+    assert html =~ "Mon 4 Mar"
     assert html =~ "8 hours"
     assert html =~ "Pending"
-    assert html =~ "Amend"
+    assert html =~ ">Edit<"
   end
 
   test "cancelling a request returns what it drew", context do
@@ -80,6 +80,6 @@ defmodule LeafWeb.YourRequestsLiveTest do
     {:ok, _live, html} = live(context.conn, ~p"/leave")
 
     assert html =~ "Approved"
-    refute html =~ "Amend"
+    refute html =~ ">Edit<"
   end
 end

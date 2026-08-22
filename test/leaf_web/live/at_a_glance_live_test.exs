@@ -96,15 +96,15 @@ defmodule LeafWeb.AtAGlanceLiveTest do
 
     {:ok, _live, html} = live(context.conn, ~p"/")
 
-    assert html =~ "Monday 7 – Friday 11 October"
+    assert html =~ "Mon 7 – Fri 11 Oct"
     assert html =~ "40 hours"
     assert html =~ "Taken"
-    assert html =~ "Annual leave · approved by Ines Vasquez on"
+    assert html =~ "Ines Vasquez · "
 
-    assert html =~ "Monday 7 October"
+    assert html =~ "Mon 7 Oct"
     assert html =~ "8 hours"
     assert html =~ "Pending"
-    assert html =~ "Annual leave · sent to Ines Vasquez on"
+    assert html =~ "with Ines Vasquez since "
 
     assert html =~ "Declined"
     assert html =~ "Ines Vasquez said Three of you are away"

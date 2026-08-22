@@ -53,9 +53,10 @@ defmodule LeafWeb.Parts do
   end
 
   @doc """
-  Requests as they read: when, how much, where it got to, and how it got there.
+  Requests as a record of them: a row each, a column for every part of one.
 
-  Each one is a `t:LeafWeb.Wording.filed/0`, worked out before it arrives here.
+  Each one is a `t:LeafWeb.Wording.filed/0`, worked out before it arrives here. What can be done
+  to one is the caller's to say, and the column for it is only there where anything can.
 
   ## Examples
 
@@ -65,7 +66,10 @@ defmodule LeafWeb.Parts do
 
   """
   attr :requests, :list, required: true, doc: "the requests to show, already put into words"
-  attr :title, :string, default: "Requests", doc: "what to call them"
+
+  attr :title, :string,
+    default: nil,
+    doc: "what to call them, where the page has not said already"
 
   slot :empty, required: true, doc: "what to say where there are none"
   slot :actions, doc: "what can be done to one, given the request"
@@ -74,25 +78,42 @@ defmodule LeafWeb.Parts do
   def requests(assigns) do
     ~H"""
     <section class="requests">
-      <header>
+      <header :if={@title}>
         <h2>{@title}</h2>
       </header>
-      <ol :if={@requests != []}>
-        <li :for={request <- @requests}>
-          <p>
-            <span>{request.dates}</span>
-            <span>{request.amount}</span>
-            <span class="standing" data-standing={request.standing}>{request.label}</span>
-          </p>
-          <p>{request.detail}</p>
-          <div :if={@actions != []}>{render_slot(@actions, request)}</div>
-        </li>
-      </ol>
+      <table :if={@requests != []}>
+        <thead>
+          <tr>
+            <th scope="col">When</th>
+            <th scope="col">Leave</th>
+            <th scope="col">Amount</th>
+            <th scope="col">Standing</th>
+            <th scope="col">Who and when</th>
+            <th :if={@actions != []} scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr :for={request <- @requests} data-tone={tone(request.standing)}>
+            <th scope="row">{request.dates}</th>
+            <td>{request.type}</td>
+            <td>{request.amount}</td>
+            <td>
+              <span class="standing" data-standing={request.standing}>{request.label}</span>
+            </td>
+            <td>{request.progress}</td>
+            <td :if={@actions != []}>{render_slot(@actions, request)}</td>
+          </tr>
+        </tbody>
+      </table>
       <p :if={@requests == []}>{render_slot(@empty)}</p>
       <p :if={@footer != []}>{render_slot(@footer)}</p>
     </section>
     """
   end
+
+  # Leave that was given back or refused is over, and the row it is on reads as the past.
+  defp tone(standing) when standing in [:cancelled, :declined], do: "past"
+  defp tone(_standing), do: nil
 
   @doc """
   Months side by side, each day marked with what is on it, and a step either way.

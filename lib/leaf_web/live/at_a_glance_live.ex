@@ -51,7 +51,7 @@ defmodule LeafWeb.AtAGlanceLive do
       <div>
         <Parts.calendar months={@months} today={@today} earlier={@earlier} later={@later} />
 
-        <Parts.requests requests={@requests}>
+        <Parts.requests requests={@requests} title="Requests">
           <:empty>You have not asked for any leave yet.</:empty>
           <:footer :if={@more?}>
             Showing your four most recent. <.link navigate={~p"/leave"}>See all {@filed}</.link>.

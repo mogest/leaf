@@ -46,14 +46,19 @@ section > header {
   }
 }
 
+/*
+  Where a request got to, a colour each: ochre while somebody still has to answer, green for leave
+  that is yours and a paler green once it is behind you, clay for a refusal, grey for leave handed
+  back.
+*/
 .standing {
   display: inline-flex;
   align-items: center;
   block-size: 1.5rem;
   padding-inline: 0.6875rem;
   border-radius: var(--pill);
-  background: var(--waiting-wash);
-  color: var(--waiting);
+  background: var(--ochre-wash);
+  color: var(--ochre);
   font-size: var(--size-sm);
   font-weight: 500;
 
@@ -62,12 +67,17 @@ section > header {
     color: var(--green-ink);
   }
 
+  /* Leave already had is the same green gone quiet: still yours, but behind you. */
+  &[data-standing="taken"] {
+    background: var(--panel);
+    color: var(--green-ink);
+  }
+
   &[data-standing="declined"] {
     background: var(--clay-wash);
     color: var(--clay-ink);
   }
 
-  &[data-standing="taken"],
   &[data-standing="cancelled"] {
     background: var(--settled-wash);
     color: var(--settled);
@@ -284,50 +294,30 @@ section > header {
   }
 }
 
+/* The record of what somebody asked for: a row each, read down its columns like any other table. */
 .requests {
   display: flex;
   flex-direction: column;
-  gap: var(--step-1);
+  gap: var(--step-3);
 
-  & > ol > li {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1875rem;
-    padding-block: 0.8125rem;
-    border-block-end: 1px solid var(--rule);
+  & tbody th {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
-  & > ol > li > p:first-child {
-    display: flex;
-    align-items: baseline;
-    gap: 0.875rem;
+  /* The figure a request comes to holds a line of its own, and is struck where it never came to
+     anything: leave given back or refused is leave that was never spent. */
+  & tbody td:nth-child(3) {
+    white-space: nowrap;
 
-    & > span {
-      font-variant-numeric: tabular-nums;
-    }
-
-    & > span:first-child {
-      flex-grow: 1;
-      font-weight: 500;
+    tr[data-tone="past"] & {
+      text-decoration: line-through;
+      text-decoration-color: var(--ink-faint);
     }
   }
 
-  & > ol > li > p + p {
-    font-size: var(--size-base);
-    color: var(--ink-soft);
-  }
-
-  /* What can still be done to a request, where anything can. */
-  & > ol > li > div {
-    display: flex;
-    align-items: center;
-    gap: var(--step-3);
-    padding-block-start: var(--step-2);
-    font-size: var(--size-base);
-
-    &:empty {
-      display: none;
-    }
+  & tbody :is(a, button) + :is(a, button) {
+    margin-inline-start: var(--step-3);
   }
 
   & > p {

@@ -33,10 +33,10 @@ defmodule LeafWeb.YourRequestsLive do
         <.link class="button" navigate={~p"/leave/new"}>Request leave</.link>
       </header>
 
-      <Parts.requests requests={@requests} title="Everything you have asked for">
+      <Parts.requests requests={@requests}>
         <:empty>You have not asked for any leave yet.</:empty>
         <:actions :let={request}>
-          <.link :if={request.revisable?} navigate={~p"/leave/#{request.id}/amend"}>Amend</.link>
+          <.link :if={request.revisable?} navigate={~p"/leave/#{request.id}/amend"}>Edit</.link>
           <button
             :if={request.revisable?}
             type="button"

@@ -17,14 +17,19 @@ defmodule LeafWeb.Wording do
   @type filed :: %{
           id: Ecto.UUID.t(),
           dates: String.t(),
+          type: String.t(),
           amount: String.t(),
           standing: atom(),
           label: String.t(),
-          detail: String.t()
+          progress: String.t()
         }
 
   @doc """
-  A request said in four parts: when it is, what it comes to, where it got to, and how it got there.
+  A request said in five parts: when it is, what it draws on, what it comes to, where it got to,
+  and how it got there.
+
+  It is read a row at a time against others, so the dates are the short form, and how it got there
+  leaves out the word its standing already says.
 
   `awaiting` is who a pending one is with, and is left out where a page is not saying.
   """
@@ -34,20 +39,29 @@ defmodule LeafWeb.Wording do
 
     %{
       id: request.id,
-      dates: dates(request),
+      dates: brief_dates(request),
+      type: types(request),
       amount: amount(request),
       standing: standing,
       label: standing |> Atom.to_string() |> String.capitalize(),
-      detail: "#{types(request)} · #{progress(request, awaiting)}"
+      progress: progress(request, awaiting)
     }
   end
 
   @doc "The span a request's days cover, as one date or as two."
   @spec dates(Request.t()) :: String.t()
   def dates(request) do
-    dates = Enum.map(request.days, & &1.date)
+    {first, last} = covered(request)
 
-    span(Enum.min(dates, Date), Enum.max(dates, Date))
+    span(first, last)
+  end
+
+  @doc "The span a request's days cover, short enough for a column of them: Mon 2 – Fri 6 Mar."
+  @spec brief_dates(Request.t()) :: String.t()
+  def brief_dates(request) do
+    {first, last} = covered(request)
+
+    brief_span(first, last)
   end
 
   @doc """
@@ -74,13 +88,7 @@ defmodule LeafWeb.Wording do
   @doc "A stretch of dates, as one date or as two: Monday 2 – Friday 6 March."
   @spec span(Date.t(), Date.t()) :: String.t()
   def span(date, date), do: weekday(date)
-
-  def span(first, last) do
-    case {first.year, first.month} == {last.year, last.month} do
-      true -> "#{Calendar.strftime(first, "%A %-d")} – #{weekday(last)}"
-      false -> "#{weekday(first)} – #{weekday(last)}"
-    end
-  end
+  def span(first, last), do: stretch(first, last, "%A %-d", &weekday/1)
 
   @doc "A date with the day of the week it falls on: Saturday 22 August."
   @spec weekday(Date.t()) :: String.t()
@@ -137,6 +145,23 @@ defmodule LeafWeb.Wording do
   def actor(nil), do: "the system"
   def actor(person), do: person.name
 
+  defp brief_span(date, date), do: brief(date)
+  defp brief_span(first, last), do: stretch(first, last, "%a %-d", &brief/1)
+
+  # Where both ends fall in the same month, the month is said once, at the end.
+  defp stretch(first, last, day, write) do
+    case {first.year, first.month} == {last.year, last.month} do
+      true -> "#{Calendar.strftime(first, day)} – #{write.(last)}"
+      false -> "#{write.(first)} – #{write.(last)}"
+    end
+  end
+
+  defp covered(request) do
+    dates = Enum.map(request.days, & &1.date)
+
+    {Enum.min(dates, Date), Enum.max(dates, Date)}
+  end
+
   # Names run together as a sentence would run them.
   defp joined([name]), do: name
 
@@ -166,22 +191,20 @@ defmodule LeafWeb.Wording do
 
   defp last(request), do: request.days |> Enum.map(& &1.date) |> Enum.max(Date)
 
+  # Whoever it is with or whoever settled it, and when. What they did is the standing's to say.
   defp progress(%{status: :pending} = request, nil),
-    do: "sent on #{day_and_month(request.inserted_at)}"
+    do: "sent #{day_and_month(request.inserted_at)}"
 
   defp progress(%{status: :pending} = request, awaiting) do
-    "sent to #{awaiting} on #{day_and_month(request.inserted_at)}"
+    "with #{awaiting} since #{day_and_month(request.inserted_at)}"
   end
 
-  defp progress(%{status: :declined, review_comment: nil} = request, _awaiting) do
-    "declined by #{request.reviewed_by.name} on #{day_and_month(request.reviewed_at)}"
-  end
-
-  defp progress(%{status: :declined} = request, _awaiting) do
-    "#{request.reviewed_by.name} said #{request.review_comment}"
+  defp progress(%{status: :declined, review_comment: comment} = request, _awaiting)
+       when is_binary(comment) do
+    "#{request.reviewed_by.name} said #{comment}"
   end
 
   defp progress(request, _awaiting) do
-    "#{request.status} by #{request.reviewed_by.name} on #{day_and_month(request.reviewed_at)}"
+    "#{request.reviewed_by.name} · #{day_and_month(request.reviewed_at)}"
   end
 end

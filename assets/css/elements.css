@@ -146,6 +146,21 @@ button:not(.button) {
   }
 }
 
+/* On a row of a record, an action is a word like the links beside it, not a button to press. */
+tbody button:not(.button) {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: inherit;
+
+  &:hover {
+    color: var(--green);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
 input,
 select,
 textarea {

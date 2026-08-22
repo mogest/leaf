@@ -34,27 +34,30 @@ defmodule LeafWeb.StyleguideLive do
   @requests [
     %{
       id: "pending",
-      dates: "Friday 25 September",
+      dates: "Fri 25 Sep",
+      type: "Quarterly leave and annual leave",
       amount: "9 hours",
       standing: :pending,
       label: "Pending",
-      detail: "Quarterly leave and annual leave · sent to Ari Kelburn on 18 August"
+      progress: "with Ari Kelburn since 18 August"
     },
     %{
       id: "approved",
-      dates: "Monday 5 – Friday 9 October",
+      dates: "Mon 5 – Fri 9 Oct",
+      type: "Annual leave",
       amount: "36 hours",
       standing: :approved,
       label: "Approved",
-      detail: "Annual leave · approved by Ari Kelburn on 2 August"
+      progress: "Ari Kelburn · 2 August"
     },
     %{
       id: "declined",
-      dates: "Monday 2 November",
+      dates: "Mon 2 Nov",
+      type: "Annual leave",
       amount: "9 hours",
       standing: :declined,
       label: "Declined",
-      detail: "Annual leave · Ari Kelburn said three of you are already away that week"
+      progress: "Ari Kelburn said three of you are already away that week"
     }
   ]
 
