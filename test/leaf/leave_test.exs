@@ -47,9 +47,9 @@ defmodule Leaf.LeaveTest do
     reloaded
   end
 
-  defp observes(context, holiday) do
+  defp observes(context, holiday, name \\ "New Year's Day") do
     calendar = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
-    Fixtures.public_holiday(%{holiday_calendar_id: calendar.id, date: holiday})
+    Fixtures.public_holiday(%{holiday_calendar_id: calendar.id, date: holiday, name: name})
 
     Fixtures.calendar_assignment(%{
       person_id: context.person.id,
@@ -269,6 +269,25 @@ defmodule Leaf.LeaveTest do
     assert behind.status == :declined
     assert behind.reviewed_by.name == "Ines Vasquez"
     assert [%{date: ~D[2026-08-25]}] = behind.days
+  end
+
+  test "a calendar lays a month out in weeks and marks what is on each day", context do
+    observes(context, ~D[2026-08-26], "Labour Day")
+    {:ok, _pending} = file(context, [@friday])
+    {:ok, approving} = file(context, [@thursday])
+    {:ok, _approved} = approving |> reload() |> Leave.approve(context.manager)
+
+    assert [august] = Leave.calendar(context.person, Date.range(~D[2026-08-01], ~D[2026-08-31]))
+    assert august.starts_on == ~D[2026-08-01]
+    assert Enum.map(august.weeks, &length/1) == [7, 7, 7, 7, 7, 7]
+    assert Enum.take(hd(august.weeks), 5) == [nil, nil, nil, nil, nil]
+
+    days = august.weeks |> List.flatten() |> Enum.reject(&is_nil/1) |> Map.new(&{&1.date, &1})
+
+    assert %{leave: :pending, working?: true} = days[@friday]
+    assert %{leave: :approved, working?: true} = days[@thursday]
+    assert %{holiday: "Labour Day", working?: false} = days[~D[2026-08-26]]
+    assert %{leave: nil, holiday: nil, working?: false} = days[@saturday]
   end
 
   test "only leave somebody still holds shows within a range", context do

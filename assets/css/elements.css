@@ -43,6 +43,10 @@ small {
   color: var(--ink-soft);
 }
 
+abbr {
+  text-decoration: none;
+}
+
 a {
   color: inherit;
   text-decoration: none;

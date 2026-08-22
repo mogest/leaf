@@ -8,6 +8,8 @@ defmodule LeafWeb.StyleguideLive do
 
   use LeafWeb, :live_view
 
+  alias Leaf.Leave.Month
+
   @swatches [
     {"Ground", "--ground", "Behind the rail"},
     {"Sheet", "--sheet", "What a page sits on"},
@@ -20,11 +22,19 @@ defmodule LeafWeb.StyleguideLive do
   ]
 
   @standings [
-    {"Pending", nil},
+    {"Pending", "pending"},
     {"Approved", "approved"},
     {"Declined", "declined"},
-    {"Taken", "taken"}
+    {"Taken", "taken"},
+    {"Cancelled", "cancelled"}
   ]
+
+  @august ~D[2026-08-01]
+  @today ~D[2026-08-22]
+
+  # Where a part that steps through something steps to: nowhere but here. The route is only in
+  # development, so it is not one verified routes can be asked about.
+  @here "/dev/styleguide"
 
   # A month is enough to show every state a day can be in.
   @weeks [
@@ -51,7 +61,9 @@ defmodule LeafWeb.StyleguideLive do
      |> assign(:page_title, "Specimen sheet")
      |> assign(:swatches, @swatches)
      |> assign(:standings, @standings)
-     |> assign(:weeks, @weeks)
+     |> assign(:months, [month()])
+     |> assign(:today, @today)
+     |> assign(:here, @here)
      |> assign(:person, %{name: "Rae Halloran"})}
   end
 
@@ -113,7 +125,7 @@ defmodule LeafWeb.StyleguideLive do
         <header>
           <h2>Calendar</h2>
         </header>
-        <.calendar weeks={@weeks} />
+        <Parts.calendar months={@months} today={@today} earlier={@here} later={@here} />
       </section>
 
       <section>
@@ -151,7 +163,7 @@ defmodule LeafWeb.StyleguideLive do
               <p>
                 <span>Friday 25 September</span>
                 <span>9 hours</span>
-                <span class="standing">Pending</span>
+                <span class="standing" data-standing="pending">Pending</span>
               </p>
               <p>Quarterly leave and annual leave · sent to Ari Kelburn on 18 August</p>
             </li>
@@ -179,87 +191,25 @@ defmodule LeafWeb.StyleguideLive do
     """
   end
 
-  attr :weeks, :list, required: true
-
-  defp calendar(assigns) do
-    ~H"""
-    <section class="calendar">
-      <header>
-        <h2>Calendar</h2>
-      </header>
-      <nav>
-        <a href="#" aria-label="Earlier months">
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M10 3L5 8l5 5" />
-          </svg>
-        </a>
-        <div>
-          <table>
-            <caption>August</caption>
-            <thead>
-              <tr>
-                <th :for={{initial, index} <- Enum.with_index(~w(M T W T F S S))} scope="col">
-                  <span aria-hidden={index >= 0 && "true"}>{initial}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={week <- @weeks}>
-                <td
-                  :for={day <- week}
-                  data-working={working(day)}
-                  data-leave={leave(day)}
-                  data-holiday={day && elem(day, 1) == :holiday}
-                  data-today={day && elem(day, 1) == :today}
-                  aria-current={day && elem(day, 1) == :today && "date"}
-                >
-                  {day && elem(day, 0)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <a href="#" aria-label="Later months">
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M6 3l5 5-5 5" />
-          </svg>
-        </a>
-      </nav>
-      <ul>
-        <li data-leave="approved">Approved</li>
-        <li data-leave="pending">Waiting</li>
-        <li data-holiday>Public holiday</li>
-        <li data-today>Today</li>
-        <li>Faded days are ones you do not work</li>
-      </ul>
-    </section>
-    """
+  # The specimen stands on no data, so its month is written out and then shaped like a real one.
+  defp month do
+    %Month{starts_on: @august, weeks: Enum.map(@weeks, fn week -> Enum.map(week, &day/1) end)}
   end
 
-  defp working({_day, state}) when state in [:off, :today], do: "no"
-  defp working(_day), do: nil
+  defp day(nil), do: nil
 
-  defp leave({_day, :approved}), do: "approved"
-  defp leave({_day, :pending}), do: "pending"
-  defp leave(_day), do: nil
+  defp day({number, state}) do
+    %{
+      date: Date.new!(@august.year, @august.month, number),
+      working?: state not in [:off, :today],
+      leave: leave(state),
+      holiday: holiday(state)
+    }
+  end
+
+  defp leave(state) when state in [:approved, :pending], do: state
+  defp leave(_state), do: nil
+
+  defp holiday(:holiday), do: "Labour Day"
+  defp holiday(_state), do: nil
 end

@@ -6,7 +6,15 @@ body {
   min-block-size: 100vh;
 }
 
-body > nav {
+/*
+  A LiveView renders inside a container of its own, which is none of the design's doing. It boxes
+  nothing, so the rail and the page are laid out as the children of body they read as.
+*/
+body > div[data-phx-main] {
+  display: contents;
+}
+
+:is(body, div[data-phx-main]) > nav {
   inline-size: var(--rail);
   flex-shrink: 0;
   display: flex;
@@ -94,7 +102,7 @@ body > nav {
   }
 }
 
-body > main {
+main {
   flex-grow: 1;
   padding-block: var(--step-9) 3.5rem;
   padding-inline: max(var(--step-6), (100% - var(--measure)) / 2);
@@ -108,6 +116,25 @@ main > header {
 
   & h1 {
     flex-grow: 1;
+  }
+}
+
+/* When you are away and what came of what you asked for, with the balances alongside them. */
+main.your-leave {
+  display: grid;
+  grid-template-columns: 1fr 15rem;
+  column-gap: var(--step-9);
+  align-content: start;
+  align-items: start;
+
+  & > header {
+    grid-column: 1 / -1;
+  }
+
+  & > div {
+    display: flex;
+    flex-direction: column;
+    gap: var(--step-8);
   }
 }
 

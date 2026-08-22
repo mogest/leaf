@@ -85,6 +85,7 @@ defmodule LeafWeb do
       # Common modules used in templates
       alias Phoenix.LiveView.JS
       alias LeafWeb.Layouts
+      alias LeafWeb.Parts
 
       # Routes generation with the ~p sigil
       unquote(verified_routes())

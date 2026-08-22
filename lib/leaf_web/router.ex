@@ -13,6 +13,10 @@ defmodule LeafWeb.Router do
     plug :fetch_current_person
   end
 
+  pipeline :signed_in do
+    plug :require_person
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
   end
@@ -23,8 +27,14 @@ defmodule LeafWeb.Router do
     get "/sign-in", SignInController, :index
     post "/sign-in/:id", SignInController, :create
     delete "/sign-out", SignInController, :delete
+  end
 
-    get "/", PageController, :home
+  scope "/", LeafWeb do
+    pipe_through [:browser, :signed_in]
+
+    live_session :signed_in, on_mount: {LeafWeb.SignIn, :current_person} do
+      live "/", YourLeaveLive
+    end
   end
 
   # Other scopes may use custom stacks.

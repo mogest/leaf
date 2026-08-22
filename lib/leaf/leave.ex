@@ -20,6 +20,7 @@ defmodule Leaf.Leave do
   alias Leaf.Dates
   alias Leaf.Leave.BalanceEntry
   alias Leaf.Leave.Day
+  alias Leaf.Leave.Month
   alias Leaf.Leave.Request
   alias Leaf.Leave.WorkingDay
   alias Leaf.People.Person
@@ -159,9 +160,18 @@ defmodule Leaf.Leave do
         where: request.person_id == ^person.id,
         group_by: request.id,
         order_by: [desc: min(day.date)],
-        preload: [:days, :reviewed_by]
+        preload: [:reviewed_by, days: :leave_type]
     )
   end
+
+  @doc """
+  The months `range` runs over, as the weeks they are made of, marked with the person's own days.
+
+  Leave they still hold, the public holidays they observe and the days they do not work all read
+  off the same dates, so anything showing months needs nothing else to draw them.
+  """
+  @spec calendar(Person.t(), Date.Range.t()) :: [Month.t()]
+  def calendar(person, range), do: Month.over(person, range, days_filed(person, range))
 
   @doc """
   Every day of leave a person still holds within `range`, oldest first, with its request.
