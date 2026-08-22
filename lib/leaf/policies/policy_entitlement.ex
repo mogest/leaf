@@ -9,6 +9,10 @@ defmodule Leaf.Policies.PolicyEntitlement do
   on a successor row.
 
   `grant_amount` is per `grant_period`, at 1.0 FTE, in the leave type's unit.
+
+  Two entitlements for one leave type under one policy may not overlap: the balance would be
+  granted twice over. Succeeding one therefore means closing the old window, not just opening a
+  new one.
   """
 
   use Leaf.Schema
@@ -87,8 +91,9 @@ defmodule Leaf.Policies.PolicyEntitlement do
     |> validate_date_order(:granted_to, :effective_to)
     |> assoc_constraint(:leave_policy)
     |> assoc_constraint(:leave_type)
-    |> unique_constraint([:leave_policy_id, :leave_type_id, :effective_from],
-      name: :policy_entitlements_policy_type_from_index
+    |> exclusion_constraint(:effective_from,
+      name: :policy_entitlements_no_overlap,
+      message: "overlaps another entitlement for this leave type"
     )
   end
 

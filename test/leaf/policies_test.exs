@@ -72,12 +72,15 @@ defmodule Leaf.PoliciesTest do
     other =
       Fixtures.leave_type(%{organisation_id: organisation.id, name: "Study leave", position: 1})
 
-    for leave_type <- [annual, other], from <- [~D[2024-01-01], ~D[2026-01-01]] do
-      Fixtures.policy_entitlement(%{
-        leave_policy_id: policy.id,
-        leave_type_id: leave_type.id,
-        effective_from: from
-      })
+    windows = [
+      %{effective_from: ~D[2024-01-01], effective_to: ~D[2025-12-31]},
+      %{effective_from: ~D[2026-01-01]}
+    ]
+
+    for leave_type <- [annual, other], window <- windows do
+      Fixtures.policy_entitlement(
+        Map.merge(window, %{leave_policy_id: policy.id, leave_type_id: leave_type.id})
+      )
     end
 
     entitlements = Policies.entitlements(policy.id, Date.range(~D[2026-01-01], ~D[2026-03-31]))

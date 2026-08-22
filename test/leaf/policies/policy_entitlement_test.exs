@@ -101,14 +101,23 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
     assert errors_on(changeset(attrs)).effective_to == ["must not be before granted_to"]
   end
 
-  test "a policy cannot offer the same leave type twice from one date" do
+  test "a policy cannot offer the same leave type over two overlapping windows" do
     organisation = Fixtures.organisation()
     policy = Fixtures.leave_policy(%{organisation_id: organisation.id})
     leave_type = Fixtures.leave_type(%{organisation_id: organisation.id})
     attrs = Map.merge(@quarterly, %{leave_policy_id: policy.id, leave_type_id: leave_type.id})
 
-    assert {:ok, _entitlement} = Repo.insert(changeset(attrs))
+    assert {:ok, _withdrawn} =
+             Repo.insert(changeset(Map.put(attrs, :effective_to, ~D[2005-12-31])))
+
     assert {:error, changeset} = Repo.insert(changeset(attrs))
-    assert errors_on(changeset).leave_policy_id == ["has already been taken"]
+
+    assert errors_on(changeset).effective_from == [
+             "overlaps another entitlement for this leave type"
+           ]
+
+    reoffered = Map.put(attrs, :effective_from, ~D[2006-01-01])
+
+    assert {:ok, _entitlement} = Repo.insert(changeset(reoffered))
   end
 end

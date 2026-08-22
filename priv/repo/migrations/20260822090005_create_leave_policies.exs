@@ -48,11 +48,23 @@ defmodule Leaf.Repo.Migrations.CreateLeavePolicies do
       timestamps(type: :utc_datetime)
     end
 
-    create unique_index(:policy_entitlements, [:leave_policy_id, :leave_type_id, :effective_from],
-             name: :policy_entitlements_policy_type_from_index
-           )
-
     create index(:policy_entitlements, [:leave_type_id])
+
+    execute "CREATE EXTENSION IF NOT EXISTS btree_gist", "DROP EXTENSION IF EXISTS btree_gist"
+
+    # An entitlement is a window rather than a row in a succession, so two windows for one leave
+    # type under one policy would grant the same balance twice over. This subsumes uniqueness on
+    # the start date: two entitlements starting together overlap.
+    execute """
+            ALTER TABLE policy_entitlements
+              ADD CONSTRAINT policy_entitlements_no_overlap
+              EXCLUDE USING gist (
+                leave_policy_id WITH =,
+                leave_type_id WITH =,
+                daterange(effective_from, COALESCE(effective_to, 'infinity'::date), '[]') WITH &&
+              )
+            """,
+            "ALTER TABLE policy_entitlements DROP CONSTRAINT policy_entitlements_no_overlap"
 
     create table(:person_policy_assignments, primary_key: false) do
       add :id, :binary_id, primary_key: true

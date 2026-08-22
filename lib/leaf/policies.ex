@@ -24,11 +24,21 @@ defmodule Leaf.Policies do
     %PolicyEntitlement{} |> PolicyEntitlement.changeset(attrs) |> Repo.insert()
   end
 
+  @doc "Every leave type the organisation offers, archived ones included, in its own order."
+  @spec leave_types(Ecto.UUID.t()) :: [LeaveType.t()]
+  def leave_types(organisation_id) do
+    Repo.all(
+      from type in LeaveType,
+        where: type.organisation_id == ^organisation_id,
+        order_by: type.position
+    )
+  end
+
   @doc """
   Every entitlement of a policy whose life overlaps `range`, with its leave type.
 
-  Grouped by leave type and ordered within a type by when each takes effect, so one type's
-  entitlements arrive as the succession they are.
+  One leave type's entitlements arrive together and in the order they take effect, so a type's
+  succession can be read straight off the list.
   """
   @spec entitlements(Ecto.UUID.t(), Date.Range.t()) :: [PolicyEntitlement.t()]
   def entitlements(leave_policy_id, range) do

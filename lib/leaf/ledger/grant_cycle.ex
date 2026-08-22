@@ -1,11 +1,11 @@
-defmodule Leaf.Policies.GrantCycle do
+defmodule Leaf.Ledger.GrantCycle do
   @moduledoc """
   The repeating run of periods an entitlement grants over.
 
   A cycle is a day of the year and a period length: periods tile the calendar back to back from
   that day, in both directions, so any date falls in exactly one of them. What varies between
-  entitlements is only where the run is pinned — someone's start date, their birthday, the
-  calendar year, or the organisation's own year.
+  entitlements is only where the run is pinned and how long each period runs; which of a person's
+  or an organisation's dates does the pinning is the caller's business, not this module's.
 
   Where the pinned day does not exist in a month it is clamped to that month's last day, and every
   period is measured from the pinned day rather than from its predecessor. So a monthly cycle
@@ -13,23 +13,8 @@ defmodule Leaf.Policies.GrantCycle do
   slipping to the 28th for good. The clamped period runs on to meet the next one, leaving no gap.
   """
 
-  @typedoc "What the run of periods is pinned to."
-  @type basis :: :employment_date | :birthday | :calendar_year | :organisation_year
-
   @typedoc "How long each period runs."
   @type period :: :month | :quarter | :year
-
-  @typedoc """
-  The dates a cycle can be pinned to.
-
-  Each basis reads exactly one of them, and a missing one it needs is a coding error rather than a
-  runtime condition — except `birth_date`, which the organisation genuinely may not hold.
-  """
-  @type anchors :: %{
-          required(:employment_start_date) => Date.t(),
-          required(:birth_date) => Date.t() | nil,
-          required(:year_start_month) => 1..12
-        }
 
   @type t :: %__MODULE__{anchor_month: 1..12, anchor_day: 1..31, length_months: pos_integer()}
 
@@ -38,17 +23,14 @@ defmodule Leaf.Policies.GrantCycle do
 
   @lengths %{month: 1, quarter: 3, year: 12}
 
-  @doc """
-  The cycle an entitlement granting `period` on `basis` runs over.
-
-  `:error` only for a birthday cycle where the organisation holds no birth date. Any other missing
-  anchor is a coding error and raises.
-  """
-  @spec new(basis(), period(), anchors()) :: {:ok, t()} | :error
-  def new(basis, period, anchors) do
-    with {:ok, {month, day}} <- anchor(basis, anchors) do
-      {:ok, %__MODULE__{anchor_month: month, anchor_day: day, length_months: @lengths[period]}}
-    end
+  @doc "The cycle whose periods run `period` at a time, pinned to a day of the year."
+  @spec new(1..12, 1..31, period()) :: t()
+  def new(anchor_month, anchor_day, period) do
+    %__MODULE__{
+      anchor_month: anchor_month,
+      anchor_day: anchor_day,
+      length_months: @lengths[period]
+    }
   end
 
   @doc "The period `date` falls in."
@@ -65,14 +47,6 @@ defmodule Leaf.Policies.GrantCycle do
     |> Stream.iterate(&period_containing(cycle, Date.add(&1.last, 1)))
     |> Enum.take_while(&(not Date.after?(&1.first, range.last)))
   end
-
-  defp anchor(:employment_date, %{employment_start_date: %Date{} = date}),
-    do: {:ok, {date.month, date.day}}
-
-  defp anchor(:birthday, %{birth_date: %Date{} = date}), do: {:ok, {date.month, date.day}}
-  defp anchor(:birthday, _anchors), do: :error
-  defp anchor(:calendar_year, _anchors), do: {:ok, {1, 1}}
-  defp anchor(:organisation_year, %{year_start_month: month}), do: {:ok, {month, 1}}
 
   # The initial index lands on the right period or one either side of it, because a period's own
   # bounds depend on the anchor day, which the month arithmetic that produced the index ignores.

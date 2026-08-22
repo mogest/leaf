@@ -1,6 +1,8 @@
 defmodule Leaf.Fixtures do
   @moduledoc "Minimal persisted records for tests, built through the schemas' own changesets."
 
+  alias Leaf.Leave.BalanceEntry
+  alias Leaf.Leave.Request
   alias Leaf.Org.HolidayCalendar
   alias Leaf.Org.Organisation
   alias Leaf.Org.PublicHoliday
@@ -21,7 +23,7 @@ defmodule Leaf.Fixtures do
       name: "Fernbank Collective",
       full_time_week_hours: "40",
       standard_day_hours: "8",
-      year_start_month: 1,
+      year_start_month: 4,
       tracked_from: ~D[2024-01-01]
     })
   end
@@ -106,6 +108,20 @@ defmodule Leaf.Fixtures do
     insert(%PublicHoliday{}, &PublicHoliday.changeset/2, attrs, %{
       name: "New Year's Day",
       date: ~D[2026-01-01]
+    })
+  end
+
+  @spec leave_request(map()) :: Request.t()
+  def leave_request(attrs) do
+    insert(%Request{}, &Request.changeset/2, attrs, %{status: :approved})
+  end
+
+  @spec balance_entry(map()) :: BalanceEntry.t()
+  def balance_entry(attrs) do
+    insert(%BalanceEntry{}, &BalanceEntry.changeset/2, attrs, %{
+      date: ~D[2024-01-01],
+      kind: :opening_balance,
+      amount: "0"
     })
   end
 

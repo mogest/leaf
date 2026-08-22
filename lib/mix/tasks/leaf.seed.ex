@@ -5,9 +5,10 @@ defmodule Mix.Tasks.Leaf.Seed do
 
       mix leaf.seed
 
-  Builds the New Zealand employee policy described in `Leaf.Seed` — annual, sick, quarterly,
-  birthday, longevity and bereavement leave — the New Zealand public holiday calendar, and one
-  person on that policy.
+  Builds the two New Zealand policies described in `Leaf.Seed` — an employee one carrying annual,
+  sick, quarterly, birthday, longevity and bereavement leave, and a contractor hybrid that is
+  credited its share of the public holidays instead of taking them off — the New Zealand public
+  holiday calendar, and somebody on each policy.
 
   Refuses to run where an organisation already exists, since it is meant for a fresh local
   database. Use `mix ecto.reset` first.
@@ -25,14 +26,23 @@ defmodule Mix.Tasks.Leaf.Seed do
   def run(_args) do
     refuse_if_seeded()
 
-    %{organisation: organisation, person: person} = Seed.run()
-    {:ok, pattern} = People.fetch_work_pattern(person, person.employment_start_date)
+    %{organisation: organisation, people: people} = Seed.run()
 
-    Mix.shell().info("""
-    Seeded #{organisation.name}.
-      #{person.name} <#{person.email}> — started #{person.employment_start_date}, \
-    #{People.weekly_hours(pattern)}h a week (#{People.fte(pattern, organisation.full_time_week_hours)} FTE)
-    """)
+    Mix.shell().info("Seeded #{organisation.name}.")
+
+    people
+    |> Map.values()
+    |> Enum.sort_by(& &1.employment_start_date, Date)
+    |> Enum.each(&Mix.shell().info(describe(&1, organisation)))
+  end
+
+  defp describe(person, organisation) do
+    {:ok, pattern} = People.fetch_work_pattern(person, person.employment_start_date)
+    weekly_hours = People.weekly_hours(pattern)
+    fte = People.fte(pattern, organisation.full_time_week_hours)
+
+    "  #{person.name} <#{person.email}> — started #{person.employment_start_date}, " <>
+      "#{weekly_hours}h a week (#{fte} FTE)"
   end
 
   defp refuse_if_seeded do

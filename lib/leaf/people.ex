@@ -72,6 +72,17 @@ defmodule Leaf.People do
     person |> succession(WorkPattern) |> Timeline.segments(range)
   end
 
+  @doc """
+  The same, refusing a `range` the person has no pattern over part of.
+
+  Hours nobody knows cannot be pro-rated, so anything working out entitlement wants this rather
+  than a partial answer: a stretch a person has no pattern for is a hole in the record, not a zero.
+  """
+  @spec work_pattern_segments!(Person.t(), Date.Range.t()) :: [segment(WorkPattern.t())]
+  def work_pattern_segments!(person, range) do
+    person |> work_pattern_segments(range) |> covering!(range, person, "work pattern")
+  end
+
   @doc "The id of the leave policy the person is on over each part of `range`."
   @spec leave_policy_segments(Person.t(), Date.Range.t()) :: [segment(Ecto.UUID.t())]
   def leave_policy_segments(person, range) do
@@ -88,6 +99,12 @@ defmodule Leaf.People do
     |> succession(PersonHolidayCalendar)
     |> Timeline.segments(range)
     |> Enum.map(fn {span, assignment} -> {span, assignment.holiday_calendar_id} end)
+  end
+
+  @doc "The same, refusing a `range` the person observes no calendar over part of."
+  @spec holiday_calendar_segments!(Person.t(), Date.Range.t()) :: [segment(Ecto.UUID.t())]
+  def holiday_calendar_segments!(person, range) do
+    person |> holiday_calendar_segments(range) |> covering!(range, person, "holiday calendar")
   end
 
   @doc "The hours worked over a full week under a work pattern."
@@ -108,5 +125,15 @@ defmodule Leaf.People do
 
   defp succession(person, schema) do
     Repo.all(from row in schema, where: row.person_id == ^person.id)
+  end
+
+  # A succession has no gaps of its own — each row holds until the next supersedes it — so the only
+  # stretch of a range that can be missing is the one before its first row takes effect.
+  defp covering!([{%{first: first}, _row} | _rest] = segments, %{first: first}, _person, _what) do
+    segments
+  end
+
+  defp covering!(_segments, range, person, what) do
+    raise "#{person.name} (#{person.id}) has no #{what} in force on #{range.first}"
   end
 end
