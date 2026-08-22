@@ -51,7 +51,7 @@ body > div[data-phx-main] {
     & a {
       display: flex;
       align-items: center;
-      block-size: 2.125rem;
+      block-size: var(--rail-row);
       padding-inline: var(--step-3);
       border-radius: var(--radius);
       color: var(--ink-quiet);
@@ -71,14 +71,29 @@ body > div[data-phx-main] {
     }
   }
 
-  & > p {
-    display: flex;
-    align-items: center;
-    gap: var(--step-2);
-    padding-inline: var(--step-3);
-    font-size: var(--size-base);
+  /* Who you are, and the menu of what you can do about it, which stands above the name. */
+  & > div {
+    & > button {
+      display: flex;
+      align-items: center;
+      gap: var(--step-2);
+      inline-size: 100%;
+      block-size: var(--rail-row);
+      padding-inline: var(--step-3);
+      border: 0;
+      border-radius: var(--radius);
+      background: none;
+      color: var(--ink);
+      font-size: var(--size-base);
+      text-align: start;
 
-    & > b {
+      &:hover {
+        background: var(--ground);
+        color: var(--ink);
+      }
+    }
+
+    & b {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -91,13 +106,38 @@ body > div[data-phx-main] {
       font-weight: 600;
     }
 
-    & > span {
+    & span {
       flex-grow: 1;
     }
 
-    & > a {
-      font-size: var(--size-sm);
-      color: var(--ink-soft);
+    /* An open popover is in the top layer, where the viewport is what it is placed against. The
+       rail is pinned to the inline start, and clearing the name row puts the menu above it. */
+    & > [popover] {
+      position: fixed;
+      inset: auto auto calc(var(--step-5) + var(--rail-row) + var(--step-2)) 0.875rem;
+      inline-size: calc(var(--rail) - 1.75rem);
+      margin: 0;
+      padding: var(--step-1);
+      border: 1px solid var(--edge);
+      border-radius: var(--radius);
+      background: var(--sheet);
+      box-shadow: 0 6px 16px oklch(0.27 0.028 155 / 0.1);
+
+      & a {
+        display: flex;
+        align-items: center;
+        block-size: 2rem;
+        padding-inline: var(--step-3);
+        border-radius: var(--radius);
+        font-size: var(--size-base);
+        color: var(--ink-quiet);
+
+        &:hover {
+          background: var(--ground);
+          color: var(--ink);
+          text-decoration: none;
+        }
+      }
     }
   }
 }

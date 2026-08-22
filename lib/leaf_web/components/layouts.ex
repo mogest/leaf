@@ -66,11 +66,17 @@ defmodule LeafWeb.Layouts do
           <a href={path} aria-current={current(@page, pages)}>{label}</a>
         </li>
       </ul>
-      <p :if={@current_person}>
-        <b>{Wording.initials(@current_person.name)}</b>
-        <span>{@current_person.name}</span>
-        <.link href="/sign-out" method="delete">Sign out</.link>
-      </p>
+      <div :if={@current_person}>
+        <button popovertarget="account" aria-label="Your account">
+          <b>{Wording.initials(@current_person.name)}</b>
+          <span>{@current_person.name}</span>
+        </button>
+        <ul id="account" popover>
+          <li>
+            <.link href="/sign-out" method="delete">Sign out</.link>
+          </li>
+        </ul>
+      </div>
     </nav>
     <main class={@page}>
       {render_slot(@inner_block)}
