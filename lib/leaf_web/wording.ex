@@ -86,6 +86,10 @@ defmodule LeafWeb.Wording do
   @spec weekday(Date.t()) :: String.t()
   def weekday(date), do: Calendar.strftime(date, "%A %-d %B")
 
+  @doc "A date short enough for a column of them: Sat 22 Aug."
+  @spec brief(Date.t()) :: String.t()
+  def brief(date), do: Calendar.strftime(date, "%a %-d %b")
+
   @doc "A date in full: 22 August 2026."
   @spec date(Date.t() | nil) :: String.t() | nil
   def date(nil), do: nil

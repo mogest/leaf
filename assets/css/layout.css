@@ -152,11 +152,6 @@ main section > ol > li {
   }
 }
 
-main section > ul > li[data-tone="wrong"] {
-  font-size: var(--size-base);
-  color: var(--clay-ink);
-}
-
 main section > ol > li[data-tone="wrong"] > span {
   color: var(--clay-ink);
 }
@@ -277,8 +272,33 @@ main.balance {
   }
 }
 
-/* Asking for leave: the two ends of a stretch of dates are the one field. */
+/* Asking for leave: the two ends of a stretch of dates are the one field, and what it comes to is
+   read a day at a time. */
 main.request-leave {
+  /* The instruction and what it comes to are read side by side, and fall one after the other the
+     moment they cannot both have their measure. */
+  & > form {
+    flex-flow: row wrap;
+    align-items: start;
+    gap: var(--step-8) var(--step-9);
+
+    & > section {
+      flex: 1 1 26rem;
+      max-inline-size: 30rem;
+    }
+
+    /* Whatever is wrong with the instruction is read where it stops somebody: at the button. */
+    & > footer {
+      flex-basis: 100%;
+      flex-wrap: wrap;
+
+      & > ul {
+        flex-basis: 100%;
+        color: var(--clay-ink);
+      }
+    }
+  }
+
   & .paired {
     display: flex;
     gap: var(--step-4);
@@ -289,7 +309,59 @@ main.request-leave {
     }
   }
 
-  & p[data-tone="wrong"] {
+  & table {
+    table-layout: fixed;
+    max-inline-size: 19rem;
+  }
+
+  & thead th:first-child {
+    inline-size: 9rem;
+  }
+
+  & tbody :is(th, td) {
+    padding-block: 0.3125rem;
+    border-block-end: 0;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+
+  & tbody td {
+    padding-inline-start: var(--step-3);
+    box-shadow: inset 2px 0 0 var(--rule-firm);
+  }
+
+  /* The days off are one unbroken run down the dates, and the days stepped over grey it out. */
+  & tbody tr:not([data-working="no"]) td {
+    box-shadow: inset 2px 0 0 var(--green);
+  }
+
+  & tbody tr[data-working="no"] :is(th, td) {
+    color: var(--ink-faint);
+  }
+
+  & tfoot :is(th, td) {
+    padding-block-start: var(--step-2);
+    border-block-start: 1px solid var(--rule-firm);
+    font-variant-numeric: tabular-nums;
+  }
+
+  & tfoot td {
+    padding-inline-start: var(--step-3);
+  }
+
+  /* What is left over sits in the column the figures it follows from are in: the date column and
+     the step the figures are indented by. */
+  & dl {
+    display: grid;
+    grid-template-columns: 9.75rem auto;
+    font-size: var(--size-base);
+  }
+
+  & dt {
+    color: var(--ink-soft);
+  }
+
+  & dd[data-tone="wrong"] {
     color: var(--clay-ink);
   }
 }

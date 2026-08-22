@@ -8,10 +8,9 @@ defmodule LeafWeb.RequestLeaveLive do
 
   A stretch of dates is whole days, whatever those days turn out to be worth, and a last day left
   blank asks for the first day on its own. Part of a day is asked of one day and asked in hours,
-  because hours are what somebody can count: nobody knows offhand what 0.4 of a nine-hour
-  Wednesday is. What the hours draw is the leave type's business
-  rather than the request's, and the balance says so — 4.5 hours against sick leave counted in
-  days is half a day of it.
+  because hours are what somebody can count: nobody knows offhand what 0.4 of a nine-hour Wednesday
+  is. What the hours draw is the leave type's business rather than the request's, and the balance
+  says so — 4.5 hours against sick leave counted in days is half a day of it.
 
   Amending replaces what a request asks for, so it is the same instruction given again. Days this
   cannot say — a stretch that is not whole days, or more than one leave type — are shown as what
@@ -53,13 +52,12 @@ defmodule LeafWeb.RequestLeaveLive do
     <Layouts.app flash={@flash} page="request-leave" current_person={@current_person}>
       <header>
         <h1>{@title}</h1>
-        <.link navigate={~p"/leave"}>Your requests</.link>
       </header>
 
       <.form id="request" for={@form} phx-change="validate" phx-submit="save">
         <section>
           <header>
-            <h2>What you are asking for</h2>
+            <h2>Your request</h2>
           </header>
           <.input
             field={@form[:leave_type_id]}
@@ -96,20 +94,43 @@ defmodule LeafWeb.RequestLeaveLive do
           <.input field={@form[:note]} type="textarea" label="Note" />
         </section>
 
-        <section>
+        <section :if={@filing || @replacing}>
           <header>
-            <h2>What will be filed</h2>
+            <h2>Day by day</h2>
           </header>
-          <p :if={@filing}>{@filing}</p>
+          <table :if={@filing}>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Off</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :for={day <- @filing.days} data-working={day.working}>
+                <th>{day.date}</th>
+                <td>{day.off}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <th>Total</th>
+                <td>{@filing.total}</td>
+              </tr>
+            </tfoot>
+          </table>
+          <dl :if={@filing && @filing.balance}>
+            <dt>{@filing.balance.name} left</dt>
+            <dd data-tone={@filing.balance.tone}>
+              {@filing.balance.moved} <small>if approved</small>
+            </dd>
+          </dl>
           <p :if={@replacing}>{@replacing}</p>
-          <p :if={@projection} data-tone={@projection.tone}>{@projection.line}</p>
-          <small :if={@entries == []}>{@nothing}</small>
-          <ul :if={@problems != []}>
-            <li :for={problem <- @problems} data-tone="wrong">{problem}</li>
-          </ul>
         </section>
 
         <footer>
+          <ul :if={@problems != []}>
+            <li :for={problem <- @problems}>{problem}</li>
+          </ul>
           <button class="button" type="submit" disabled={@entries == []}>{@action}</button>
           <.link navigate={~p"/leave"}>Cancel</.link>
         </footer>
@@ -243,10 +264,8 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:entries, entries)
     |> assign(:problems, problems)
     |> assign(:portion, portion(socket, params))
-    |> assign(:filing, filing(entries, offered(socket, params["leave_type_id"])))
+    |> assign(:filing, filing(socket, params, entries))
     |> assign(:replacing, replacing(socket.assigns.replaced, entries))
-    |> assign(:nothing, nothing(problems))
-    |> assign(:projection, projection(socket, entries))
   end
 
   # Part of a day can only be asked of one day, so the field is there for one date and gone for a
@@ -275,49 +294,53 @@ defmodule LeafWeb.RequestLeaveLive do
 
   defp replacing(_replaced, _entries), do: nil
 
-  defp nothing([]), do: "Nothing yet — choose a leave type and the days you want off."
-  defp nothing(_problems), do: "Nothing can be filed as it stands."
+  # What will be filed, a row for every date the stretch covers rather than for every date it
+  # draws on: a count of working days shorter than the stretch asked for is otherwise a mistake
+  # nobody can see the reason for. What decides there is a table is the stretch and not what it
+  # comes to, so asking for a week that holds one working day still shows the week.
+  defp filing(_socket, _params, []), do: nil
 
-  # What will be filed, said as a sentence rather than as a row for every date: a row each would
-  # repeat the instruction back once per day and bury the two facts it does not already carry.
-  defp filing([], _leave_type), do: nil
+  defp filing(socket, params, entries) do
+    {:ok, span} = range(params["from"], params["to"])
 
-  defp filing(entries, leave_type) do
-    [covered(entries, leave_type), passed(entries)] |> Enum.reject(&is_nil/1) |> Enum.join(" ")
+    spanned(socket, span, entries)
   end
 
-  defp covered([entry], leave_type) do
-    "#{Wording.weekday(entry.date)}: #{drawn(entry.amount, entry.unit, leave_type)}."
+  # One date has no rows worth reading — it is the field above and the hours beside it.
+  defp spanned(_socket, %Date.Range{first: date, last: date}, _entries), do: nil
+
+  defp spanned(socket, span, entries) do
+    worked = Map.new(Leave.working_days(socket.assigns.person, span))
+
+    %{
+      days: Enum.map(span, &day(&1, worked[&1])),
+      total: total(entries),
+      balance: moving(projection(socket, entries))
+    }
   end
 
-  defp covered(entries, leave_type) do
-    total = entries |> Enum.map(& &1.amount) |> Enum.reduce(&Decimal.add/2)
-    span = Wording.span(hd(entries).date, List.last(entries).date)
+  # A day off is the hours in it, which is what a whole day of somebody's own is worth and not what
+  # a day is worth. What it draws is the total's business: every one of these rows would say the
+  # same "1 day" as the last.
+  defp day(date, nil), do: %{date: Wording.brief(date), off: "not worked", working: "no"}
 
-    "#{span}: #{length(entries)} working days, coming to " <>
-      "#{drawn(total, hd(entries).unit, leave_type)}."
+  defp day(date, hours) do
+    %{date: Wording.brief(date), off: Wording.figure(hours, :hours), working: nil}
   end
 
-  defp drawn(amount, unit, leave_type) do
-    "#{Wording.figure(amount, unit)} of #{String.downcase(leave_type.name)}"
+  defp total(entries) do
+    entries
+    |> Enum.map(& &1.amount)
+    |> Enum.reduce(&Decimal.add/2)
+    |> Wording.figure(hd(entries).unit)
   end
-
-  # Naming the days stepped over would be a list of weekends. How many there were is what tells
-  # somebody a count shorter than the stretch they asked for is not a mistake.
-  defp passed(entries) do
-    stepped(Date.diff(List.last(entries).date, hd(entries).date) + 1 - length(entries))
-  end
-
-  defp stepped(0), do: nil
-  defp stepped(1), do: "Passing over one day you do not work."
-  defp stepped(over), do: "Passing over #{over} days you do not work."
 
   # What is asked for, and whatever about the instruction stops it being answerable. Nothing
   # chosen is not a problem to report, it is a form nobody has filled in yet.
   defp asked(socket, params) do
     with {:ok, leave_type} <- chosen(socket, params["leave_type_id"]),
          {:ok, range} <- range(params["from"], params["to"]),
-         {:ok, days} <- workable(Leave.working_days(socket.assigns.person, range)),
+         {:ok, days} <- workable(Leave.working_days(socket.assigns.person, range), range),
          {:ok, amount, unit} <- asked_for(params["amount"], days),
          :ok <- within(days, amount, unit) do
       {Enum.map(days, &entry(&1, leave_type, amount, unit)), []}
@@ -336,8 +359,14 @@ defmodule LeafWeb.RequestLeaveLive do
 
   defp offered(socket, id), do: Enum.find(socket.assigns.offered, &(&1.id == id))
 
-  defp workable([]), do: {:error, "Not one of those dates is a day you work."}
-  defp workable(days), do: {:ok, days}
+  # One date names itself, the way the hours in a day do. A stretch cannot without listing a
+  # weekend back at somebody who can see it is a weekend.
+  defp workable([], %Date.Range{first: date, last: date}) do
+    {:error, "You do not work on #{Wording.weekday(date)}."}
+  end
+
+  defp workable([], _range), do: {:error, "You do not work on any of those days."}
+  defp workable(days, _range), do: {:ok, days}
 
   defp entry({date, _hours}, leave_type, amount, unit) do
     %{leave_type_id: leave_type.id, date: date, amount: amount, unit: unit}
@@ -359,8 +388,11 @@ defmodule LeafWeb.RequestLeaveLive do
     end
   end
 
+  # A date nobody has entered yet is not a refusal to report, it is a field they have not reached.
+  defp on(blank, _what) when blank in [nil, ""], do: :none
+
   defp on(entered, what) do
-    case Date.from_iso8601(to_string(entered)) do
+    case Date.from_iso8601(entered) do
       {:ok, date} -> {:ok, date}
       {:error, _reason} -> {:error, "Give a #{what}."}
     end
@@ -404,7 +436,6 @@ defmodule LeafWeb.RequestLeaveLive do
     do: nil
 
   defp projection(%{assigns: %{ready?: false}}, _entries), do: nil
-  defp projection(_socket, []), do: nil
 
   defp projection(socket, entries) do
     held = socket.assigns.held
@@ -413,23 +444,21 @@ defmodule LeafWeb.RequestLeaveLive do
     |> Ledger.statements(socket.assigns.today, Leave.proposed(entries))
     |> Enum.map(&{&1, balance(held[&1.leave_type.id])})
     |> Enum.find(fn {statement, before} -> not Decimal.equal?(statement.balance, before) end)
-    |> moving()
   end
 
   defp balance(nil), do: Decimal.new(0)
   defp balance(statement), do: statement.balance
 
-  # One leave type is asked for, so one balance moves: saying so is a sentence, not a table of the
-  # types that stayed where they were.
+  # One leave type is asked for, so one balance moves: it is a line under the table rather than a
+  # row in it, because what is left afterwards is not one of the days being filed.
   defp moving(nil), do: nil
 
   defp moving({statement, before}) do
     unit = statement.leave_type.unit
 
     %{
-      line:
-        "#{statement.leave_type.name}: #{Wording.figure(before, unit)} → " <>
-          "#{Wording.figure(statement.balance, unit)} if it is approved.",
+      name: statement.leave_type.name,
+      moved: "#{Wording.number(before)} → #{Wording.figure(statement.balance, unit)}",
       tone: tone(statement.balance)
     }
   end

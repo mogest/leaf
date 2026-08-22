@@ -9,6 +9,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
   @week Date.range(~D[2026-03-02], ~D[2026-03-06])
   @monday ~D[2026-03-02]
   @friday ~D[2026-03-06]
+  @saturday ~D[2026-03-07]
   @sunday ~D[2026-03-08]
   @next_monday ~D[2026-03-09]
 
@@ -81,10 +82,10 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     refute has_element?(live, "#request_from[value]")
     refute has_element?(live, "#request_to[value]")
 
-    html = live |> form("form", request: asking(context, %{"to" => ""})) |> render_change()
+    live |> form("form", request: asking(context, %{"to" => ""})) |> render_submit()
 
-    assert html =~ "Monday 2 March: 1 day of annual leave."
-    assert has_element?(live, "#request_to[value='']")
+    assert [%{days: [day]}] = Leave.requests(context.person)
+    assert day.date == @monday
   end
 
   test "leaving one date fills in the other, and drags it where it is the wrong side", context do
@@ -120,11 +121,29 @@ defmodule LeafWeb.RequestLeaveLiveTest do
       |> form("form", request: asking(context, %{"to" => to_string(@sunday)}))
       |> render_change()
 
-    assert html =~ "Monday 2 – Friday 6 March: 5 working days"
-    assert html =~ "coming to 5 days of annual leave."
+    assert html =~ "Mon 2 Mar"
+    assert html =~ "Fri 6 Mar"
+    assert html =~ "Sun 8 Mar"
+    assert html =~ "<td>5 days</td>"
   end
 
-  test "the days a stretch steps over are counted", context do
+  test "a stretch is shown even where only one day in it is worked", context do
+    {:ok, live, _html} = live(context.conn, ~p"/leave/new")
+
+    html =
+      live
+      |> form("form",
+        request:
+          asking(context, %{"from" => to_string(@saturday), "to" => to_string(@next_monday)})
+      )
+      |> render_change()
+
+    assert html =~ "Sat 7 Mar"
+    assert html =~ "Mon 9 Mar"
+    assert html =~ "<td>1 day</td>"
+  end
+
+  test "the days a stretch steps over are rows of their own", context do
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
 
     html =
@@ -134,8 +153,19 @@ defmodule LeafWeb.RequestLeaveLiveTest do
       )
       |> render_change()
 
-    assert html =~ "Friday 6 – Monday 9 March: 2 working days"
-    assert html =~ "Passing over 2 days you do not work."
+    assert html =~ ~s(<tr data-working="no">)
+    assert html =~ "Sat 7 Mar"
+    assert html =~ "not worked"
+    assert html =~ "<td>2 days</td>"
+  end
+
+  test "one day says nothing: its date and its hours are the fields above", context do
+    {:ok, live, _html} = live(context.conn, ~p"/leave/new")
+
+    html = live |> form("form", request: asking(context, %{})) |> render_change()
+
+    refute html =~ "Day by day"
+    assert html =~ "Send the request"
   end
 
   test "a range with nothing workable in it says so and files nothing", context do
@@ -148,15 +178,30 @@ defmodule LeafWeb.RequestLeaveLiveTest do
       )
       |> render_change()
 
-    assert html =~ "Not one of those dates is a day you work."
-    assert html =~ "Nothing can be filed as it stands."
+    assert html =~ "You do not work on Sunday 8 March."
+
+    html =
+      live
+      |> form("form",
+        request: asking(context, %{"from" => to_string(@saturday), "to" => to_string(@sunday)})
+      )
+      |> render_change()
+
+    assert html =~ "You do not work on any of those days."
   end
 
-  test "nothing is asked of somebody who has not chosen a leave type yet", context do
-    {:ok, _live, html} = live(context.conn, ~p"/leave/new")
+  test "an unfilled form is not reported back to whoever has not filled it in", context do
+    {:ok, live, html} = live(context.conn, ~p"/leave/new")
 
-    assert html =~ "Nothing yet — choose a leave type and the days you want off."
-    refute html =~ "Choose a leave type."
+    refute html =~ "Day by day"
+
+    html =
+      live
+      |> form("form", request: asking(context, %{"from" => "", "to" => ""}))
+      |> render_change()
+
+    refute html =~ "Day by day"
+    refute html =~ "Give a first day."
   end
 
   test "filing a request files a day for each working day, pending", context do
@@ -182,8 +227,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     html = live |> asking_hours(context, params) |> render_change()
 
     assert html =~ "the whole day (8 hours)"
-    assert html =~ "Monday 2 March: 4 hours of sick leave."
-    assert html =~ "Sick leave: 30 days → 29.5 days if it is approved."
+    refute html =~ "Day by day"
 
     live |> form("form", request: asking(context, params)) |> render_submit()
 
@@ -230,12 +274,14 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     html =
       live
-      |> form("form", request: asking(context, %{"leave_type_id" => sick.id}))
+      |> form("form",
+        request: asking(context, %{"leave_type_id" => sick.id, "to" => to_string(@friday)})
+      )
       |> render_change()
 
-    assert html =~ "Monday 2 March: 1 day of sick leave."
-    assert html =~ "Sick leave: 30 days → 29 days if it is approved."
-    refute html =~ "Annual leave:"
+    assert html =~ "Sick leave left"
+    assert html =~ "30 → 25 days"
+    refute html =~ "Annual leave left"
   end
 
   test "amending replaces the days a pending request asks for", context do
@@ -277,7 +323,9 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     {:ok, _amend, html} = live(context.conn, ~p"/leave/#{request}/amend")
 
-    assert html =~ "Monday 2 – Tuesday 3 March: 2 working days, coming to 2 days of annual leave."
+    assert html =~ "Mon 2 Mar"
+    assert html =~ "Tue 3 Mar"
+    assert html =~ "<td>2 days</td>"
     assert html =~ "Those days do not all ask for the whole day."
     assert html =~ "Saving this replaces what they ask for."
   end
