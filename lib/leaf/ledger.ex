@@ -11,6 +11,7 @@ defmodule Leaf.Ledger do
   nobody can account for is no use to the person reading it or to payroll.
   """
 
+  alias Leaf.Dates
   alias Leaf.Leave
   alias Leaf.Leave.Day
   alias Leaf.Ledger.Drawdown
@@ -120,15 +121,11 @@ defmodule Leaf.Ledger do
 
     case Enum.reject(taken, &(&1.unit == Map.fetch!(units, &1.leave_type_id))) do
       [] -> %{}
-      converting -> person |> People.hours_per_day(dates_spanned(converting)) |> Map.new()
+      converting -> person |> People.hours_per_day!(dates_spanned(converting)) |> Map.new()
     end
   end
 
-  defp dates_spanned(days) do
-    dates = Enum.map(days, & &1.date)
-
-    Date.range(Enum.min(dates, Date), Enum.max(dates, Date))
-  end
+  defp dates_spanned(days), do: days |> Enum.map(& &1.date) |> Dates.spanning()
 
   # A public holiday allowance is counted over the whole grant period it belongs to, which can run
   # past the date being asked about, so the calendar is read over the periods rather than the

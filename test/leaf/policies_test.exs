@@ -111,6 +111,20 @@ defmodule Leaf.PoliciesTest do
     assert changes["effective_to"] == %{"from" => nil, "to" => "2026-03-31"}
   end
 
+  test "a leave type is withdrawn by archiving it, so what it granted still reads", context do
+    %{organisation: organisation, quarterly: quarterly} = context
+    admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+    archived_at = DateTime.truncate(DateTime.utc_now(), :second)
+
+    assert {:ok, archived} =
+             Policies.update_leave_type(quarterly, admin, %{archived_at: archived_at})
+
+    assert archived.archived_at == archived_at
+
+    assert Enum.map(Policies.leave_types(organisation.id), & &1.id) ==
+             [context.annual.id, quarterly.id]
+  end
+
   test "another policy's entitlements stay out of it", context do
     %{organisation: organisation, policy: policy, annual: annual} = context
     other = Fixtures.leave_policy(%{organisation_id: organisation.id, name: "Hybrid contractor"})

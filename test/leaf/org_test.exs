@@ -1,8 +1,38 @@
 defmodule Leaf.OrgTest do
   use Leaf.DataCase, async: true
 
+  alias Leaf.Audit.Entry
   alias Leaf.Fixtures
   alias Leaf.Org
+
+  test "an organisation works a positive week, in a month of the year" do
+    attrs = %{
+      name: "Fernbank Collective",
+      full_time_week_hours: "0",
+      standard_day_hours: "8",
+      year_start_month: 13,
+      tracked_from: ~D[2024-01-01]
+    }
+
+    assert {:error, changeset} = Org.create_organisation(nil, attrs)
+    assert errors_on(changeset).full_time_week_hours == ["must be greater than 0"]
+    assert errors_on(changeset).year_start_month == ["is invalid"]
+  end
+
+  test "moving the date tracking started is recorded like any other change" do
+    organisation = Fixtures.organisation()
+    admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+
+    assert {:ok, moved} =
+             Org.update_organisation(organisation, admin, %{tracked_from: ~D[2025-04-01]})
+
+    assert moved.tracked_from == ~D[2025-04-01]
+
+    assert [%{action: "organisation.updated", subject_person_id: nil, changes: changes}] =
+             Repo.all(Entry)
+
+    assert changes["tracked_from"] == %{"from" => "2024-01-01", "to" => "2025-04-01"}
+  end
 
   test "an organisation is found by id" do
     organisation = Fixtures.organisation()

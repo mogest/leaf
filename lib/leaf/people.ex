@@ -166,16 +166,25 @@ defmodule Leaf.People do
   end
 
   @doc """
-  The hours the person works on each date in `range`, in order.
+  The hours the person works on each date in `range` they are on a pattern for, in order.
 
-  Refuses a range they have no pattern over part of, for the reason `work_pattern_segments!/2`
-  does: a date nobody knows the hours of is not a date they worked none.
+  A date before their first pattern takes effect is left out rather than given none: nobody knows
+  what they worked, which is not the same as their having worked nothing.
   """
   @spec hours_per_day(Person.t(), Date.Range.t()) :: [{Date.t(), Decimal.t()}]
   def hours_per_day(person, range) do
-    person
-    |> work_pattern_segments!(range)
-    |> Enum.flat_map(fn {span, pattern} -> Enum.map(span, &{&1, hours_on(pattern, &1)}) end)
+    person |> work_pattern_segments(range) |> hours_worked()
+  end
+
+  @doc """
+  The same, refusing a `range` the person has no pattern over part of.
+
+  Anything working out entitlement wants this rather than a partial answer, for the reason
+  `work_pattern_segments!/2` gives.
+  """
+  @spec hours_per_day!(Person.t(), Date.Range.t()) :: [{Date.t(), Decimal.t()}]
+  def hours_per_day!(person, range) do
+    person |> work_pattern_segments!(range) |> hours_worked()
   end
 
   @doc "The id of the leave policy the person is on over each part of `range`."
@@ -220,6 +229,10 @@ defmodule Leaf.People do
 
   defp succession(person, schema) do
     Repo.all(from row in schema, where: row.person_id == ^person.id)
+  end
+
+  defp hours_worked(segments) do
+    Enum.flat_map(segments, fn {span, pattern} -> Enum.map(span, &{&1, hours_on(pattern, &1)}) end)
   end
 
   # A succession has no gaps of its own — each row holds until the next supersedes it — so the only

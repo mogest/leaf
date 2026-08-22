@@ -2,9 +2,9 @@ defmodule Leaf.Seed do
   @moduledoc """
   Builds an example organisation with two New Zealand leave policies and somebody on each.
 
-  Its holiday calendar comes with it. For local development, and as a worked example of how the entitlements in `SCOPE.md` are actually
-  configured. Everything goes in through the contexts, so a policy that will not validate fails
-  here rather than reaching the database.
+  Its holiday calendar comes with it. For local development, and as a worked example of how the
+  entitlements in `SCOPE.md` are actually configured. Everything goes in through the contexts, so a
+  policy that will not validate fails here rather than reaching the database.
 
   The two policies are the two treatments of public holidays in §4.9. An employee does not work
   them, so nothing in their policy mentions them at all; the contractor hybrid works them as

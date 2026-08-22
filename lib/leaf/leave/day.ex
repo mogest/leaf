@@ -10,8 +10,10 @@ defmodule Leaf.Leave.Day do
   date and a day off is seven hours. `in_unit/3` does the conversion instead, on the hours worked
   on the date, every time it is asked for.
 
-  `hours_in_day` is not stored for the same reason. It is here only so that filing leave on a day
-  the person does not work is refused where it happens, against the date it happened on.
+  `hours_in_day` is not stored for the same reason. It is here only so that a date the person does
+  not work — one off their pattern, or a public holiday their policy grants them off — is refused
+  where it happens, against the date it happened on. A date nobody knows the hours of is refused
+  with it: a hole in the record is not a day off, and leave filed into one cannot be measured.
   """
 
   use Leaf.Schema
@@ -25,6 +27,8 @@ defmodule Leaf.Leave.Day do
   @units [:hours, :days]
 
   @fields [:leave_type_id, :date, :amount, :unit, :hours_in_day]
+
+  @required [:leave_type_id, :date, :amount, :unit]
 
   schema "leave_days" do
     field :date, :date
@@ -42,7 +46,7 @@ defmodule Leaf.Leave.Day do
   def changeset(day, attrs) do
     day
     |> cast(attrs, @fields)
-    |> validate_required(@fields)
+    |> validate_required(@required)
     |> validate_number(:amount, greater_than: 0)
     |> validate_working_day()
     |> assoc_constraint(:leave_request)
@@ -63,11 +67,11 @@ defmodule Leaf.Leave.Day do
   defp round2(amount), do: Decimal.round(amount, 2)
 
   defp validate_working_day(changeset) do
-    case get_field(changeset, :hours_in_day) do
-      nil -> changeset
-      hours -> worked(changeset, Decimal.positive?(hours))
-    end
+    known(changeset, get_field(changeset, :hours_in_day))
   end
+
+  defp known(changeset, nil), do: add_error(changeset, :date, "has no work pattern on record")
+  defp known(changeset, hours), do: worked(changeset, Decimal.positive?(hours))
 
   defp worked(changeset, true), do: changeset
   defp worked(changeset, false), do: add_error(changeset, :date, "is not a working day")

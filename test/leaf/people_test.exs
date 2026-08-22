@@ -148,16 +148,66 @@ defmodule Leaf.PeopleTest do
            ]
   end
 
-  test "so does the holiday calendar a person observes", %{
-    person: person,
-    organisation: organisation
-  } do
+  test "a policy assignment is corrected in place, and removing one lets the previous run on",
+       context do
+    %{person: person, organisation: organisation} = context
+    colleague = Fixtures.person(%{organisation_id: organisation.id})
+    first = Fixtures.leave_policy(%{organisation_id: organisation.id})
+    second = Fixtures.leave_policy(%{organisation_id: organisation.id, name: "Hybrid contractor"})
+    Fixtures.policy_assignment(%{person_id: person.id, leave_policy_id: first.id})
+
+    moved =
+      Fixtures.policy_assignment(%{
+        person_id: person.id,
+        leave_policy_id: second.id,
+        effective_from: ~D[2026-01-01]
+      })
+
+    assert {:ok, corrected} =
+             People.update_policy_assignment(moved, nil, %{
+               effective_from: ~D[2026-02-01],
+               person_id: colleague.id
+             })
+
+    assert corrected.person_id == person.id
+
+    assert People.leave_policy_segments(person, Date.range(~D[2026-01-15], ~D[2026-02-15])) == [
+             {Date.range(~D[2026-01-15], ~D[2026-01-31]), first.id},
+             {Date.range(~D[2026-02-01], ~D[2026-02-15]), second.id}
+           ]
+
+    assert {:ok, _removed} = People.delete_policy_assignment(corrected, nil)
+
+    assert People.leave_policy_segments(person, Date.range(~D[2026-02-01], ~D[2026-02-15])) == [
+             {Date.range(~D[2026-02-01], ~D[2026-02-15]), first.id}
+           ]
+  end
+
+  test "so does the holiday calendar a person observes, until an assignment is removed",
+       context do
+    %{person: person, organisation: organisation} = context
     calendar = Fixtures.holiday_calendar(%{organisation_id: organisation.id})
+
+    other =
+      Fixtures.holiday_calendar(%{
+        organisation_id: organisation.id,
+        name: "Spain",
+        country_code: "ES"
+      })
+
     Fixtures.calendar_assignment(%{person_id: person.id, holiday_calendar_id: calendar.id})
 
-    assert People.holiday_calendar_segments(person, Date.range(~D[2026-01-01], ~D[2026-01-31])) ==
-             [
-               {Date.range(~D[2026-01-01], ~D[2026-01-31]), calendar.id}
-             ]
+    moved =
+      Fixtures.calendar_assignment(%{
+        person_id: person.id,
+        holiday_calendar_id: other.id,
+        effective_from: ~D[2026-01-01]
+      })
+
+    january = Date.range(~D[2026-01-01], ~D[2026-01-31])
+
+    assert People.holiday_calendar_segments(person, january) == [{january, other.id}]
+    assert {:ok, _removed} = People.delete_calendar_assignment(moved, nil)
+    assert People.holiday_calendar_segments(person, january) == [{january, calendar.id}]
   end
 end

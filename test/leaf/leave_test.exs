@@ -41,6 +41,29 @@ defmodule Leaf.LeaveTest do
     Leave.request(context.person, context.person, %{days: days, note: "Away"})
   end
 
+  defp observes(context, holiday) do
+    calendar = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
+    Fixtures.public_holiday(%{holiday_calendar_id: calendar.id, date: holiday})
+
+    Fixtures.calendar_assignment(%{
+      person_id: context.person.id,
+      holiday_calendar_id: calendar.id
+    })
+  end
+
+  defp on_policy(context, entitlement) do
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+
+    Fixtures.policy_entitlement(
+      Map.merge(entitlement, %{
+        leave_policy_id: policy.id,
+        leave_type_id: context.leave_type.id
+      })
+    )
+
+    Fixtures.policy_assignment(%{person_id: context.person.id, leave_policy_id: policy.id})
+  end
+
   defp taken(context) do
     Fixtures.leave_request(%{
       person_id: context.person.id,
@@ -63,6 +86,33 @@ defmodule Leaf.LeaveTest do
     assert {:error, changeset} = file(context, [@saturday])
 
     assert [%{date: ["is not a working day"]}] = errors_on(changeset).days
+    assert Repo.all(Entry) == []
+  end
+
+  test "a public holiday the person is granted off is not a working day", context do
+    observes(context, @friday)
+    on_policy(context, %{})
+
+    assert Leave.working_days(context.person, Date.range(@thursday, @saturday)) ==
+             [{@thursday, Decimal.new("8.00")}]
+
+    assert {:error, changeset} = file(context, [@friday])
+    assert [%{date: ["is not a working day"]}] = errors_on(changeset).days
+  end
+
+  test "a public holiday is an ordinary day where the policy credits it instead", context do
+    observes(context, @friday)
+    on_policy(context, %{amount_source: :public_holidays, grant_amount: nil})
+
+    assert Leave.working_days(context.person, Date.range(@thursday, @saturday)) ==
+             [{@thursday, Decimal.new("8.00")}, {@friday, Decimal.new("8.00")}]
+
+    assert {:ok, %{status: :pending}} = file(context, [@friday])
+  end
+
+  test "leave cannot be filed on a date with no work pattern on record", context do
+    assert {:error, changeset} = file(context, [~D[2024-02-01]])
+    assert [%{date: ["has no work pattern on record"]}] = errors_on(changeset).days
     assert Repo.all(Entry) == []
   end
 
@@ -90,6 +140,21 @@ defmodule Leaf.LeaveTest do
 
     assert Leave.cancel(request, context.person) == {:error, :forbidden}
     assert {:ok, %{status: :cancelled}} = Leave.cancel(request, context.manager)
+  end
+
+  test "an approved request is amended by a manager, and no longer by the person", context do
+    {:ok, pending} = file(context, [@thursday, @friday])
+    {:ok, request} = Leave.fetch_request(pending.id)
+    {:ok, approved} = Leave.approve(request, context.manager)
+    {:ok, request} = Leave.fetch_request(approved.id)
+
+    shortened = %{days: [entry(context.leave_type, @thursday)]}
+
+    assert Leave.amend(request, context.person, shortened) == {:error, :forbidden}
+    assert {:ok, amended} = Leave.amend(request, context.manager, shortened)
+
+    assert amended.status == :approved
+    assert [%{date: @thursday}] = amended.days
   end
 
   test "a decision records who made it, and only their manager or an admin may make it",

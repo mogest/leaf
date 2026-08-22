@@ -4,6 +4,7 @@ defmodule Leaf.LedgerTest do
   alias Leaf.Fixtures
   alias Leaf.Leave.Day
   alias Leaf.Ledger
+  alias Leaf.People
 
   @started ~D[2024-03-04]
 
@@ -619,6 +620,52 @@ defmodule Leaf.LedgerTest do
            ]
 
     assert Decimal.equal?(statement.balance, "5.00")
+  end
+
+  test "correcting an FTE that was wrong all year re-works the balance", context do
+    person = context.person
+    pattern = full_time(person)
+    annual = leave_type(context, %{})
+    entitlement(context, annual, %{grant_amount: "200"})
+
+    assert Decimal.equal?(statement(person, annual, ~D[2025-03-03]).balance, "200.00")
+
+    # They were on half a week the whole time, not a full one, so the year accrues half as much.
+    {:ok, _corrected} =
+      People.update_work_pattern(pattern, nil, %{
+        monday_hours: "4",
+        tuesday_hours: "4",
+        wednesday_hours: "4",
+        thursday_hours: "4",
+        friday_hours: "4"
+      })
+
+    assert Decimal.equal?(statement(person, annual, ~D[2025-03-03]).balance, "100.00")
+  end
+
+  test "correcting an employment start date moves every anniversary hanging off it", context do
+    person = context.person
+    full_time(person)
+    longevity = leave_type(context, %{name: "Longevity leave", unit: :days, position: 2})
+
+    entitlement(context, longevity, %{
+      grant_amount: "1",
+      grant_timing: :period_start,
+      pro_rated_by_fte: false,
+      expiry_rule: :grant_period_end
+    })
+
+    assert movements(statement(person, longevity, ~D[2025-03-31])) == [
+             {:grant, @started, Decimal.new("1.00"), ~D[2025-03-03]},
+             {:expiry, ~D[2025-03-03], Decimal.new("-1.00"), nil},
+             {:grant, ~D[2025-03-04], Decimal.new("1.00"), ~D[2026-03-03]}
+           ]
+
+    {:ok, corrected} = People.update_person(person, nil, %{employment_start_date: ~D[2024-06-01]})
+
+    assert movements(statement(corrected, longevity, ~D[2025-03-31])) == [
+             {:grant, ~D[2024-06-01], Decimal.new("1.00"), ~D[2025-05-31]}
+           ]
   end
 
   test "an account appears for each leave type the person holds one in", context do

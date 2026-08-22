@@ -17,10 +17,11 @@ defmodule Leaf.Leave do
   import Ecto.Query
 
   alias Leaf.Audit
+  alias Leaf.Dates
   alias Leaf.Leave.BalanceEntry
   alias Leaf.Leave.Day
   alias Leaf.Leave.Request
-  alias Leaf.People
+  alias Leaf.Leave.WorkingDay
   alias Leaf.People.Person
   alias Leaf.Repo
 
@@ -36,8 +37,6 @@ defmodule Leaf.Leave do
           amount: Decimal.t() | binary() | integer(),
           unit: Day.unit()
         }
-
-  @no_hours Decimal.new(0)
 
   @doc "The request, with its person and days, or `:error` where no such request exists."
   @spec fetch_request(Ecto.UUID.t()) :: {:ok, Request.t()} | :error
@@ -120,11 +119,13 @@ defmodule Leaf.Leave do
   @doc """
   Each day in `range` the person works, with the hours they work on it.
 
-  A multi-day request covers these and nothing else: a day they do not work is not leave.
+  A multi-day request covers these and nothing else: neither a day off their pattern nor a public
+  holiday their policy grants them off is leave, and a date they are on no pattern for is a hole in
+  the record rather than a day anybody may book.
   """
   @spec working_days(Person.t(), Date.Range.t()) :: [{Date.t(), Decimal.t()}]
   def working_days(person, range) do
-    person |> People.hours_per_day(range) |> Enum.filter(&Decimal.positive?(elem(&1, 1)))
+    person |> WorkingDay.hours_per_day(range) |> Enum.filter(&Decimal.positive?(elem(&1, 1)))
   end
 
   @doc """
@@ -185,18 +186,14 @@ defmodule Leaf.Leave do
 
   # The hours are the day's own check that it falls on one the person works, and are not kept:
   # what a day is worth follows from the pattern in force when it comes round, not when it is
-  # asked for.
+  # asked for. A date with no pattern behind it has none to give, and the day refuses itself.
   defp measured(person, %{days: [_first | _rest] = entries} = attrs) do
-    hours = person |> People.hours_per_day(spanned(entries)) |> Map.new()
+    hours = person |> WorkingDay.hours_per_day(spanned(entries)) |> Map.new()
 
-    %{attrs | days: Enum.map(entries, &Map.put(&1, :hours_in_day, hours[&1.date] || @no_hours))}
+    %{attrs | days: Enum.map(entries, &Map.put(&1, :hours_in_day, hours[&1.date]))}
   end
 
   defp measured(_person, attrs), do: attrs
 
-  defp spanned(entries) do
-    dates = Enum.map(entries, & &1.date)
-
-    Date.range(Enum.min(dates, Date), Enum.max(dates, Date))
-  end
+  defp spanned(entries), do: entries |> Enum.map(& &1.date) |> Dates.spanning()
 end
