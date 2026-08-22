@@ -23,7 +23,7 @@ defmodule LeafWeb.AtAGlanceLive do
     person = socket.assigns.current_person
     today = Date.utc_today()
     from = from(params["from"], today)
-    {shown, rest} = person |> Leave.requests() |> Enum.split(@shown)
+    {shown, rest} = person |> Leave.requests_undecided_first() |> Enum.split(@shown)
     manager = manager(person)
 
     {:ok,
@@ -54,7 +54,7 @@ defmodule LeafWeb.AtAGlanceLive do
         <Parts.requests requests={@requests} title="Requests">
           <:empty>You have not asked for any leave yet.</:empty>
           <:footer :if={@more?}>
-            Showing your four most recent. <.link navigate={~p"/leave"}>See all {@filed}</.link>.
+            Showing four, anything still waiting first. <.link navigate={~p"/leave"}>See all {@filed}</.link>.
           </:footer>
         </Parts.requests>
       </div>

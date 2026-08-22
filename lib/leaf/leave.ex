@@ -194,6 +194,17 @@ defmodule Leaf.Leave do
   end
 
   @doc """
+  The same requests, with the ones nobody has decided on brought to the front.
+
+  A page with room for only a few shows what the person is still waiting to hear, however far off
+  that leave falls; behind them the rest keep the order they came back in.
+  """
+  @spec requests_undecided_first(Person.t()) :: [Request.t()]
+  def requests_undecided_first(person) do
+    person |> requests() |> Enum.sort_by(&(&1.status != :pending))
+  end
+
+  @doc """
   The months `range` runs over, as the weeks they are made of, marked with the person's own days.
 
   Leave they still hold, the public holidays they observe and the days they do not work all read

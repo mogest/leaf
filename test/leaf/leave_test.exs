@@ -316,6 +316,16 @@ defmodule Leaf.LeaveTest do
     assert [%{date: ~D[2026-08-25]}] = behind.days
   end
 
+  test "undecided requests come before decided ones, whenever the leave falls", context do
+    {:ok, waiting} = file(context, [~D[2026-08-25]])
+    {:ok, furthest} = file(context, [~D[2026-11-02]])
+    {:ok, decided} = furthest |> reload() |> Leave.approve(context.manager)
+
+    assert [first, second] = Leave.requests_undecided_first(context.person)
+    assert first.id == waiting.id
+    assert second.id == decided.id
+  end
+
   test "a calendar lays a month out in weeks and marks what is on each day", context do
     observes(context, ~D[2026-08-26], "Labour Day")
     {:ok, _pending} = file(context, [@friday])

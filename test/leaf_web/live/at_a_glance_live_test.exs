@@ -110,6 +110,20 @@ defmodule LeafWeb.AtAGlanceLiveTest do
     assert html =~ "Ines Vasquez said Three of you are away"
   end
 
+  test "a request waiting on an answer is shown ahead of decided ones", context do
+    for date <- [~D[2031-01-06], ~D[2031-02-03], ~D[2031-03-03], ~D[2031-04-07]] do
+      {:ok, _approved} = context |> file([date]) |> Leave.approve(context.manager)
+    end
+
+    file(context, [@ahead])
+
+    {:ok, _live, html} = live(context.conn, ~p"/")
+
+    assert html =~ "Mon 7 Oct"
+    assert html =~ "Showing four, anything still waiting first."
+    refute html =~ "Mon 6 Jan"
+  end
+
   test "somebody with no work pattern yet still has a page, with no balances on it", context do
     fresh = Fixtures.person(%{organisation_id: context.person.organisation_id, name: "Kit Rua"})
 
