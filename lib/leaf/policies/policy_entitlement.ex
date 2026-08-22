@@ -31,8 +31,6 @@ defmodule Leaf.Policies.PolicyEntitlement do
   @grant_fields [:grant_amount, :grant_basis, :grant_period, :grant_timing]
 
   @fields [
-    :leave_policy_id,
-    :leave_type_id,
     :effective_from,
     :effective_to,
     :granted_to,

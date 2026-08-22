@@ -16,7 +16,7 @@ defmodule Leaf.Policies.LeavePolicy do
 
   @type t :: %__MODULE__{}
 
-  @fields [:organisation_id, :name, :archived_at]
+  @fields [:name, :archived_at]
 
   schema "leave_policies" do
     field :name, :string

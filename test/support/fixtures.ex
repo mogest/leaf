@@ -1,5 +1,11 @@
 defmodule Leaf.Fixtures do
-  @moduledoc "Minimal persisted records for tests, built through the schemas' own changesets."
+  @moduledoc """
+  Minimal persisted records for tests, built through the schemas' own changesets.
+
+  The contexts are the way in for real code; these skip them because a fixture wants no actor and
+  no audit entry. What a record belongs to is no longer castable, so any `_id` given here is set
+  on the struct, exactly as the contexts set it.
+  """
 
   alias Leaf.Leave.BalanceEntry
   alias Leaf.Leave.Request
@@ -123,25 +129,26 @@ defmodule Leaf.Fixtures do
 
     %Request{status: :approved, submitted_by_id: identity[:person_id]}
     |> struct!(identity)
-    |> Request.changeset(Map.update!(attrs, :days, &Enum.map(&1, fn day -> worked(day) end)))
+    |> Request.changeset(%{days: Enum.map(attrs.days, &worked/1)})
     |> Repo.insert!()
   end
 
   @spec balance_entry(map()) :: BalanceEntry.t()
   def balance_entry(attrs) do
-    {identity, attrs} = Map.split(attrs, [:person_id, :created_by_id])
-
-    %BalanceEntry{}
-    |> struct!(identity)
-    |> BalanceEntry.changeset(
-      Map.merge(%{date: ~D[2024-01-01], kind: :opening_balance, amount: "0"}, attrs)
-    )
-    |> Repo.insert!()
+    insert(%BalanceEntry{}, &BalanceEntry.changeset/2, attrs, %{
+      date: ~D[2024-01-01],
+      kind: :opening_balance,
+      amount: "0"
+    })
   end
 
   defp worked(day), do: Map.put_new(day, :hours_in_day, "8")
 
   defp insert(struct, changeset, attrs, defaults) do
-    struct |> changeset.(Map.merge(defaults, attrs)) |> Repo.insert!()
+    {identity, castable} = defaults |> Map.merge(attrs) |> Map.split_with(&identity?/1)
+
+    struct |> struct!(identity) |> changeset.(castable) |> Repo.insert!()
   end
+
+  defp identity?({field, _value}), do: field |> Atom.to_string() |> String.ends_with?("_id")
 end

@@ -1,6 +1,7 @@
 defmodule Leaf.PeopleTest do
   use Leaf.DataCase, async: true
 
+  alias Leaf.Audit.Entry
   alias Leaf.Fixtures
   alias Leaf.People
   alias Leaf.People.Person
@@ -45,7 +46,6 @@ defmodule Leaf.PeopleTest do
 
   test "a work pattern cannot work negative hours", %{person: person} do
     attrs = %{
-      person_id: person.id,
       effective_from: ~D[2026-01-01],
       monday_hours: "-1",
       tuesday_hours: "8",
@@ -56,8 +56,42 @@ defmodule Leaf.PeopleTest do
       sunday_hours: "0"
     }
 
-    assert {:error, changeset} = People.create_work_pattern(attrs)
+    assert {:error, changeset} = People.create_work_pattern(person, nil, attrs)
     assert errors_on(changeset).monday_hours == ["must be greater than or equal to 0"]
+  end
+
+  test "a work pattern is corrected in place, and cannot be moved to somebody else", context do
+    %{person: person, organisation: organisation} = context
+    admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+    colleague = Fixtures.person(%{organisation_id: organisation.id})
+    pattern = part_time(person)
+
+    assert {:ok, corrected} =
+             People.update_work_pattern(pattern, admin, %{
+               wednesday_hours: "9",
+               person_id: colleague.id
+             })
+
+    assert corrected.person_id == person.id
+    assert Decimal.equal?(People.weekly_hours(corrected), "27")
+
+    assert [%{action: "work_pattern.updated", subject_person_id: subject, changes: changes}] =
+             Repo.all(Entry)
+
+    assert subject == person.id
+    assert changes["wednesday_hours"] == %{"from" => "4", "to" => "9"}
+  end
+
+  test "removing a work pattern lets the one before it run on", context do
+    %{person: person, organisation: organisation} = context
+    admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+    full_time = Fixtures.work_pattern(%{person_id: person.id})
+    mistake = part_time(person)
+
+    assert {:ok, _removed} = People.delete_work_pattern(mistake, admin)
+
+    assert {:ok, %{id: id}} = People.fetch_work_pattern(person, ~D[2026-06-01])
+    assert id == full_time.id
   end
 
   test "nothing applies before the first work pattern takes effect", %{person: person} do

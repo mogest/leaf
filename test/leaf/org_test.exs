@@ -54,9 +54,9 @@ defmodule Leaf.OrgTest do
     calendar = Fixtures.holiday_calendar(%{organisation_id: organisation.id})
     Fixtures.public_holiday(%{holiday_calendar_id: calendar.id, date: ~D[2026-01-01]})
 
-    attrs = %{holiday_calendar_id: calendar.id, date: ~D[2026-01-01], name: "New Year"}
+    attrs = %{date: ~D[2026-01-01], name: "New Year"}
 
-    assert {:error, changeset} = Org.create_public_holiday(attrs)
+    assert {:error, changeset} = Org.create_public_holiday(calendar, nil, attrs)
     assert errors_on(changeset).holiday_calendar_id == ["has already been taken"]
   end
 end

@@ -6,8 +6,12 @@ defmodule Leaf.Audit do
   dates, hours and policy — so they belong to the leave history. What is here is the change that
   caused them, and who made it.
 
-  Every write somebody makes goes through `write/4`, which puts the change and the entry
-  accounting for it in one transaction, so a change cannot be recorded without being explained.
+  Every write somebody makes goes through `write/4` or `delete/4`, which put the change and the
+  entry accounting for it in one transaction, so a change cannot be recorded without being
+  explained.
+
+  An `actor` of `nil` is the system itself, which is what a seed or an import is: nobody made the
+  change, so there is nobody to name.
   """
 
   alias Ecto.Association.NotLoaded
@@ -17,6 +21,9 @@ defmodule Leaf.Audit do
   alias Leaf.People.Person
   alias Leaf.Repo
 
+  @typedoc "What a recorded write returns: the record it wrote, or why it would not."
+  @type written(record) :: {:ok, record} | {:error, Changeset.t()}
+
   @doc """
   Applies a change and records it.
 
@@ -24,12 +31,31 @@ defmodule Leaf.Audit do
   deleted; leave it out where the change was about nobody in particular, such as editing a leave
   type. The entry holds a before and an after for each field the changeset touched.
   """
-  @spec write(Changeset.t(), String.t(), Person.t(), Ecto.UUID.t() | nil) ::
-          {:ok, struct()} | {:error, Changeset.t()}
+  @spec write(Changeset.t(), String.t(), Person.t() | nil, Ecto.UUID.t() | nil) ::
+          written(struct())
   def write(changeset, action, actor, subject_person_id \\ nil) do
     Multi.new()
     |> Multi.insert_or_update(:record, changeset)
-    |> Multi.insert(:entry, &entry(&1.record, changeset, action, actor, subject_person_id))
+    |> Multi.insert(
+      :entry,
+      &entry(&1.record, changes(changeset), action, actor, subject_person_id)
+    )
+    |> Repo.transaction()
+    |> outcome()
+  end
+
+  @doc """
+  Removes a row and records the whole of what it held.
+
+  A hard-deleted record survives in its entry and nowhere else, so everything it held is recorded
+  on the way out rather than only what someone chose to look at.
+  """
+  @spec delete(struct(), String.t(), Person.t() | nil, Ecto.UUID.t() | nil) ::
+          written(struct())
+  def delete(record, action, actor, subject_person_id \\ nil) do
+    Multi.new()
+    |> Multi.delete(:record, record)
+    |> Multi.insert(:entry, entry(record, removal(record), action, actor, subject_person_id))
     |> Repo.transaction()
     |> outcome()
   end
@@ -41,15 +67,19 @@ defmodule Leaf.Audit do
     raise "audit entry refused: #{inspect(changeset.errors)}"
   end
 
-  defp entry(record, changeset, action, actor, subject_person_id) do
+  defp entry(record, changes, action, actor, subject_person_id) do
     Entry.changeset(%Entry{}, %{
-      actor_id: actor.id,
+      actor_id: actor && actor.id,
       subject_person_id: subject_person_id,
       action: action,
       entity_type: record.__struct__.__schema__(:source),
       entity_id: record.id,
-      changes: changes(changeset)
+      changes: changes
     })
+  end
+
+  defp removal(record) do
+    Map.new(record_fields(record), fn {field, value} -> {field, %{from: value, to: nil}} end)
   end
 
   defp changes(changeset) do

@@ -8,7 +8,7 @@ defmodule Leaf.People.PersonPolicyAssignment do
 
   @type t :: %__MODULE__{}
 
-  @fields [:person_id, :leave_policy_id, :effective_from]
+  @fields [:leave_policy_id, :effective_from]
 
   schema "person_policy_assignments" do
     field :effective_from, :date
@@ -23,7 +23,7 @@ defmodule Leaf.People.PersonPolicyAssignment do
   def changeset(assignment, attrs) do
     assignment
     |> cast(attrs, @fields)
-    |> validate_required(@fields)
+    |> validate_required([:person_id | @fields])
     |> assoc_constraint(:person)
     |> assoc_constraint(:leave_policy)
     |> unique_constraint([:person_id, :effective_from])

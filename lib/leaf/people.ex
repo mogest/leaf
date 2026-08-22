@@ -9,10 +9,19 @@ defmodule Leaf.People do
 
   A `Person` and a `WorkPattern` are values other areas hold and read; the policy and the calendar
   belong to other areas, so those come back as ids to look up there rather than as assignment rows.
+
+  Everything effective-dated here can be amended or removed after the fact (§4.4). A superseding
+  row is how a change from a date is recorded; amending and deleting are how a row that should
+  never have been written is put right, and every balance that leant on it follows.
+
+  Every change is recorded against the person it is about, bar a person's own creation: until they
+  exist there is nobody for it to be about.
   """
 
   import Ecto.Query
 
+  alias Leaf.Audit
+  alias Leaf.Org.Organisation
   alias Leaf.People.Person
   alias Leaf.People.PersonHolidayCalendar
   alias Leaf.People.PersonPolicyAssignment
@@ -24,8 +33,23 @@ defmodule Leaf.People do
   @type segment(value) :: {Date.Range.t(), value}
 
   @doc "Creates a person."
-  @spec create_person(map()) :: {:ok, Person.t()} | {:error, Ecto.Changeset.t()}
-  def create_person(attrs), do: %Person{} |> Person.changeset(attrs) |> Repo.insert()
+  @spec create_person(Organisation.t(), Person.t() | nil, map()) :: Audit.written(Person.t())
+  def create_person(organisation, actor, attrs) do
+    %Person{organisation_id: organisation.id}
+    |> Person.changeset(attrs)
+    |> Audit.write("person.created", actor)
+  end
+
+  @doc """
+  Amends a person.
+
+  Correcting an employment start date moves every anniversary that hangs off it, so this is the
+  one edit here that can re-work a whole entitlement history on its own.
+  """
+  @spec update_person(Person.t(), Person.t() | nil, map()) :: Audit.written(Person.t())
+  def update_person(person, actor, attrs) do
+    person |> Person.changeset(attrs) |> Audit.write("person.updated", actor)
+  end
 
   @doc "The person, or `:error` where no such person exists."
   @spec fetch_person(Ecto.UUID.t()) :: {:ok, Person.t()} | :error
@@ -37,23 +61,81 @@ defmodule Leaf.People do
   end
 
   @doc "Puts a person on a work pattern from a date, superseding whatever they were on."
-  @spec create_work_pattern(map()) :: {:ok, WorkPattern.t()} | {:error, Ecto.Changeset.t()}
-  def create_work_pattern(attrs) do
-    %WorkPattern{} |> WorkPattern.changeset(attrs) |> Repo.insert()
+  @spec create_work_pattern(Person.t(), Person.t() | nil, map()) :: Audit.written(WorkPattern.t())
+  def create_work_pattern(person, actor, attrs) do
+    %WorkPattern{person_id: person.id}
+    |> WorkPattern.changeset(attrs)
+    |> Audit.write("work_pattern.created", actor, person.id)
+  end
+
+  @doc "Corrects a work pattern, including the date it took effect."
+  @spec update_work_pattern(WorkPattern.t(), Person.t() | nil, map()) ::
+          Audit.written(WorkPattern.t())
+  def update_work_pattern(work_pattern, actor, attrs) do
+    work_pattern
+    |> WorkPattern.changeset(attrs)
+    |> Audit.write("work_pattern.updated", actor, work_pattern.person_id)
+  end
+
+  @doc """
+  Removes a work pattern, letting whatever preceded it run on.
+
+  Removing the first leaves the person with no hours before the next one, which anything working
+  out entitlement over that stretch will refuse rather than read as zero.
+  """
+  @spec delete_work_pattern(WorkPattern.t(), Person.t() | nil) :: Audit.written(WorkPattern.t())
+  def delete_work_pattern(work_pattern, actor) do
+    Audit.delete(work_pattern, "work_pattern.deleted", actor, work_pattern.person_id)
   end
 
   @doc "Puts a person on a leave policy from a date."
-  @spec assign_leave_policy(map()) ::
-          {:ok, PersonPolicyAssignment.t()} | {:error, Ecto.Changeset.t()}
-  def assign_leave_policy(attrs) do
-    %PersonPolicyAssignment{} |> PersonPolicyAssignment.changeset(attrs) |> Repo.insert()
+  @spec create_policy_assignment(Person.t(), Person.t() | nil, map()) ::
+          Audit.written(PersonPolicyAssignment.t())
+  def create_policy_assignment(person, actor, attrs) do
+    %PersonPolicyAssignment{person_id: person.id}
+    |> PersonPolicyAssignment.changeset(attrs)
+    |> Audit.write("policy_assignment.created", actor, person.id)
+  end
+
+  @doc "Corrects which policy a person was on, or from when."
+  @spec update_policy_assignment(PersonPolicyAssignment.t(), Person.t() | nil, map()) ::
+          Audit.written(PersonPolicyAssignment.t())
+  def update_policy_assignment(assignment, actor, attrs) do
+    assignment
+    |> PersonPolicyAssignment.changeset(attrs)
+    |> Audit.write("policy_assignment.updated", actor, assignment.person_id)
+  end
+
+  @doc "Removes a policy assignment, letting whatever preceded it run on."
+  @spec delete_policy_assignment(PersonPolicyAssignment.t(), Person.t() | nil) ::
+          Audit.written(PersonPolicyAssignment.t())
+  def delete_policy_assignment(assignment, actor) do
+    Audit.delete(assignment, "policy_assignment.deleted", actor, assignment.person_id)
   end
 
   @doc "Puts a person on a holiday calendar from a date."
-  @spec assign_holiday_calendar(map()) ::
-          {:ok, PersonHolidayCalendar.t()} | {:error, Ecto.Changeset.t()}
-  def assign_holiday_calendar(attrs) do
-    %PersonHolidayCalendar{} |> PersonHolidayCalendar.changeset(attrs) |> Repo.insert()
+  @spec create_calendar_assignment(Person.t(), Person.t() | nil, map()) ::
+          Audit.written(PersonHolidayCalendar.t())
+  def create_calendar_assignment(person, actor, attrs) do
+    %PersonHolidayCalendar{person_id: person.id}
+    |> PersonHolidayCalendar.changeset(attrs)
+    |> Audit.write("calendar_assignment.created", actor, person.id)
+  end
+
+  @doc "Corrects which calendar a person observed, or from when."
+  @spec update_calendar_assignment(PersonHolidayCalendar.t(), Person.t() | nil, map()) ::
+          Audit.written(PersonHolidayCalendar.t())
+  def update_calendar_assignment(assignment, actor, attrs) do
+    assignment
+    |> PersonHolidayCalendar.changeset(attrs)
+    |> Audit.write("calendar_assignment.updated", actor, assignment.person_id)
+  end
+
+  @doc "Removes a calendar assignment, letting whatever preceded it run on."
+  @spec delete_calendar_assignment(PersonHolidayCalendar.t(), Person.t() | nil) ::
+          Audit.written(PersonHolidayCalendar.t())
+  def delete_calendar_assignment(assignment, actor) do
+    Audit.delete(assignment, "calendar_assignment.deleted", actor, assignment.person_id)
   end
 
   @doc """

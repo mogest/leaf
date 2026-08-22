@@ -15,7 +15,6 @@ defmodule Leaf.People.Person do
   @roles [:member, :admin]
 
   @fields [
-    :organisation_id,
     :manager_id,
     :name,
     :email,

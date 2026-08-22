@@ -9,6 +9,8 @@ defmodule Leaf.Seed do
   The two policies are the two treatments of public holidays in §4.9. An employee does not work
   them, so nothing in their policy mentions them at all; the contractor hybrid works them as
   ordinary days and holds an entitlement that credits their share of the calendar instead.
+
+  Nobody has made any of it, so the audit log records the whole seed as the system.
   """
 
   alias Leaf.Org
@@ -17,6 +19,9 @@ defmodule Leaf.Seed do
   alias Leaf.People.Person
   alias Leaf.Policies
   alias Leaf.Policies.LeavePolicy
+
+  # Nobody is seeding this: there is no administrator yet to attribute it to.
+  @system nil
 
   @organisation %{
     name: "Fernbank Collective",
@@ -236,22 +241,16 @@ defmodule Leaf.Seed do
   end
 
   defp add_organisation do
-    {:ok, organisation} = Org.create_organisation(@organisation)
+    {:ok, organisation} = Org.create_organisation(@system, @organisation)
 
     organisation
   end
 
   defp add_calendar(organisation) do
-    {:ok, calendar} =
-      Org.create_holiday_calendar(Map.put(@calendar, :organisation_id, organisation.id))
+    {:ok, calendar} = Org.create_holiday_calendar(organisation, @system, @calendar)
 
     Enum.each(@public_holiday_dates, fn {date, name} ->
-      {:ok, _holiday} =
-        Org.create_public_holiday(%{
-          holiday_calendar_id: calendar.id,
-          date: date,
-          name: name
-        })
+      {:ok, _holiday} = Org.create_public_holiday(calendar, @system, %{date: date, name: name})
     end)
 
     calendar
@@ -262,8 +261,7 @@ defmodule Leaf.Seed do
     |> Enum.with_index(1)
     |> Map.new(fn {{name, unit}, position} ->
       {:ok, leave_type} =
-        Policies.create_leave_type(%{
-          organisation_id: organisation.id,
+        Policies.create_leave_type(organisation, @system, %{
           name: name,
           unit: unit,
           position: position
@@ -274,8 +272,7 @@ defmodule Leaf.Seed do
   end
 
   defp add_policy(organisation, attrs, leave_types) do
-    {:ok, policy} =
-      Policies.create_leave_policy(%{organisation_id: organisation.id, name: attrs.name})
+    {:ok, policy} = Policies.create_leave_policy(organisation, @system, %{name: attrs.name})
 
     Enum.each(attrs.entitlements, &add_entitlement(policy, leave_types, &1))
 
@@ -285,41 +282,33 @@ defmodule Leaf.Seed do
   defp add_entitlement(policy, leave_types, entitlement) do
     leave_type = Map.fetch!(leave_types, entitlement.leave_type)
 
-    {:ok, _entitlement} =
-      entitlement
-      |> Map.delete(:leave_type)
-      |> Map.merge(%{
-        leave_policy_id: policy.id,
-        leave_type_id: leave_type.id,
-        effective_from: @policy_from
-      })
-      |> Policies.create_entitlement()
+    attrs =
+      entitlement |> Map.delete(:leave_type) |> Map.put(:effective_from, @policy_from)
+
+    {:ok, _entitlement} = Policies.create_entitlement(policy, leave_type, @system, attrs)
   end
 
   defp add_person(organisation, policies, calendar, attrs) do
     started_on = attrs.employment_start_date
 
     {:ok, person} =
-      attrs
-      |> Map.drop([:policy, :work_pattern])
-      |> Map.put(:organisation_id, organisation.id)
-      |> People.create_person()
+      People.create_person(organisation, @system, Map.drop(attrs, [:policy, :work_pattern]))
 
     {:ok, _pattern} =
-      attrs.work_pattern
-      |> Map.merge(%{person_id: person.id, effective_from: started_on})
-      |> People.create_work_pattern()
+      People.create_work_pattern(
+        person,
+        @system,
+        Map.put(attrs.work_pattern, :effective_from, started_on)
+      )
 
     {:ok, _assignment} =
-      People.assign_leave_policy(%{
-        person_id: person.id,
+      People.create_policy_assignment(person, @system, %{
         leave_policy_id: Map.fetch!(policies, attrs.policy).id,
         effective_from: started_on
       })
 
     {:ok, _assignment} =
-      People.assign_holiday_calendar(%{
-        person_id: person.id,
+      People.create_calendar_assignment(person, @system, %{
         holiday_calendar_id: calendar.id,
         effective_from: started_on
       })

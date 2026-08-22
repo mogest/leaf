@@ -7,7 +7,7 @@ defmodule Leaf.Org.PublicHoliday do
 
   @type t :: %__MODULE__{}
 
-  @fields [:holiday_calendar_id, :date, :name]
+  @fields [:date, :name]
 
   schema "public_holidays" do
     field :date, :date
@@ -22,7 +22,7 @@ defmodule Leaf.Org.PublicHoliday do
   def changeset(holiday, attrs) do
     holiday
     |> cast(attrs, @fields)
-    |> validate_required(@fields)
+    |> validate_required([:holiday_calendar_id | @fields])
     |> assoc_constraint(:holiday_calendar)
     |> unique_constraint([:holiday_calendar_id, :date])
   end

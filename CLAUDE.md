@@ -31,6 +31,21 @@ After changing code: `mix format`, `mix test`, `mix credo`.
 - A context calling into another context's internals is a bug. Cross-context work goes through
   the other context's public functions.
 
+## Context writes
+
+Every write follows this. One that doesn't is a bug, not a variation.
+
+- **`(subject, actor, attrs)`** — the subject is what the row hangs off: the organisation, the
+  person, the policy. Updates are `(record, actor, attrs)`, deletes `(record, actor)`.
+- **Identity is never cast.** What a row belongs to goes on the struct. `validate_required` still
+  lists it, so an unset one errors. A castable `person_id` means an update can move somebody
+  else's record.
+- **Everything goes through `Audit.write/4` or `Audit.delete/4`**, which write the change and its
+  entry in one transaction. Return type is `Audit.written(record)`. An `actor` of `nil` is the
+  system — a seed or an import — and is the only way to name no one.
+- **Delete only where there is no other undo.** Archive (`archived_at`) or close (`effective_to`)
+  anything whose past still has to make sense.
+
 ## Comments
 
 - Comment only when the *why* can't be carried by the code, and only where it's critical.

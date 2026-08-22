@@ -5,6 +5,7 @@ defmodule Leaf.AuditTest do
   alias Leaf.Audit.Entry
   alias Leaf.Fixtures
   alias Leaf.Leave.Request
+  alias Leaf.Org.PublicHoliday
   alias Leaf.People.Person
 
   setup do
@@ -12,7 +13,7 @@ defmodule Leaf.AuditTest do
     actor = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
     person = Fixtures.person(%{organisation_id: organisation.id})
 
-    %{organisation: organisation, actor: actor, person: person, leave_type: nil}
+    %{organisation: organisation, actor: actor, person: person}
   end
 
   test "an insert is recorded against the row it created, with what it set", context do
@@ -54,6 +55,24 @@ defmodule Leaf.AuditTest do
 
     assert [%{changes: changes}] = Repo.all(Entry)
     assert changes["name"] == %{"from" => person.name, "to" => "Wren Okafor"}
+  end
+
+  test "a deleted row survives in what recorded it", context do
+    calendar = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
+
+    holiday =
+      Fixtures.public_holiday(%{
+        holiday_calendar_id: calendar.id,
+        date: ~D[2026-06-19],
+        name: "Entered twice"
+      })
+
+    assert {:ok, _removed} = Audit.delete(holiday, "public_holiday.deleted", context.actor)
+
+    assert [%{changes: changes}] = Repo.all(Entry)
+    assert changes["date"] == %{"from" => "2026-06-19", "to" => nil}
+    assert changes["name"] == %{"from" => "Entered twice", "to" => nil}
+    assert Repo.all(PublicHoliday) == []
   end
 
   test "a refused change is not recorded", context do

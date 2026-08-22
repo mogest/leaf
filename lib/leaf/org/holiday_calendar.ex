@@ -7,7 +7,7 @@ defmodule Leaf.Org.HolidayCalendar do
 
   @type t :: %__MODULE__{}
 
-  @fields [:organisation_id, :name, :country_code]
+  @fields [:name, :country_code]
 
   schema "holiday_calendars" do
     field :name, :string
@@ -22,7 +22,7 @@ defmodule Leaf.Org.HolidayCalendar do
   def changeset(calendar, attrs) do
     calendar
     |> cast(attrs, @fields)
-    |> validate_required(@fields)
+    |> validate_required([:organisation_id | @fields])
     |> validate_length(:country_code, is: 2)
     |> assoc_constraint(:organisation)
   end

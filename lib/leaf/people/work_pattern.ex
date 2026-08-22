@@ -22,7 +22,7 @@ defmodule Leaf.People.WorkPattern do
     :sunday_hours
   ]
 
-  @fields [:person_id, :effective_from] ++ @hour_fields
+  @fields [:effective_from] ++ @hour_fields
 
   schema "work_patterns" do
     field :effective_from, :date
@@ -43,7 +43,7 @@ defmodule Leaf.People.WorkPattern do
   def changeset(pattern, attrs) do
     pattern
     |> cast(attrs, @fields)
-    |> validate_required(@fields)
+    |> validate_required([:person_id | @fields])
     |> validate_hours()
     |> assoc_constraint(:person)
     |> unique_constraint([:person_id, :effective_from])

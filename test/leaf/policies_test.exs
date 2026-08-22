@@ -1,6 +1,7 @@
 defmodule Leaf.PoliciesTest do
   use Leaf.DataCase, async: true
 
+  alias Leaf.Audit.Entry
   alias Leaf.Fixtures
   alias Leaf.Policies
 
@@ -86,6 +87,28 @@ defmodule Leaf.PoliciesTest do
     entitlements = Policies.entitlements(policy.id, Date.range(~D[2026-01-01], ~D[2026-03-31]))
 
     assert Enum.map(entitlements, & &1.leave_type.id) |> Enum.chunk_by(& &1) |> length() == 2
+  end
+
+  test "an entitlement is wound down by closing its window, not by deleting it", context do
+    %{policy: policy, quarterly: quarterly, organisation: organisation} = context
+    admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+    offered = quarterly_entitlement(policy, quarterly, %{})
+
+    assert {:ok, closed} =
+             Policies.update_entitlement(offered, admin, %{
+               granted_to: ~D[2025-12-31],
+               effective_to: ~D[2026-03-31]
+             })
+
+    # Granting stops at the turn of the year; what is left stays spendable to the end of March.
+    assert closed.granted_to == ~D[2025-12-31]
+    assert closed.effective_to == ~D[2026-03-31]
+    assert Policies.entitlements(policy.id, Date.range(~D[2026-04-01], ~D[2026-06-30])) == []
+
+    assert [%{action: "policy_entitlement.updated", subject_person_id: nil, changes: changes}] =
+             Repo.all(Entry)
+
+    assert changes["effective_to"] == %{"from" => nil, "to" => "2026-03-31"}
   end
 
   test "another policy's entitlements stay out of it", context do

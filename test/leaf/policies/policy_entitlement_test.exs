@@ -5,8 +5,6 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
   alias Leaf.Policies.PolicyEntitlement
 
   @base %{
-    leave_policy_id: Ecto.UUID.generate(),
-    leave_type_id: Ecto.UUID.generate(),
     effective_from: ~D[2004-01-01],
     pro_rated_by_fte: true,
     expiry_rule: :never,
@@ -21,8 +19,16 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
     grant_timing: :period_start
   }
 
-  defp changeset(attrs),
-    do: PolicyEntitlement.changeset(%PolicyEntitlement{}, Map.merge(@base, attrs))
+  # What an entitlement is for is not cast, so it goes on the struct as `Leaf.Policies` puts it
+  # there. Most of these never reach the database and can pair a policy and a type that do not.
+  defp changeset(attrs, pairing \\ %{}) do
+    %PolicyEntitlement{
+      leave_policy_id: Ecto.UUID.generate(),
+      leave_type_id: Ecto.UUID.generate()
+    }
+    |> struct!(pairing)
+    |> PolicyEntitlement.changeset(Map.merge(@base, attrs))
+  end
 
   test "accepts a fixed grant with its period and timing" do
     assert changeset(@quarterly).valid?
@@ -105,19 +111,18 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
     organisation = Fixtures.organisation()
     policy = Fixtures.leave_policy(%{organisation_id: organisation.id})
     leave_type = Fixtures.leave_type(%{organisation_id: organisation.id})
-    attrs = Map.merge(@quarterly, %{leave_policy_id: policy.id, leave_type_id: leave_type.id})
+    pairing = %{leave_policy_id: policy.id, leave_type_id: leave_type.id}
+    withdrawn = Map.put(@quarterly, :effective_to, ~D[2005-12-31])
 
-    assert {:ok, _withdrawn} =
-             Repo.insert(changeset(Map.put(attrs, :effective_to, ~D[2005-12-31])))
-
-    assert {:error, changeset} = Repo.insert(changeset(attrs))
+    assert {:ok, _withdrawn} = Repo.insert(changeset(withdrawn, pairing))
+    assert {:error, changeset} = Repo.insert(changeset(@quarterly, pairing))
 
     assert errors_on(changeset).effective_from == [
              "overlaps another entitlement for this leave type"
            ]
 
-    reoffered = Map.put(attrs, :effective_from, ~D[2006-01-01])
+    reoffered = Map.put(@quarterly, :effective_from, ~D[2006-01-01])
 
-    assert {:ok, _entitlement} = Repo.insert(changeset(reoffered))
+    assert {:ok, _entitlement} = Repo.insert(changeset(reoffered, pairing))
   end
 end

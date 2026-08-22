@@ -8,7 +8,7 @@ defmodule Leaf.People.PersonHolidayCalendar do
 
   @type t :: %__MODULE__{}
 
-  @fields [:person_id, :holiday_calendar_id, :effective_from]
+  @fields [:holiday_calendar_id, :effective_from]
 
   schema "person_holiday_calendars" do
     field :effective_from, :date
@@ -23,7 +23,7 @@ defmodule Leaf.People.PersonHolidayCalendar do
   def changeset(assignment, attrs) do
     assignment
     |> cast(attrs, @fields)
-    |> validate_required(@fields)
+    |> validate_required([:person_id | @fields])
     |> assoc_constraint(:person)
     |> assoc_constraint(:holiday_calendar)
     |> unique_constraint([:person_id, :effective_from])

@@ -15,7 +15,7 @@ defmodule Leaf.Policies.LeaveType do
 
   @units [:hours, :days]
 
-  @fields [:organisation_id, :name, :unit, :position, :archived_at]
+  @fields [:name, :unit, :position, :archived_at]
 
   schema "leave_types" do
     field :name, :string
