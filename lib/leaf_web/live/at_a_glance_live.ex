@@ -42,7 +42,7 @@ defmodule LeafWeb.AtAGlanceLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="at-a-glance" current_person={@current_person}>
+    <Layouts.app flash={@flash} page="at-a-glance" viewer={@viewer}>
       <header>
         <h1>At a glance</h1>
         <.link class="button" navigate={~p"/leave/new"}>Request leave</.link>

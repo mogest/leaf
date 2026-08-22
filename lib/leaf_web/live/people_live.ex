@@ -22,7 +22,7 @@ defmodule LeafWeb.PeopleLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="people" current_person={@current_person}>
+    <Layouts.app flash={@flash} page="people" viewer={@viewer}>
       <header>
         <h1>People</h1>
         <.link class="button" navigate={~p"/people/new"}>Add somebody</.link>

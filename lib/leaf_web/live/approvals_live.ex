@@ -23,7 +23,7 @@ defmodule LeafWeb.ApprovalsLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="approvals" current_person={@current_person}>
+    <Layouts.app flash={@flash} page="approvals" viewer={@viewer}>
       <header>
         <h1>Approvals</h1>
         <p>{@standing}</p>

@@ -41,7 +41,7 @@ defmodule LeafWeb.BalanceLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="balance" current_person={@current_person}>
+    <Layouts.app flash={@flash} page="balance" viewer={@viewer}>
       <header>
         <h1>{@leave_type.name}</h1>
         <.link :if={@mine?} navigate={~p"/"}>At a glance</.link>

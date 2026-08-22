@@ -9,6 +9,8 @@ defmodule LeafWeb.StyleguideLive do
   use LeafWeb, :live_view
 
   alias Leaf.Leave.Month
+  alias Leaf.People.Person
+  alias LeafWeb.Viewer
 
   @swatches [
     {"Ground", "--ground", "Behind the rail"},
@@ -59,6 +61,9 @@ defmodule LeafWeb.StyleguideLive do
   @august ~D[2026-08-01]
   @today ~D[2026-08-22]
 
+  # Standing enough to be shown every entry the rail has.
+  @viewer %Viewer{person: %Person{name: "Rae Halloran"}, admin?: true, approver?: true}
+
   # Where a part that steps through something steps to: nowhere but here. The route is only in
   # development, so it is not one verified routes can be asked about.
   @here "/dev/styleguide"
@@ -94,13 +99,13 @@ defmodule LeafWeb.StyleguideLive do
      |> assign(:months, [month()])
      |> assign(:today, @today)
      |> assign(:here, @here)
-     |> assign(:person, %{name: "Rae Halloran"})}
+     |> assign(:viewer, @viewer)}
   end
 
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="styleguide" current_person={@person}>
+    <Layouts.app flash={@flash} page="styleguide" viewer={@viewer}>
       <header>
         <h1>Specimen sheet</h1>
         <a class="button" href="/">Back to the app</a>

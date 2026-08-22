@@ -31,7 +31,7 @@ defmodule LeafWeb.WhoIsAwayLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="who-is-away" current_person={@current_person}>
+    <Layouts.app flash={@flash} page="who-is-away" viewer={@viewer}>
       <header>
         <h1>Who's away</h1>
         <.link navigate={@earlier}>Earlier</.link>

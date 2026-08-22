@@ -41,7 +41,7 @@ defmodule LeafWeb.LeaveTypeLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="settings" current_person={@current_person}>
+    <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
         <h1>{@leave_type.name}</h1>
         <.link navigate={~p"/settings/leave-types"}>Leave types</.link>

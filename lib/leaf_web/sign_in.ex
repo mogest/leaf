@@ -12,6 +12,7 @@ defmodule LeafWeb.SignIn do
   import Plug.Conn
 
   alias Leaf.People
+  alias LeafWeb.Viewer
   alias Phoenix.Component
   alias Phoenix.LiveView
 
@@ -26,13 +27,16 @@ defmodule LeafWeb.SignIn do
   @doc """
   Puts whoever the session names on the socket, and turns anybody else away from an admin page.
 
+  `:current_person` assigns the person twice over: as themselves, which is the actor every context
+  write takes, and as a `Viewer`, which is all the chrome around a page is given.
+
   `:admin` runs after `:current_person`, so the pages only an administrator may open say so in the
   router rather than each checking for themselves.
   """
   @spec on_mount(atom(), map(), map(), LiveView.Socket.t()) ::
           {:cont, LiveView.Socket.t()} | {:halt, LiveView.Socket.t()}
   def on_mount(:current_person, _params, session, socket) do
-    {:cont, Component.assign(socket, :current_person, named(session[@named]))}
+    {:cont, viewing(socket, named(session[@named]))}
   end
 
   def on_mount(:admin, _params, _session, %{assigns: %{current_person: %{role: :admin}}} = socket) do
@@ -62,6 +66,15 @@ defmodule LeafWeb.SignIn do
   def require_person(conn, _opts), do: conn
 
   defp refused, do: "That page is the administrator's."
+
+  defp viewing(socket, person) do
+    socket
+    |> Component.assign(:current_person, person)
+    |> Component.assign(:viewer, viewer(person))
+  end
+
+  defp viewer(nil), do: nil
+  defp viewer(person), do: Viewer.new(person)
 
   defp named(nil), do: nil
 

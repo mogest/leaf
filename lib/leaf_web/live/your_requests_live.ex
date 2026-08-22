@@ -27,7 +27,7 @@ defmodule LeafWeb.YourRequestsLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="your-requests" current_person={@current_person}>
+    <Layouts.app flash={@flash} page="your-requests" viewer={@viewer}>
       <header>
         <h1>Your requests</h1>
         <.link class="button" navigate={~p"/leave/new"}>Request leave</.link>

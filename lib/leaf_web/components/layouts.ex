@@ -4,14 +4,18 @@ defmodule LeafWeb.Layouts do
   """
   use LeafWeb, :html
 
+  alias LeafWeb.Viewer
+
   embed_templates "layouts/*"
 
   # Each entry, where it goes, and the pages that light it up. A page reached from an entry stands
   # under it, so a form opened off "People" leaves the rail where the reader left it.
+  @approvals {"Approvals", "/approvals", ~w(approvals)}
+
   @rail [
     {"At a glance", "/", ~w(at-a-glance request-leave balance)},
     {"Your requests", "/leave", ~w(your-requests)},
-    {"Approvals", "/approvals", ~w(approvals)},
+    @approvals,
     {"Who's away", "/away", ~w(who-is-away)}
   ]
 
@@ -35,9 +39,9 @@ defmodule LeafWeb.Layouts do
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :page, :string, required: true, doc: "which page this is, in kebab case"
 
-  attr :current_person, :map,
+  attr :viewer, :map,
     default: nil,
-    doc: "whoever is signed in, or nil while nobody is"
+    doc: "the `LeafWeb.Viewer` for whoever is signed in, or nil while nobody is"
 
   slot :inner_block, required: true
 
@@ -62,14 +66,14 @@ defmodule LeafWeb.Layouts do
         <span>Leaf</span>
       </a>
       <ul>
-        <li :for={{label, path, pages} <- rail(@current_person)}>
+        <li :for={{label, path, pages} <- rail(@viewer)}>
           <a href={path} aria-current={current(@page, pages)}>{label}</a>
         </li>
       </ul>
-      <div :if={@current_person}>
+      <div :if={@viewer}>
         <button popovertarget="account" aria-label="Your account">
-          <b>{Wording.initials(@current_person.name)}</b>
-          <span>{@current_person.name}</span>
+          <b>{Wording.initials(@viewer.person.name)}</b>
+          <span>{@viewer.person.name}</span>
         </button>
         <ul id="account" popover>
           <li>
@@ -85,8 +89,9 @@ defmodule LeafWeb.Layouts do
     """
   end
 
-  defp rail(%{role: :admin}), do: @rail ++ @administered
-  defp rail(_person), do: @rail
+  defp rail(%Viewer{admin?: true}), do: @rail ++ @administered
+  defp rail(%Viewer{approver?: true}), do: @rail
+  defp rail(_viewer), do: @rail -- [@approvals]
 
   defp current(page, pages) do
     case page in pages do

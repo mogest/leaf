@@ -47,7 +47,7 @@ defmodule LeafWeb.PolicyLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="settings" current_person={@current_person}>
+    <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
         <h1>{@policy.name}</h1>
         <.link navigate={~p"/settings/policies"}>Leave policies</.link>

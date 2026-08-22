@@ -61,7 +61,7 @@ defmodule LeafWeb.CalendarLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="settings" current_person={@current_person}>
+    <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
         <h1>{@calendar.name}</h1>
         <.link navigate={~p"/settings/calendars"}>Holiday calendars</.link>

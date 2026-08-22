@@ -49,7 +49,7 @@ defmodule LeafWeb.RequestLeaveLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="request-leave" current_person={@current_person}>
+    <Layouts.app flash={@flash} page="request-leave" viewer={@viewer}>
       <header>
         <h1>{@title}</h1>
       </header>

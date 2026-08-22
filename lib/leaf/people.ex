@@ -222,6 +222,18 @@ defmodule Leaf.People do
   end
 
   @doc """
+  Whether anybody reports to `person`.
+
+  Being a manager is not a role but a consequence, so this is the question asked of somebody
+  wherever a manager's standing decides something. Whoever has left is still counted: their
+  requests outlive their leaving, and `Leaf.Leave.awaiting/1` will hand them over all the same.
+  """
+  @spec manager?(Person.t()) :: boolean()
+  def manager?(person) do
+    Repo.exists?(from other in Person, where: other.manager_id == ^person.id)
+  end
+
+  @doc """
   Whether `actor` may see and act on `person`'s record.
 
   Yourself, anyone who reports to you, and anyone at all if you administer the organisation. This

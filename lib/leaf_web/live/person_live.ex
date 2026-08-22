@@ -47,7 +47,7 @@ defmodule LeafWeb.PersonLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="people" current_person={@current_person}>
+    <Layouts.app flash={@flash} page="people" viewer={@viewer}>
       <header>
         <h1>{@person.name}</h1>
         <.link :if={@admin?} class="button" navigate={~p"/people/#{@person}/edit"}>Amend</.link>

@@ -42,6 +42,14 @@ defmodule LeafWeb.ApprovalsLiveTest do
     assert html =~ "Nothing is waiting on you."
   end
 
+  test "only somebody with approvals to make is offered them", context do
+    {:ok, _live, manager} = live(sign_in(context.conn, context.manager), ~p"/")
+    {:ok, _live, member} = live(sign_in(context.conn, context.person), ~p"/")
+
+    assert manager =~ ~s(href="/approvals")
+    refute member =~ ~s(href="/approvals")
+  end
+
   test "an administrator decides for the whole organisation", context do
     admin =
       Fixtures.person(%{organisation_id: context.organisation.id, name: "Kit Rua", role: :admin})

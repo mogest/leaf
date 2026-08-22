@@ -49,7 +49,7 @@ defmodule LeafWeb.BalanceEntryLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="people" current_person={@current_person}>
+    <Layouts.app flash={@flash} page="people" viewer={@viewer}>
       <header>
         <h1>Record a balance</h1>
         <.link navigate={~p"/people/#{@person}"}>{@person.name}</.link>
