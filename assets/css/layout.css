@@ -277,6 +277,23 @@ main.balance {
   }
 }
 
+/* Asking for leave: the two ends of a stretch of dates are the one field. */
+main.request-leave {
+  & .paired {
+    display: flex;
+    gap: var(--step-4);
+    max-inline-size: 28rem;
+
+    & > div {
+      flex: 1;
+    }
+  }
+
+  & p[data-tone="wrong"] {
+    color: var(--clay-ink);
+  }
+}
+
 /* The whole organisation, a row each, a column a day. */
 main.who-is-away {
   & > div {

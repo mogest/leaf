@@ -94,8 +94,6 @@ defmodule LeafWeb.PagesTest do
         "leave_type_id" => context.leave_type.id,
         "from" => "2030-10-07",
         "to" => "2030-10-11",
-        "amount" => "",
-        "unit" => "hours",
         "note" => ""
       }
     )

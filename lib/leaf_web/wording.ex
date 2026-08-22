@@ -71,6 +71,17 @@ defmodule LeafWeb.Wording do
     joined([first | Enum.map(rest, &String.downcase/1)])
   end
 
+  @doc "A stretch of dates, as one date or as two: Monday 2 – Friday 6 March."
+  @spec span(Date.t(), Date.t()) :: String.t()
+  def span(date, date), do: weekday(date)
+
+  def span(first, last) do
+    case {first.year, first.month} == {last.year, last.month} do
+      true -> "#{Calendar.strftime(first, "%A %-d")} – #{weekday(last)}"
+      false -> "#{weekday(first)} – #{weekday(last)}"
+    end
+  end
+
   @doc "A date with the day of the week it falls on: Saturday 22 August."
   @spec weekday(Date.t()) :: String.t()
   def weekday(date), do: Calendar.strftime(date, "%A %-d %B")
@@ -124,16 +135,6 @@ defmodule LeafWeb.Wording do
     {leading, [last]} = Enum.split(names, -1)
 
     "#{Enum.join(leading, ", ")} and #{last}"
-  end
-
-  # One date, or two as a span, at whatever length reads.
-  defp span(date, date), do: weekday(date)
-
-  defp span(first, last) do
-    case {first.year, first.month} == {last.year, last.month} do
-      true -> "#{Calendar.strftime(first, "%A %-d")} – #{weekday(last)}"
-      false -> "#{weekday(first)} – #{weekday(last)}"
-    end
   end
 
   defp named(:hours, true), do: "hour"
