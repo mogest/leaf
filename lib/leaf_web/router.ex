@@ -1,6 +1,8 @@
 defmodule LeafWeb.Router do
   use LeafWeb, :router
 
+  import LeafWeb.SignIn
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -8,6 +10,7 @@ defmodule LeafWeb.Router do
     plug :put_root_layout, html: {LeafWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug :fetch_current_person
   end
 
   pipeline :api do
@@ -16,6 +19,10 @@ defmodule LeafWeb.Router do
 
   scope "/", LeafWeb do
     pipe_through :browser
+
+    get "/sign-in", SignInController, :index
+    post "/sign-in/:id", SignInController, :create
+    delete "/sign-out", SignInController, :delete
 
     get "/", PageController, :home
   end

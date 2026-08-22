@@ -21,7 +21,9 @@ defmodule Leaf.People do
   import Ecto.Query
 
   alias Leaf.Audit
+  alias Leaf.Org
   alias Leaf.Org.Organisation
+  alias Leaf.Org.PublicHoliday
   alias Leaf.People.Person
   alias Leaf.People.PersonHolidayCalendar
   alias Leaf.People.PersonPolicyAssignment
@@ -209,6 +211,30 @@ defmodule Leaf.People do
   @spec holiday_calendar_segments!(Person.t(), Date.Range.t()) :: [segment(Ecto.UUID.t())]
   def holiday_calendar_segments!(person, range) do
     person |> holiday_calendar_segments(range) |> covering!(range, person, "holiday calendar")
+  end
+
+  @doc "Everyone in an organisation, by name."
+  @spec people(Ecto.UUID.t()) :: [Person.t()]
+  def people(organisation_id) do
+    Repo.all(
+      from person in Person,
+        where: person.organisation_id == ^organisation_id,
+        order_by: person.name
+    )
+  end
+
+  @doc """
+  The public holidays a person observes over `range`, in date order.
+
+  Which calendar they are on can change within the range, so each stretch is read against the
+  calendar in force over it. A stretch they are on no calendar for contributes nothing, because a
+  calendar nobody has assigned holds no holidays to show.
+  """
+  @spec public_holidays(Person.t(), Date.Range.t()) :: [PublicHoliday.t()]
+  def public_holidays(person, range) do
+    person
+    |> holiday_calendar_segments(range)
+    |> Enum.flat_map(fn {span, calendar_id} -> Org.public_holidays(calendar_id, span) end)
   end
 
   @doc "The hours worked over a full week under a work pattern."

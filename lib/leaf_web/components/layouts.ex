@@ -56,6 +56,7 @@ defmodule LeafWeb.Layouts do
       <p :if={@current_person}>
         <b>{initials(@current_person.name)}</b>
         <span>{@current_person.name}</span>
+        <.link href="/sign-out" method="delete">Sign out</.link>
       </p>
     </nav>
     <main class={@page}>

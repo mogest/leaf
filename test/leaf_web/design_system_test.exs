@@ -5,8 +5,11 @@ defmodule LeafWeb.DesignSystemTest do
   The stylesheet selects elements, so a class only appears where the element cannot say which one
   it is. Both directions of that bargain are checked here: markup may not invent a name the
   stylesheet has never heard of, and the stylesheet may not keep a name nothing uses. Either one
-  drifting is how a design system turns into a pile of one-off rules. Page scopes are the one
-  exception: `main.your-leave` comes from the layout rather than from any markup, so it is exempt.
+  drifting is how a design system turns into a pile of one-off rules.
+
+  A page scope — a class on `main` — is exempt from both directions. `Layouts.app` writes most of
+  them from its `page` attribute, where no pass over the markup can see them, so policing the ones
+  written by hand would only punish the pages that are honest about it.
   """
 
   use ExUnit.Case, async: true
@@ -20,9 +23,9 @@ defmodule LeafWeb.DesignSystemTest do
   @quoted ~r/"([^"]*)"/
 
   # A class selector, told from a decimal by the digit that would precede it. Comments, strings and
-  # urls go first, so a filename inside one cannot read as a selector. A page scope — `main.x`,
-  # written from `Layouts.app`'s `page` — is not a class anyone spells out, so it is passed over.
+  # urls go first, so a filename inside one cannot read as a selector.
   @selector ~r/(?<!\d)(?<!main)\.([a-z][a-z0-9-]*)/
+  @page_scope ~r/<main[^>]*\bclass="([^"]*)"/
   @not_selectors ~r|/\*.*?\*/|s
   @literal ~r/"[^"]*"|'[^']*'|url\([^)]*\)/
 
@@ -35,9 +38,20 @@ defmodule LeafWeb.DesignSystemTest do
   end
 
   defp used do
+    MapSet.difference(classes(), page_scopes())
+  end
+
+  defp classes do
     @markup
     |> Enum.flat_map(&names(@attribute, File.read!(&1)))
     |> Enum.flat_map(&names(@quoted, &1))
+    |> Enum.flat_map(&String.split/1)
+    |> MapSet.new()
+  end
+
+  defp page_scopes do
+    @markup
+    |> Enum.flat_map(&names(@page_scope, File.read!(&1)))
     |> Enum.flat_map(&String.split/1)
     |> MapSet.new()
   end

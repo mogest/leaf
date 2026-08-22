@@ -145,6 +145,43 @@ defmodule Leaf.Leave do
     )
   end
 
+  @doc """
+  A person's requests, the leave furthest ahead first, each with its days and whoever decided it.
+
+  A request holds no date of its own, so they are ordered by the first day each one covers. All of
+  them: how many to show, and how many are left over, is the page's to decide.
+  """
+  @spec requests(Person.t()) :: [Request.t()]
+  def requests(person) do
+    Repo.all(
+      from request in Request,
+        left_join: day in assoc(request, :days),
+        where: request.person_id == ^person.id,
+        group_by: request.id,
+        order_by: [desc: min(day.date)],
+        preload: [:days, :reviewed_by]
+    )
+  end
+
+  @doc """
+  Every day of leave a person still holds within `range`, oldest first, with its request.
+
+  Approved and pending only. A declined day was never leave and a cancelled one has stopped being
+  it, so neither belongs on a calendar; a pending one does, because the person is counting on it.
+  """
+  @spec days_filed(Person.t(), Date.Range.t()) :: [Day.t()]
+  def days_filed(person, range) do
+    Repo.all(
+      from day in Day,
+        join: request in assoc(day, :leave_request),
+        where: request.person_id == ^person.id,
+        where: request.status in [:approved, :pending],
+        where: day.date >= ^range.first and day.date <= ^range.last,
+        order_by: day.date,
+        preload: [leave_request: request]
+    )
+  end
+
   @doc "Every balance figure entered for a person up to and including `date`, oldest first."
   @spec balance_entries(Person.t(), Date.t()) :: [BalanceEntry.t()]
   def balance_entries(person, date) do

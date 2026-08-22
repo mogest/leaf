@@ -210,4 +210,57 @@ defmodule Leaf.PeopleTest do
     assert {:ok, _removed} = People.delete_calendar_assignment(moved, nil)
     assert People.holiday_calendar_segments(person, january) == [{january, calendar.id}]
   end
+
+  test "everyone in an organisation comes back by name", context do
+    Fixtures.person(%{organisation_id: context.organisation.id, name: "Bo Ngata"})
+    elsewhere = Fixtures.organisation(%{name: "Kowhai Works"})
+    Fixtures.person(%{organisation_id: elsewhere.id, name: "Ada Lindqvist"})
+
+    assert Enum.map(People.people(context.organisation.id), & &1.name) == [
+             "Bo Ngata",
+             "Rae Halloran"
+           ]
+  end
+
+  test "the holidays a person observes follow the calendar in force", context do
+    nz = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
+
+    spain =
+      Fixtures.holiday_calendar(%{
+        organisation_id: context.organisation.id,
+        name: "Spain",
+        country_code: "ES"
+      })
+
+    Fixtures.public_holiday(%{holiday_calendar_id: nz.id, date: ~D[2026-06-01], name: "King's"})
+
+    Fixtures.public_holiday(%{
+      holiday_calendar_id: spain.id,
+      date: ~D[2026-08-15],
+      name: "Asunción"
+    })
+
+    Fixtures.public_holiday(%{
+      holiday_calendar_id: spain.id,
+      date: ~D[2026-12-25],
+      name: "Navidad"
+    })
+
+    Fixtures.calendar_assignment(%{
+      person_id: context.person.id,
+      holiday_calendar_id: nz.id,
+      effective_from: ~D[2026-01-01],
+      effective_to: ~D[2026-06-30]
+    })
+
+    Fixtures.calendar_assignment(%{
+      person_id: context.person.id,
+      holiday_calendar_id: spain.id,
+      effective_from: ~D[2026-07-01]
+    })
+
+    observed = People.public_holidays(context.person, Date.range(~D[2026-01-01], ~D[2026-08-31]))
+
+    assert Enum.map(observed, & &1.name) == ["King's", "Asunción"]
+  end
 end

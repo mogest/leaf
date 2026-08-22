@@ -41,6 +41,12 @@ defmodule Leaf.LeaveTest do
     Leave.request(context.person, context.person, %{days: days, note: "Away"})
   end
 
+  # Deciding a request turns on the reporting line, which only the read hands back.
+  defp reload(request) do
+    {:ok, reloaded} = Leave.fetch_request(request.id)
+    reloaded
+  end
+
   defp observes(context, holiday) do
     calendar = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
     Fixtures.public_holiday(%{holiday_calendar_id: calendar.id, date: holiday})
@@ -247,5 +253,36 @@ defmodule Leaf.LeaveTest do
              {@thursday, Decimal.new("8.00")},
              {@friday, Decimal.new("8.00")}
            ]
+  end
+
+  test "a person's requests come back with the leave furthest ahead first", context do
+    {:ok, soonest} = file(context, [~D[2026-08-25]])
+    {:ok, furthest} = file(context, [~D[2026-11-02]])
+    {:ok, _declined} = soonest |> reload() |> Leave.decline(context.manager, "Too many away")
+
+    other = Fixtures.person(%{organisation_id: context.organisation.id, name: "Bo Ngata"})
+    Fixtures.leave_request(%{person_id: other.id, days: [entry(context.leave_type, @friday)]})
+
+    assert [ahead, behind] = Leave.requests(context.person)
+    assert ahead.id == furthest.id
+    assert behind.id == soonest.id
+    assert behind.status == :declined
+    assert behind.reviewed_by.name == "Ines Vasquez"
+    assert [%{date: ~D[2026-08-25]}] = behind.days
+  end
+
+  test "only leave somebody still holds shows within a range", context do
+    {:ok, pending} = file(context, [@friday])
+    {:ok, approving} = file(context, [~D[2026-08-24]])
+    {:ok, _approved} = approving |> reload() |> Leave.approve(context.manager)
+    {:ok, cancelling} = file(context, [~D[2026-08-26]])
+    {:ok, _cancelled} = cancelling |> reload() |> Leave.cancel(context.manager)
+    {:ok, _outside} = file(context, [~D[2026-09-30]])
+
+    days = Leave.days_filed(context.person, Date.range(@thursday, ~D[2026-08-31]))
+
+    assert Enum.map(days, & &1.date) == [~D[2026-08-21], ~D[2026-08-24]]
+    assert Enum.map(days, & &1.leave_request.status) == [:pending, :approved]
+    assert hd(days).leave_request.id == pending.id
   end
 end

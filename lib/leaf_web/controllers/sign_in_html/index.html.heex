@@ -1,0 +1,14 @@
+<main class="sign-in">
+  <h1>Leaf</h1>
+  <p>Choose who you are. There are no passwords yet — anyone can be anyone.</p>
+
+  <ul :if={@people != []}>
+    <li :for={person <- @people}>
+      <.link href={~p"/sign-in/#{person.id}"} method="post">{person.name}</.link>
+    </li>
+  </ul>
+
+  <p :if={@people == []}>
+    Nobody has been added yet. Run <code>mix leaf.seed</code> to build the example organisation.
+  </p>
+</main>
