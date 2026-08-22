@@ -99,6 +99,11 @@ defmodule LeafWeb.Wording do
   @spec day_and_month(Date.t() | DateTime.t()) :: String.t()
   def day_and_month(at), do: Calendar.strftime(at, "%-d %B")
 
+  @doc "A month, named with its year only where that is not the year being read in: August 2030."
+  @spec month(Date.t(), Date.t()) :: String.t()
+  def month(%{year: year} = date, %{year: year}), do: Calendar.strftime(date, "%B")
+  def month(date, _today), do: Calendar.strftime(date, "%B %Y")
+
   @doc "A moment, to the minute: 22 August 2026, 14:32."
   @spec moment(DateTime.t()) :: String.t()
   def moment(at), do: Calendar.strftime(at, "%-d %B %Y, %H:%M")

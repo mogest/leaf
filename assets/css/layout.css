@@ -157,7 +157,7 @@ main section > ol > li[data-tone="wrong"] > span {
 }
 
 /* When you are away and what came of what you asked for, with the balances alongside them. */
-main.your-leave {
+main.at-a-glance {
   display: grid;
   grid-template-columns: 1fr 15rem;
   column-gap: var(--step-9);

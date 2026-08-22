@@ -8,6 +8,8 @@ defmodule LeafWeb.Parts do
 
   use Phoenix.Component
 
+  alias LeafWeb.Wording
+
   @weekdays [
     {"M", "Monday"},
     {"T", "Tuesday"},
@@ -110,9 +112,7 @@ defmodule LeafWeb.Parts do
     <section class="calendar">
       <header>
         <h2>Calendar</h2>
-      </header>
-      <nav>
-        <.link navigate={@earlier} aria-label="Earlier months">
+        <.link navigate={@earlier} aria-label="Earlier months" title="Earlier months">
           <svg
             width="12"
             height="12"
@@ -127,33 +127,7 @@ defmodule LeafWeb.Parts do
             <path d="M10 3L5 8l5 5" />
           </svg>
         </.link>
-        <div>
-          <table :for={month <- @months}>
-            <caption>{Calendar.strftime(month.starts_on, "%B")}</caption>
-            <thead>
-              <tr>
-                <th :for={{initial, weekday} <- weekdays()} scope="col">
-                  <abbr title={weekday}>{initial}</abbr>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={week <- month.weeks}>
-                <td
-                  :for={day <- week}
-                  data-working={working(day)}
-                  data-leave={leave(day)}
-                  data-holiday={holiday(day)}
-                  data-today={today?(day, @today)}
-                  aria-current={today?(day, @today) && "date"}
-                >
-                  {number(day)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <.link navigate={@later} aria-label="Later months">
+        <.link navigate={@later} aria-label="Later months" title="Later months">
           <svg
             width="12"
             height="12"
@@ -168,13 +142,38 @@ defmodule LeafWeb.Parts do
             <path d="M6 3l5 5-5 5" />
           </svg>
         </.link>
-      </nav>
+      </header>
+      <div>
+        <table :for={month <- @months}>
+          <caption>{Wording.month(month.starts_on, @today)}</caption>
+          <thead>
+            <tr>
+              <th :for={{initial, weekday} <- weekdays()} scope="col">
+                <abbr title={weekday}>{initial}</abbr>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :for={week <- month.weeks}>
+              <td
+                :for={day <- week}
+                data-working={working(day)}
+                data-leave={leave(day)}
+                data-holiday={holiday(day)}
+                data-today={today?(day, @today)}
+                aria-current={today?(day, @today) && "date"}
+              >
+                {number(day)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <ul class="legend">
         <li data-leave="approved">Approved</li>
         <li data-leave="pending">Waiting</li>
         <li data-holiday>Public holiday</li>
         <li data-today>Today</li>
-        <li>Faded days are ones you do not work</li>
       </ul>
     </section>
     """

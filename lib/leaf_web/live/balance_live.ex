@@ -44,7 +44,7 @@ defmodule LeafWeb.BalanceLive do
     <Layouts.app flash={@flash} page="balance" current_person={@current_person}>
       <header>
         <h1>{@leave_type.name}</h1>
-        <.link :if={@mine?} navigate={~p"/"}>Your leave</.link>
+        <.link :if={@mine?} navigate={~p"/"}>At a glance</.link>
         <.link :if={!@mine?} navigate={~p"/people/#{@person}"}>{@person.name}</.link>
       </header>
 

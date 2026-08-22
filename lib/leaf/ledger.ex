@@ -75,6 +75,26 @@ defmodule Leaf.Ledger do
   end
 
   @doc """
+  What each leave type has been asked for and not yet decided, in the unit the type counts in.
+
+  A leave type nothing is waiting on is left out, so the map says what it has to say and nothing
+  more. This draws no balance down: undecided leave is neither held nor spent until somebody says.
+  """
+  @spec awaiting(Person.t()) :: %{Ecto.UUID.t() => Decimal.t()}
+  def awaiting(person) do
+    days = Leave.days_awaiting(person)
+    leave_types = Policies.leave_types(person.organisation_id)
+    units = Map.new(leave_types, &{&1.id, &1.unit})
+    hours = hours_taken_against(person, days, leave_types)
+
+    days
+    |> Enum.group_by(& &1.leave_type_id)
+    |> Map.new(fn {leave_type_id, days} ->
+      {leave_type_id, asked(days, units[leave_type_id], hours)}
+    end)
+  end
+
+  @doc """
   Whether everything a balance is worked out from is on record for the person.
 
   `statements/3` refuses a stretch of somebody's history with no work pattern behind it, because
@@ -103,6 +123,10 @@ defmodule Leaf.Ledger do
   end
 
   defp of_type(rows, leave_type), do: Enum.filter(rows, &(&1.leave_type_id == leave_type.id))
+
+  defp asked(days, unit, hours) do
+    Enum.reduce(days, Decimal.new(0), &Decimal.add(&2, Day.in_unit(&1, unit, hours[&1.date])))
+  end
 
   defp replay(leave_type, context, spans, entered, taken) do
     movements =

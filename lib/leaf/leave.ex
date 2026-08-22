@@ -157,6 +157,22 @@ defmodule Leaf.Leave do
   end
 
   @doc """
+  Every day of leave a person has asked for and nobody has decided yet, oldest first.
+
+  Undecided leave is mostly ahead of the person, so this has no ceiling: what they are waiting on
+  is waiting whatever date it falls on.
+  """
+  @spec days_awaiting(Person.t()) :: [Day.t()]
+  def days_awaiting(person) do
+    Repo.all(
+      from day in Day,
+        join: request in assoc(day, :leave_request),
+        where: request.person_id == ^person.id and request.status == :pending,
+        order_by: day.date
+    )
+  end
+
+  @doc """
   A person's requests, the leave furthest ahead first, each with its days and whoever decided it.
 
   A request holds no date of its own, so they are ordered by the first day each one covers. All of

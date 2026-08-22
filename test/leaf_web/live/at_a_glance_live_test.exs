@@ -1,4 +1,4 @@
-defmodule LeafWeb.YourLeaveLiveTest do
+defmodule LeafWeb.AtAGlanceLiveTest do
   use LeafWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
@@ -62,6 +62,31 @@ defmodule LeafWeb.YourLeaveLiveTest do
     assert html =~ "Expires 31 December"
   end
 
+  test "a balance says what is waiting on an answer, and is not drawn down by it", context do
+    file(context, [@ahead])
+
+    {:ok, _live, html} = live(context.conn, ~p"/")
+
+    assert html =~ "100 <small>hours</small>"
+    assert html =~ "8 hours awaiting approval"
+  end
+
+  test "a leave type nothing is held in is left off the balances", context do
+    empty =
+      Fixtures.leave_type(%{
+        organisation_id: context.person.organisation_id,
+        name: "Sick leave",
+        position: 2
+      })
+
+    Fixtures.balance_entry(%{person_id: context.person.id, leave_type_id: empty.id})
+
+    {:ok, _live, html} = live(context.conn, ~p"/")
+
+    assert html =~ "Annual leave"
+    refute html =~ "Sick leave"
+  end
+
   test "a request says when it is, what it comes to and where it got to", context do
     {:ok, _taken} = context |> file(@taken) |> Leave.approve(context.manager)
     file(context, [@ahead])
@@ -90,7 +115,8 @@ defmodule LeafWeb.YourLeaveLiveTest do
 
     {:ok, _live, html} = live(sign_in(build_conn(), fresh), ~p"/")
 
-    assert html =~ "Your leave"
+    assert html =~ "At a glance"
+    refute html =~ "Balances"
     refute html =~ "Annual leave"
   end
 
@@ -105,11 +131,20 @@ defmodule LeafWeb.YourLeaveLiveTest do
 
     {:ok, _live, html} = live(context.conn, ~p"/?from=2030-10")
 
-    assert html =~ "<caption>October</caption>"
-    assert html =~ "<caption>November</caption>"
-    assert html =~ "<caption>December</caption>"
+    assert html =~ "<caption>October 2030</caption>"
+    assert html =~ "<caption>November 2030</caption>"
+    assert html =~ "<caption>December 2030</caption>"
     assert html =~ ~s(data-leave="pending")
     assert html =~ "/?from=2030-07"
     assert html =~ "/?from=2031-01"
+  end
+
+  test "a month in the year being read in is named without it", context do
+    this_year = Calendar.strftime(Date.utc_today(), "%Y-%m")
+    month = Calendar.strftime(Date.utc_today(), "%B")
+
+    {:ok, _live, html} = live(context.conn, ~p"/?from=#{this_year}")
+
+    assert html =~ "<caption>#{month}</caption>"
   end
 end

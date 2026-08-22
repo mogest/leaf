@@ -57,7 +57,7 @@ defmodule LeafWeb.Router do
     end
 
     live_session :signed_in, on_mount: {LeafWeb.SignIn, :current_person} do
-      live "/", YourLeaveLive
+      live "/", AtAGlanceLive
       live "/leave", YourRequestsLive
       live "/leave/new", RequestLeaveLive, :new
       live "/leave/:id/amend", RequestLeaveLive, :amend

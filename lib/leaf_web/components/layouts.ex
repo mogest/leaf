@@ -9,7 +9,8 @@ defmodule LeafWeb.Layouts do
   # Each entry, where it goes, and the pages that light it up. A page reached from an entry stands
   # under it, so a form opened off "People" leaves the rail where the reader left it.
   @rail [
-    {"Your leave", "/", ~w(your-leave request-leave your-requests balance)},
+    {"At a glance", "/", ~w(at-a-glance request-leave balance)},
+    {"Your requests", "/leave", ~w(your-requests)},
     {"Approvals", "/approvals", ~w(approvals)},
     {"Who's away", "/away", ~w(who-is-away)}
   ]
@@ -26,8 +27,8 @@ defmodule LeafWeb.Layouts do
 
   ## Examples
 
-      <Layouts.app flash={@flash} page="your-leave">
-        <h1>Your leave</h1>
+      <Layouts.app flash={@flash} page="at-a-glance">
+        <h1>At a glance</h1>
       </Layouts.app>
 
   """

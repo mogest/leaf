@@ -1,6 +1,6 @@
-defmodule LeafWeb.YourLeaveLive do
+defmodule LeafWeb.AtAGlanceLive do
   @moduledoc """
-  Your leave: when you are away, how much you have, and what came of what you asked for.
+  At a glance: when you are away, how much you have, and what came of what you asked for.
 
   The three are one question — where your leave is currently at — so they are one page. The
   wording is worked out here and rendered as it stands, so that nothing is decided in the markup.
@@ -28,7 +28,7 @@ defmodule LeafWeb.YourLeaveLive do
 
     {:ok,
      socket
-     |> assign(:page_title, "Your leave")
+     |> assign(:page_title, "At a glance")
      |> assign(:today, today)
      |> assign(:earlier, step(from, -@months))
      |> assign(:later, step(from, @months))
@@ -42,9 +42,9 @@ defmodule LeafWeb.YourLeaveLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="your-leave" current_person={@current_person}>
+    <Layouts.app flash={@flash} page="at-a-glance" current_person={@current_person}>
       <header>
-        <h1>Your leave</h1>
+        <h1>At a glance</h1>
         <.link class="button" navigate={~p"/leave/new"}>Request leave</.link>
       </header>
 
@@ -59,7 +59,7 @@ defmodule LeafWeb.YourLeaveLive do
         </Parts.requests>
       </div>
 
-      <section class="balances">
+      <section :if={@balances != []} class="balances">
         <header>
           <h2>Balances</h2>
           <p>as at today</p>
@@ -68,6 +68,7 @@ defmodule LeafWeb.YourLeaveLive do
           <%= for balance <- @balances do %>
             <dt><.link navigate={balance.ledger}>{balance.name}</.link></dt>
             <dd>{balance.amount} <small>{balance.unit}</small></dd>
+            <dd :if={balance.awaiting} data-awaiting>{balance.awaiting}</dd>
             <dd :if={balance.expiry}>{balance.expiry}</dd>
           <% end %>
         </dl>
@@ -101,22 +102,40 @@ defmodule LeafWeb.YourLeaveLive do
   end
 
   # A balance is worked out from the whole of somebody's record, so half a record has none to show.
+  # A type they hold nothing in and are waiting on nothing from is not their business, and is
+  # left off.
   defp balances(person, today) do
     case Ledger.ready?(person, today) do
-      true -> person |> Ledger.statements(today) |> Enum.map(&balance(&1, person, today))
-      false -> []
+      true ->
+        awaiting = Ledger.awaiting(person)
+
+        person
+        |> Ledger.statements(today)
+        |> Enum.reject(&nothing?(&1, awaiting))
+        |> Enum.map(&balance(&1, person, today, awaiting))
+
+      false ->
+        []
     end
   end
 
-  defp balance(statement, person, today) do
+  defp nothing?(statement, awaiting) do
+    Decimal.equal?(statement.balance, 0) and not Map.has_key?(awaiting, statement.leave_type.id)
+  end
+
+  defp balance(statement, person, today, awaiting) do
     %{
       name: statement.leave_type.name,
       amount: Wording.number(statement.balance),
       unit: Wording.unit(statement.balance, statement.leave_type.unit),
+      awaiting: asked(awaiting[statement.leave_type.id], statement.leave_type.unit),
       expiry: expiry(statement, today),
       ledger: ~p"/people/#{person}/balances/#{statement.leave_type}"
     }
   end
+
+  defp asked(nil, _unit), do: nil
+  defp asked(amount, unit), do: "#{Wording.figure(amount, unit)} awaiting approval"
 
   # What is going to happen to the balance, and nothing at all where nothing is. The soonest lot
   # to lapse is the one worth saying; one that is the whole balance says so without the figure.

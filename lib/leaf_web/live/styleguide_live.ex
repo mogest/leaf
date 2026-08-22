@@ -124,7 +124,7 @@ defmodule LeafWeb.StyleguideLive do
         </header>
         <dl>
           <dt>
-            <h1>Your leave</h1>
+            <h1>At a glance</h1>
           </dt>
           <dd>Newsreader 400, page title</dd>
           <dt>
