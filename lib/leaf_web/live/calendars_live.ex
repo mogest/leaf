@@ -48,7 +48,6 @@ defmodule LeafWeb.CalendarsLive do
       <section>
         <header>
           <h2>Whose holidays are held here</h2>
-          <p>one per country, and per region where they differ</p>
         </header>
         <table>
           <thead>

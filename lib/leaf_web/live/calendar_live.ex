@@ -63,8 +63,8 @@ defmodule LeafWeb.CalendarLive do
     ~H"""
     <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
-        <h1>{@calendar.name}</h1>
         <.link navigate={~p"/settings/calendars"}>Holiday calendars</.link>
+        <h1>{@calendar.name}</h1>
       </header>
 
       <section>
