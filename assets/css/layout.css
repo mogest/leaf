@@ -599,6 +599,28 @@ main.approvals > ol > li {
   }
 }
 
+/* On a list of records, a row that names one and offers nothing else to do is itself the way in
+   to it, so the name's link covers the whole line. */
+:is(main.people, main.settings) tbody tr:has(th a):not(:has(button)) {
+  position: relative;
+
+  &:hover {
+    background: var(--panel);
+  }
+
+  & th a {
+    &:hover {
+      text-decoration: none;
+    }
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+    }
+  }
+}
+
 /* One person's whole record, and the lists it is made of. */
 main.people {
   /* Who somebody is, a label against its value. What they hold is a part, and lays itself out. */
@@ -610,21 +632,6 @@ main.people {
 
     & > dt {
       color: var(--ink-soft);
-    }
-  }
-
-  /* A row that names somebody is the way in to them, so their name's link covers the whole line. */
-  & tbody tr:has(th a) {
-    position: relative;
-
-    &:hover {
-      background: var(--panel);
-    }
-
-    & th a::after {
-      content: "";
-      position: absolute;
-      inset: 0;
     }
   }
 }

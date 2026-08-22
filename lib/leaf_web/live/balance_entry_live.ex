@@ -58,7 +58,7 @@ defmodule LeafWeb.BalanceEntryLive do
       <.form id="balance-entry" for={@form} phx-change="validate" phx-submit="save">
         <section>
           <header>
-            <h2>What is being recorded</h2>
+            <h2>An opening balance, or an adjustment</h2>
           </header>
           <.input field={@form[:kind]} type="select" label="What it is" options={@kinds} />
           <.input

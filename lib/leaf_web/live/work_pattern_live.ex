@@ -63,7 +63,6 @@ defmodule LeafWeb.WorkPatternLive do
         <section>
           <header>
             <h2>Hours a day</h2>
-            <p>a day of no hours is one they do not work</p>
           </header>
           <.input field={@form[:effective_from]} type="date" label="From" />
           <.input :for={{field, day} <- @weekdays} field={@form[field]} type="text" label={day} />
@@ -87,7 +86,7 @@ defmodule LeafWeb.WorkPatternLive do
   end
 
   defp title(:new), do: "Add a work pattern"
-  defp title(:edit), do: "Amend a work pattern"
+  defp title(:edit), do: "Edit a work pattern"
 
   # A first pattern almost always starts the day the person did, so that is what is offered.
   defp opening(nil, person), do: %{"effective_from" => to_string(person.employment_start_date)}

@@ -157,8 +157,8 @@ defmodule LeafWeb.RequestLeaveLive do
     {params, replaced} = asked_again(request)
 
     socket
-    |> assign(:page_title, "Amend a request")
-    |> assign(:title, "Amend a request")
+    |> assign(:page_title, "Edit a request")
+    |> assign(:title, "Edit a request")
     |> assign(:action, "Save the change")
     |> assign(:done, "The request is changed.")
     |> assign(:request, request)

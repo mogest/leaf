@@ -51,11 +51,12 @@ defmodule LeafWeb.SettingsLiveTest do
     {:ok, live, _html} = live(context.conn, ~p"/settings/leave-types/#{leave_type}")
     live |> form("#leave-type", leave_type: %{"name" => "Study"}) |> render_submit()
 
-    {:ok, live, html} = live(context.conn, ~p"/settings/leave-types")
+    {:ok, _live, html} = live(context.conn, ~p"/settings/leave-types")
     assert html =~ "Study"
 
+    {:ok, live, _html} = live(context.conn, ~p"/settings/leave-types/#{leave_type}")
     html = live |> element("button", "Withdraw") |> render_click()
-    assert html =~ "withdrawn"
+    assert html =~ "Withdrawn"
 
     {:ok, withdrawn} = Policies.fetch_leave_type(leave_type.id)
     assert withdrawn.archived_at
@@ -93,7 +94,7 @@ defmodule LeafWeb.SettingsLiveTest do
 
     {:ok, live, html} = live(context.conn, ~p"/settings/policies/#{policy}")
 
-    assert html =~ "160 each year, reckoned from their start date, accruing day by day"
+    assert html =~ "160 hours each year, reckoned from their start date, accruing day by day"
     assert html =~ "pro-rated by the hours they work"
     assert html =~ "Rolls over indefinitely"
 

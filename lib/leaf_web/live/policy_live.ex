@@ -34,7 +34,15 @@ defmodule LeafWeb.PolicyLive do
     written =
       Policies.update_leave_policy(socket.assigns.policy, socket.assigns.current_person, params)
 
-    {:noreply, renamed(socket, written)}
+    {:noreply, saved(socket, written)}
+  end
+
+  def handle_event("archive", _params, socket) do
+    policy = socket.assigns.policy
+    attrs = %{archived_at: archived_at(policy)}
+
+    {:noreply,
+     saved(socket, Policies.update_leave_policy(policy, socket.assigns.current_person, attrs))}
   end
 
   def handle_event("remove", %{"id" => id}, socket) do
@@ -69,7 +77,7 @@ defmodule LeafWeb.PolicyLive do
             <p>{entitlement.grant}</p>
             <p>{entitlement.expiry}</p>
             <div>
-              <.link navigate={entitlement.path}>Amend</.link>
+              <.link navigate={entitlement.path}>Edit</.link>
               <button
                 type="button"
                 phx-click="remove"
@@ -90,10 +98,12 @@ defmodule LeafWeb.PolicyLive do
             <h2>The policy itself</h2>
           </header>
           <.input field={@form[:name]} type="text" label="Name" />
+          <p>{standing(@policy)}</p>
         </section>
 
         <footer>
           <button class="button" type="submit">Save</button>
+          <button type="button" phx-click="archive">{action(@policy)}</button>
         </footer>
       </.form>
     </Layouts.app>
@@ -144,8 +154,10 @@ defmodule LeafWeb.PolicyLive do
   end
 
   defp amount(entitlement) do
-    "#{Wording.number(entitlement.grant_amount)} each #{entitlement.grant_period}"
+    "#{figure(entitlement, entitlement.grant_amount)} each #{entitlement.grant_period}"
   end
+
+  defp figure(entitlement, amount), do: Wording.figure(amount, entitlement.leave_type.unit)
 
   defp anchored(%{grant_basis: :employment_date}), do: "reckoned from their start date"
   defp anchored(%{grant_basis: :birthday}), do: "reckoned from their birthday"
@@ -167,7 +179,7 @@ defmodule LeafWeb.PolicyLive do
   defp lapsing(%{expiry_rule: :never}), do: "Rolls over indefinitely"
 
   defp lapsing(%{expiry_rule: :cap} = entitlement) do
-    "Rolls over up to #{Wording.number(entitlement.rollover_cap)}"
+    "Rolls over up to #{figure(entitlement, entitlement.rollover_cap)}"
   end
 
   defp lapsing(%{expiry_rule: :grant_period_end}), do: "Lapses at the end of each period"
@@ -182,17 +194,28 @@ defmodule LeafWeb.PolicyLive do
   defp threshold(%{excess_threshold: nil}), do: nil
 
   defp threshold(entitlement) do
-    "too much over #{Wording.number(entitlement.excess_threshold)}"
+    "too much over #{figure(entitlement, entitlement.excess_threshold)}"
   end
 
-  defp renamed(socket, {:ok, policy}) do
+  defp standing(%{archived_at: nil}), do: "In use."
+
+  defp standing(policy),
+    do: "Withdrawn #{Wording.date(DateTime.to_date(policy.archived_at))}."
+
+  defp action(%{archived_at: nil}), do: "Withdraw"
+  defp action(_policy), do: "Use again"
+
+  defp archived_at(%{archived_at: nil}), do: DateTime.truncate(DateTime.utc_now(), :second)
+  defp archived_at(_policy), do: nil
+
+  defp saved(socket, {:ok, policy}) do
     socket
     |> assign(:policy, policy)
     |> assign(:form, to_form(Policies.change_leave_policy(policy, %{})))
     |> put_flash(:info, "Saved.")
   end
 
-  defp renamed(socket, {:error, changeset}) do
+  defp saved(socket, {:error, changeset}) do
     assign(socket, :form, to_form(changeset, action: :validate))
   end
 

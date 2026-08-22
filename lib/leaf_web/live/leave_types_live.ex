@@ -45,15 +45,6 @@ defmodule LeafWeb.LeaveTypesLive do
     {:noreply, saved(socket, created)}
   end
 
-  def handle_event("archive", %{"id" => id}, socket) do
-    {:ok, leave_type} = Policies.fetch_leave_type(id)
-    attrs = %{archived_at: archived_at(leave_type)}
-
-    written = Policies.update_leave_type(leave_type, socket.assigns.current_person, attrs)
-
-    {:noreply, socket |> written(written) |> listed()}
-  end
-
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
@@ -67,7 +58,6 @@ defmodule LeafWeb.LeaveTypesLive do
       <section>
         <header>
           <h2>What the organisation offers</h2>
-          <p>in the order they are shown in</p>
         </header>
         <table>
           <thead>
@@ -76,7 +66,6 @@ defmodule LeafWeb.LeaveTypesLive do
               <th scope="col">Name</th>
               <th scope="col">Counted in</th>
               <th scope="col">Standing</th>
-              <th scope="col"></th>
             </tr>
           </thead>
           <tbody>
@@ -85,11 +74,6 @@ defmodule LeafWeb.LeaveTypesLive do
               <th scope="row"><.link navigate={leave_type.path}>{leave_type.name}</.link></th>
               <td>{leave_type.unit}</td>
               <td>{leave_type.standing}</td>
-              <td>
-                <button type="button" phx-click="archive" phx-value-id={leave_type.id}>
-                  {leave_type.action}
-                </button>
-              </td>
             </tr>
           </tbody>
         </table>
@@ -140,7 +124,6 @@ defmodule LeafWeb.LeaveTypesLive do
       position: leave_type.position,
       path: ~p"/settings/leave-types/#{leave_type}",
       standing: standing(leave_type),
-      action: action(leave_type),
       tone: tone(leave_type)
     }
   end
@@ -150,19 +133,8 @@ defmodule LeafWeb.LeaveTypesLive do
   defp standing(leave_type),
     do: "withdrawn #{Wording.date(DateTime.to_date(leave_type.archived_at))}"
 
-  defp action(%{archived_at: nil}), do: "Withdraw"
-  defp action(_leave_type), do: "Offer again"
-
   defp tone(%{archived_at: nil}), do: nil
   defp tone(_leave_type), do: "past"
-
-  defp archived_at(%{archived_at: nil}), do: DateTime.truncate(DateTime.utc_now(), :second)
-  defp archived_at(_leave_type), do: nil
-
-  defp written(socket, {:ok, _leave_type}), do: put_flash(socket, :info, "Saved.")
-
-  defp written(socket, {:error, _changeset}),
-    do: put_flash(socket, :error, "That would not save.")
 
   defp saved(socket, {:ok, leave_type}) do
     socket |> put_flash(:info, "#{leave_type.name} is offered.") |> listed() |> blank()

@@ -94,7 +94,7 @@ defmodule LeafWeb.PersonFormLive do
   end
 
   defp title(:new), do: "Add somebody"
-  defp title(:edit), do: "Amend somebody"
+  defp title(:edit), do: "Edit somebody"
 
   defp back(nil), do: ~p"/people"
   defp back(person), do: ~p"/people/#{person}"

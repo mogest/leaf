@@ -9,6 +9,7 @@ defmodule LeafWeb.EntitlementLive do
 
   use LeafWeb, :live_view
 
+  alias Leaf.Org
   alias Leaf.Policies
 
   @sources [
@@ -41,22 +42,27 @@ defmodule LeafWeb.EntitlementLive do
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
     {:ok, policy} = Policies.fetch_leave_policy(params["policy_id"])
+    {:ok, organisation} = Org.fetch_organisation(policy.organisation_id)
     entitlement = amending(socket.assigns.live_action, params)
+    types = Policies.leave_types(policy.organisation_id)
+
+    socket =
+      socket
+      |> assign(:page_title, title(socket.assigns.live_action))
+      |> assign(:title, title(socket.assigns.live_action))
+      |> assign(:policy, policy)
+      |> assign(:entitlement, entitlement)
+      |> assign(:leave_types, offered(types))
+      |> assign(:types, Map.new(types, &{&1.id, &1}))
+      |> assign(:choices, choices())
 
     {:ok,
-     socket
-     |> assign(:page_title, title(socket.assigns.live_action))
-     |> assign(:title, title(socket.assigns.live_action))
-     |> assign(:policy, policy)
-     |> assign(:entitlement, entitlement)
-     |> assign(:leave_types, leave_types(policy))
-     |> assign(:choices, choices())
-     |> assign(:form, to_form(change(policy, entitlement, opening(entitlement))))}
+     assign(socket, :form, to_form(change(socket.assigns, opening(entitlement, organisation))))}
   end
 
   @impl Phoenix.LiveView
   def handle_event("validate", %{"policy_entitlement" => params}, socket) do
-    changeset = change(socket.assigns.policy, socket.assigns.entitlement, params)
+    changeset = change(socket.assigns, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
@@ -71,6 +77,7 @@ defmodule LeafWeb.EntitlementLive do
     <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
         <h1>{@title}</h1>
+        <p :if={@entitlement}>{@entitlement.leave_type.name}</p>
         <.link navigate={~p"/settings/policies/#{@policy}"}>{@policy.name}</.link>
       </header>
 
@@ -78,7 +85,6 @@ defmodule LeafWeb.EntitlementLive do
         <section>
           <header>
             <h2>Which leave type, and when it is offered</h2>
-            <p>two entitlements for one type may not overlap</p>
           </header>
           <.input
             :if={!@entitlement}
@@ -92,13 +98,13 @@ defmodule LeafWeb.EntitlementLive do
           <.input
             field={@form[:granted_to]}
             type="date"
-            label="Stops granting after"
+            label="Stops granting after (optional)"
             placeholder="never"
           />
           <.input
             field={@form[:effective_to]}
             type="date"
-            label="Stops being spendable after"
+            label="Stops being spendable after (optional)"
             placeholder="never"
           />
         </section>
@@ -113,7 +119,16 @@ defmodule LeafWeb.EntitlementLive do
             label="Where the amount comes from"
             options={@choices.sources}
           />
-          <.input field={@form[:grant_amount]} type="text" label="Amount, at 1.0 FTE" />
+          <.input
+            field={@form[:pro_rated_by_fte]}
+            type="checkbox"
+            label="Pro-rated by the hours they work"
+          />
+          <.input
+            field={@form[:grant_amount]}
+            type="text"
+            label={amount_label(@types[@form[:leave_type_id].value], @form[:pro_rated_by_fte].value)}
+          />
           <.input
             field={@form[:grant_period]}
             type="select"
@@ -134,11 +149,6 @@ defmodule LeafWeb.EntitlementLive do
             label="How it arrives"
             prompt="not granted"
             options={@choices.timings}
-          />
-          <.input
-            field={@form[:pro_rated_by_fte]}
-            type="checkbox"
-            label="Pro-rated by the hours they work"
           />
         </section>
 
@@ -185,15 +195,23 @@ defmodule LeafWeb.EntitlementLive do
   end
 
   defp title(:new), do: "Add an entitlement"
-  defp title(:edit), do: "Amend an entitlement"
+  defp title(:edit), do: "Edit an entitlement"
 
   # A leave type is settled when the entitlement is created: moving one to another type would
   # silently re-file everything already granted under it.
-  defp change(policy, nil, params), do: Policies.change_entitlement(policy, nil, params)
-  defp change(_policy, entitlement, params), do: Policies.change_entitlement(entitlement, params)
+  defp change(%{entitlement: nil} = assigns, params) do
+    Policies.change_entitlement(assigns.policy, chosen(assigns, params), params)
+  end
 
-  defp opening(nil) do
+  defp change(assigns, params), do: Policies.change_entitlement(assigns.entitlement, params)
+
+  defp chosen(assigns, params), do: assigns.types[params["leave_type_id"]]
+
+  # An entitlement that has always applied starts where the organisation's records do: nothing
+  # before that date grants anything anyway.
+  defp opening(nil, organisation) do
     %{
+      "effective_from" => to_string(organisation.tracked_from),
       "amount_source" => "fixed",
       "grant_period" => "year",
       "grant_basis" => "employment_date",
@@ -204,13 +222,26 @@ defmodule LeafWeb.EntitlementLive do
     }
   end
 
-  defp opening(_entitlement), do: %{}
+  defp opening(_entitlement, _organisation), do: %{}
 
-  defp leave_types(policy) do
-    policy.organisation_id
-    |> Policies.leave_types()
+  defp offered(types) do
+    types
     |> Enum.filter(&is_nil(&1.archived_at))
     |> Enum.map(&{Wording.leave_type(&1), &1.id})
+  end
+
+  # The amount is in the leave type's own unit, and is a full-time figure only where it is
+  # pro-rated, so the label says so once both are chosen.
+  defp amount_label(type, pro_rated), do: "Amount#{counted_in(type)}#{at_full_time(pro_rated)}"
+
+  defp counted_in(nil), do: ""
+  defp counted_in(type), do: " in #{type.unit}"
+
+  defp at_full_time(pro_rated) do
+    case Phoenix.HTML.Form.normalize_value("checkbox", pro_rated) do
+      true -> ", at 1.0 FTE"
+      false -> ""
+    end
   end
 
   defp choices do
@@ -218,22 +249,17 @@ defmodule LeafWeb.EntitlementLive do
   end
 
   defp write(%{entitlement: nil} = assigns, params) do
-    created(assigns, params, params["leave_type_id"])
+    created(assigns, params, chosen(assigns, params))
   end
 
   defp write(assigns, params) do
     Policies.update_entitlement(assigns.entitlement, assigns.current_person, params)
   end
 
-  # An unchosen leave type is a blank the changeset already knows how to refuse, so it is handed
-  # back rather than looked up.
-  defp created(assigns, params, id) when id in [nil, ""] do
-    {:error, change(assigns.policy, nil, params)}
-  end
+  # An unchosen leave type is a blank the changeset already knows how to refuse.
+  defp created(assigns, params, nil), do: {:error, change(assigns, params)}
 
-  defp created(assigns, params, id) do
-    {:ok, leave_type} = Policies.fetch_leave_type(id)
-
+  defp created(assigns, params, leave_type) do
     Policies.create_entitlement(assigns.policy, leave_type, assigns.current_person, params)
   end
 
