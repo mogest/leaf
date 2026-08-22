@@ -1,0 +1,160 @@
+/* The frame every page sits in: the rail down the side, the page beside it on a measure. */
+
+body {
+  display: flex;
+  align-items: stretch;
+  min-block-size: 100vh;
+}
+
+body > nav {
+  inline-size: var(--rail);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--step-6);
+  padding: var(--step-6) 0.875rem var(--step-5);
+  background: var(--ground);
+  border-inline-end: 1px solid var(--edge);
+
+  & > a {
+    display: flex;
+    align-items: center;
+    gap: var(--step-2);
+    padding-inline-start: 0.625rem;
+    font-family: var(--font-title);
+    font-size: 1.1875rem;
+
+    &:hover {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    & svg {
+      color: var(--green);
+    }
+  }
+
+  & > ul {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    & a {
+      display: flex;
+      align-items: center;
+      block-size: 2.125rem;
+      padding-inline: var(--step-3);
+      border-radius: var(--radius);
+      color: var(--ink-quiet);
+      font-size: var(--size-base);
+
+      &:hover {
+        background: var(--ground);
+        color: var(--ink);
+        text-decoration: none;
+      }
+
+      &[aria-current="page"] {
+        background: var(--green-wash);
+        color: var(--green-ink);
+        font-weight: 600;
+      }
+    }
+  }
+
+  & > p {
+    display: flex;
+    align-items: center;
+    gap: var(--step-2);
+    padding-inline: var(--step-3);
+    font-size: var(--size-base);
+
+    & > b {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      inline-size: 1.5625rem;
+      block-size: 1.5625rem;
+      border-radius: var(--pill);
+      background: var(--green-wash);
+      color: var(--green-ink);
+      font-size: var(--size-xs);
+      font-weight: 600;
+    }
+
+    & > span {
+      flex-grow: 1;
+    }
+  }
+}
+
+body > main {
+  flex-grow: 1;
+  padding-block: var(--step-9) 3.5rem;
+  padding-inline: max(var(--step-6), (100% - var(--measure)) / 2);
+}
+
+main > header {
+  display: flex;
+  align-items: center;
+  gap: var(--step-4);
+  padding-block-end: var(--step-8);
+
+  & h1 {
+    flex-grow: 1;
+  }
+}
+
+main.styleguide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step-8);
+}
+
+main.styleguide > section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step-4);
+
+  & > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--step-3);
+  }
+
+  /* Each swatch paints the token named on it. */
+  & > ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: var(--step-4);
+
+    & > li {
+      display: flex;
+      flex-direction: column;
+      gap: var(--step-2);
+      font-size: var(--size-base);
+
+      &::before {
+        content: "";
+        block-size: 2.875rem;
+        border: 1px solid var(--edge);
+        border-radius: var(--radius);
+        background: var(--swatch);
+      }
+    }
+  }
+
+  & > dl {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--step-3) var(--step-4);
+    align-items: baseline;
+
+    & > dd {
+      font-size: var(--size-sm);
+      color: var(--ink-soft);
+    }
+  }
+}

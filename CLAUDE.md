@@ -85,8 +85,14 @@ revision `af87da500` is the reference). In short:
 ## CSS
 
 - **No Tailwind. No utility classes. No BEM.** Not negotiable.
+- **The stylesheet selects elements.** A class appears only where the element genuinely cannot say
+  which one it is. `LeafWeb.CoreComponents` is classless on purpose. Design the markup first and let
+  the CSS follow it, not the other way round.
 - A design system of pure semantic classes. CSS is code: a class is named for *what it does*, not
   for the thing it happens to be marking up right now — the same way a function is named.
+- The system lives in `assets/css/*.css`, bundled into one stylesheet by esbuild.
+  `test/leaf_web/design_system_test.exs` fails on a class the stylesheet does not define and on a
+  class nothing uses, so reuse before adding is enforced rather than hoped for.
 - Nested CSS. Scope page-specific rules under the page's top-level selector (`main.request-leave { … }`).
   Leave a rule unscoped only when it's genuinely site-wide.
 - Reuse existing classes before adding new ones.

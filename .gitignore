@@ -35,3 +35,6 @@ leaf-*.tar
 npm-debug.log
 /assets/node_modules/
 
+
+# Design canvas working files, kept out of the repository.
+/design/

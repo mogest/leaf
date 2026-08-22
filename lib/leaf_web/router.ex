@@ -37,6 +37,8 @@ defmodule LeafWeb.Router do
     scope "/dev" do
       pipe_through :browser
 
+      live "/styleguide", LeafWeb.StyleguideLive
+
       live_dashboard "/dashboard", metrics: LeafWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end

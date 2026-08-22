@@ -1,0 +1,250 @@
+/*
+  The parts a page is assembled from.
+
+  A class here names a thing the markup could not name for itself — a calendar, a balance sheet,
+  a standing. Everything inside one is selected by element.
+*/
+
+section > header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.875rem;
+  padding-block-end: 0.625rem;
+  border-block-end: 1px solid var(--rule-firm);
+
+  & > h2 {
+    flex-grow: 1;
+  }
+
+  & > p {
+    font-size: var(--size-base);
+    color: var(--ink-soft);
+  }
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  block-size: 2.3125rem;
+  padding-inline: 1.125rem;
+  border-radius: var(--pill);
+  background: var(--green);
+  color: var(--sheet);
+  font-size: var(--size-base);
+  font-weight: 600;
+
+  &:hover {
+    background: var(--green-ink);
+    color: var(--sheet);
+    text-decoration: none;
+  }
+}
+
+.standing {
+  display: inline-flex;
+  align-items: center;
+  block-size: 1.5rem;
+  padding-inline: 0.6875rem;
+  border-radius: var(--pill);
+  background: var(--waiting-wash);
+  color: var(--waiting);
+  font-size: var(--size-sm);
+  font-weight: 500;
+
+  &[data-standing="approved"] {
+    background: var(--green-wash);
+    color: var(--green-ink);
+  }
+
+  &[data-standing="declined"] {
+    background: var(--clay-wash);
+    color: var(--clay-ink);
+  }
+
+  &[data-standing="taken"] {
+    background: var(--settled-wash);
+    color: var(--settled);
+  }
+}
+
+.calendar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step-4);
+
+  /* Stepping far enough through the months is the whole calendar. */
+  & > nav {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+
+    & > a {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      inline-size: var(--day);
+      block-size: var(--day);
+      flex-shrink: 0;
+      border: 1px solid var(--edge);
+      border-radius: var(--pill);
+      color: var(--ink-soft);
+
+      &:hover {
+        border-color: var(--green);
+        color: var(--green);
+        text-decoration: none;
+      }
+    }
+
+    & > div {
+      display: flex;
+      gap: 1.125rem;
+    }
+  }
+
+  & td[data-working="no"] {
+    color: var(--ink-faint);
+  }
+
+  & td[data-leave="approved"] {
+    background: var(--green-wash);
+    color: var(--green-ink);
+    font-weight: 600;
+  }
+
+  & td[data-leave="pending"] {
+    border: 1px dashed var(--green);
+    color: var(--green-ink);
+    font-weight: 600;
+  }
+
+  & td[data-holiday] {
+    background: var(--ochre-wash);
+    color: var(--ochre);
+    font-weight: 600;
+  }
+
+  & td[data-today] {
+    box-shadow: inset 0 0 0 1.5px var(--green);
+  }
+
+  & > ul {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.125rem;
+    padding-inline-start: 2.5rem;
+    font-size: var(--size-sm);
+    color: var(--ink-soft);
+
+    & > li {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    & > li[data-leave]::before,
+    & > li[data-holiday]::before,
+    & > li[data-today]::before {
+      content: "";
+      inline-size: 0.8125rem;
+      block-size: 0.8125rem;
+      border-radius: 0.25rem;
+    }
+
+    & > li[data-leave="approved"]::before {
+      background: var(--green-wash);
+    }
+
+    & > li[data-leave="pending"]::before {
+      border: 1px dashed var(--green);
+    }
+
+    & > li[data-holiday]::before {
+      background: var(--ochre-wash);
+    }
+
+    & > li[data-today]::before {
+      box-shadow: inset 0 0 0 1.5px var(--green);
+    }
+  }
+}
+
+.balances {
+  padding: 1.125rem var(--step-5) var(--step-5);
+  border-radius: var(--radius-panel);
+  background: var(--panel);
+
+  & > header {
+    padding-block-end: 0;
+    border-block-end: 0;
+  }
+
+  & dt {
+    padding-block-start: 0.8125rem;
+    font-size: var(--size-base);
+    color: var(--ink-soft);
+  }
+
+  & dt:not(:first-of-type) {
+    border-block-start: 1px solid var(--rule-panel);
+  }
+
+  & dd {
+    padding-block-end: 0.8125rem;
+    font-size: var(--size-figure);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A second definition is what happens to the balance, and only appears when something does. */
+  & dd:has(+ dd) {
+    padding-block-end: 0;
+  }
+
+  & dd + dd {
+    font-size: var(--size-sm);
+    font-weight: 400;
+    color: var(--ochre);
+  }
+}
+
+.requests {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step-1);
+
+  & > ol > li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1875rem;
+    padding-block: 0.8125rem;
+    border-block-end: 1px solid var(--rule);
+  }
+
+  & > ol > li > p:first-child {
+    display: flex;
+    align-items: baseline;
+    gap: 0.875rem;
+
+    & > span {
+      font-variant-numeric: tabular-nums;
+    }
+
+    & > span:first-child {
+      flex-grow: 1;
+      font-weight: 500;
+    }
+  }
+
+  & > ol > li > p + p {
+    font-size: var(--size-base);
+    color: var(--ink-soft);
+  }
+
+  & > p {
+    padding-block-start: var(--step-3);
+    font-size: var(--size-base);
+    color: var(--ink-soft);
+  }
+}

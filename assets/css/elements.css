@@ -1,0 +1,107 @@
+/*
+  What each element looks like by default.
+
+  The stylesheet selects elements, so a class appears only where the element cannot say which one
+  it is. Nothing here needs one.
+*/
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--sheet);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: var(--size-md);
+  line-height: 1.5;
+}
+
+h1 {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: var(--size-title);
+  font-weight: 400;
+  letter-spacing: -0.008em;
+}
+
+h2 {
+  margin: 0;
+  font-size: var(--size-lg);
+  font-weight: 600;
+}
+
+p {
+  margin: 0;
+}
+
+small {
+  font-size: var(--size-base);
+  color: var(--ink-soft);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--green);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--green);
+    outline-offset: 2px;
+    text-decoration: none;
+  }
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+dl,
+dd {
+  margin: 0;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 3px;
+}
+
+caption {
+  padding-block-end: var(--step-1);
+  font-size: var(--size-sm);
+  font-weight: 600;
+  text-align: start;
+}
+
+th {
+  inline-size: var(--day);
+  block-size: 1rem;
+  font-size: var(--size-xs);
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+td {
+  inline-size: var(--day);
+  block-size: var(--day);
+  border-radius: 0.4375rem;
+  font-size: var(--size-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}

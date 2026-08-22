@@ -1,0 +1,63 @@
+/*
+  Every value the system is allowed to use.
+
+  Colour only ever means something: green is leave you have and the one primary action, clay is
+  leave spent and refusals, ochre is time running out. Nothing else is coloured.
+*/
+
+:root {
+  --ground: oklch(0.978 0.012 145);
+  --sheet: #ffffff;
+  --panel: oklch(0.972 0.017 148);
+
+  --ink: oklch(0.27 0.028 155);
+  --ink-quiet: oklch(0.44 0.024 155);
+  --ink-soft: oklch(0.53 0.022 155);
+  --ink-faint: oklch(0.78 0.02 140);
+
+  --rule: oklch(0.94 0.011 140);
+  --rule-firm: oklch(0.87 0.016 140);
+  --rule-panel: oklch(0.945 0.015 146);
+  --edge: oklch(0.925 0.014 142);
+
+  --green: oklch(0.52 0.12 150);
+  --green-ink: oklch(0.4 0.11 150);
+  --green-wash: oklch(0.93 0.038 150);
+  --clay: oklch(0.52 0.12 30);
+  --clay-ink: oklch(0.46 0.13 30);
+  --clay-wash: oklch(0.95 0.03 30);
+  --ochre: oklch(0.48 0.11 75);
+  --ochre-wash: oklch(0.95 0.035 75);
+  --settled: oklch(0.58 0.016 155);
+  --settled-wash: oklch(0.96 0.004 155);
+  --waiting: oklch(0.42 0.022 155);
+  --waiting-wash: oklch(0.95 0.008 155);
+
+  --font-title: Newsreader, Georgia, serif;
+  --font-text: Figtree, "Helvetica Neue", Arial, sans-serif;
+
+  --size-xs: 0.6875rem;
+  --size-sm: 0.75rem;
+  --size-base: 0.8125rem;
+  --size-md: 0.875rem;
+  --size-lg: 0.9375rem;
+  --size-figure: 1.375rem;
+  --size-title: 2rem;
+
+  --step-1: 0.25rem;
+  --step-2: 0.5rem;
+  --step-3: 0.75rem;
+  --step-4: 1rem;
+  --step-5: 1.25rem;
+  --step-6: 1.5rem;
+  --step-8: 2rem;
+  --step-9: 2.25rem;
+
+  --radius: 0.5rem;
+  --radius-panel: 0.875rem;
+  --pill: 100vmax;
+
+  --measure: 63.125rem;
+  --rail: 13.75rem;
+  --day: 1.625rem;
+}
