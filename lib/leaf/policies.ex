@@ -92,8 +92,9 @@ defmodule Leaf.Policies do
   @doc """
   Amends an entitlement.
 
-  Closing one means setting `effective_to`, and succeeding it means closing it before the next
-  begins: two entitlements for one leave type under one policy may not overlap.
+  Closing one means setting `effective_to`, which lapses what it granted. Changing its terms means
+  setting `granted_to` and opening the next row the day after: two grant windows for one leave type
+  under one policy may not overlap, but their lives may.
   """
   @spec update_entitlement(PolicyEntitlement.t(), Person.t() | nil, map()) ::
           Audit.written(PolicyEntitlement.t())
