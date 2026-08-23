@@ -20,11 +20,19 @@ defmodule Leaf.Leave.WorkingDay do
   @doc "The hours the person works on each date in `range` they are on a pattern for, in order."
   @spec hours_per_day(Person.t(), Date.Range.t()) :: [{Date.t(), Decimal.t()}]
   def hours_per_day(person, range) do
+    person |> People.hours_per_day(range) |> less_granted_off(person, range)
+  end
+
+  @doc "The same, refusing a `range` the person has no work pattern over part of."
+  @spec hours_per_day!(Person.t(), Date.Range.t()) :: [{Date.t(), Decimal.t()}]
+  def hours_per_day!(person, range) do
+    person |> People.hours_per_day!(range) |> less_granted_off(person, range)
+  end
+
+  defp less_granted_off(hours_per_day, person, range) do
     off = granted_off(person, range)
 
-    person
-    |> People.hours_per_day(range)
-    |> Enum.map(fn {date, hours} -> {date, worked(date, hours, off)} end)
+    Enum.map(hours_per_day, fn {date, hours} -> {date, worked(date, hours, off)} end)
   end
 
   defp worked(date, hours, off) do

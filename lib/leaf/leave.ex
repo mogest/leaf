@@ -143,6 +143,15 @@ defmodule Leaf.Leave do
   end
 
   @doc """
+  The hours the person works on each date in `range`, a day they do not work counting as none.
+
+  What a day of leave is worth follows from this, so it refuses a `range` the person has no work
+  pattern over part of: hours nobody knows are not hours nobody worked.
+  """
+  @spec hours_per_day!(Person.t(), Date.Range.t()) :: [{Date.t(), Decimal.t()}]
+  def hours_per_day!(person, range), do: WorkingDay.hours_per_day!(person, range)
+
+  @doc """
   Every day of approved leave a person holds, oldest first.
 
   Bounded at neither end. Leave somebody is already going on is spent whether they have been on it
