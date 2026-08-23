@@ -22,6 +22,10 @@ defmodule LeafWeb.Router do
   end
 
   scope "/", LeafWeb do
+    get "/healthz", HealthController, :show
+  end
+
+  scope "/", LeafWeb do
     pipe_through :browser
 
     get "/sign-in", SignInController, :index
