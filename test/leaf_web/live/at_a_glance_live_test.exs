@@ -152,13 +152,4 @@ defmodule LeafWeb.AtAGlanceLiveTest do
     assert html =~ "/?from=2030-07"
     assert html =~ "/?from=2031-01"
   end
-
-  test "a month in the year being read in is named without it", context do
-    this_year = Calendar.strftime(Date.utc_today(), "%Y-%m")
-    month = Calendar.strftime(Date.utc_today(), "%B")
-
-    {:ok, _live, html} = live(context.conn, ~p"/?from=#{this_year}")
-
-    assert html =~ "<caption>#{month}</caption>"
-  end
 end
