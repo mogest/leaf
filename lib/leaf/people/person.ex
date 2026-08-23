@@ -14,11 +14,12 @@ defmodule Leaf.People.Person do
 
   @roles [:member, :admin]
 
+  # `google_sub` is deliberately absent: it is the authentication identity, so it is set on the
+  # struct where an account is bound and never cast, or a crafted form param binds somebody else's.
   @fields [
     :manager_id,
     :name,
     :email,
-    :google_sub,
     :role,
     :employment_start_date,
     :employment_end_date,

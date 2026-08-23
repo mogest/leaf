@@ -84,6 +84,29 @@ defmodule LeafWeb.PeopleLiveTest do
     assert [^assigned_calendar] = People.calendar_assignments(context.person)
   end
 
+  test "the form is not a member's to open, and the login identity is not its to set", context do
+    assert {:error, {:redirect, %{to: "/", flash: flash}}} =
+             live(sign_in(context.conn, context.person), ~p"/people/#{context.person}/edit")
+
+    assert flash["error"] == "That page is the administrator's."
+
+    {:ok, live, _html} = live(context.conn, ~p"/people/#{context.person}/edit")
+
+    render_submit(live, "save", %{
+      "person" => %{
+        "name" => "Rae Halloran-Vale",
+        "email" => "rae@example.test",
+        "role" => "member",
+        "employment_start_date" => "2024-03-04",
+        "google_sub" => "108124"
+      }
+    })
+
+    assert {:ok, amended} = People.fetch_person(context.person.id)
+    assert amended.name == "Rae Halloran-Vale"
+    assert is_nil(amended.google_sub)
+  end
+
   test "adding somebody puts them on record and opens their page", context do
     {:ok, live, _html} = live(context.conn, ~p"/people/new")
 
