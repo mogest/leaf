@@ -23,20 +23,8 @@ defmodule LeafWeb.WorkPatternLive do
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
     {:ok, person} = People.fetch_person(params["person_id"])
-    pattern = amending(socket.assigns.live_action, params)
 
-    {:ok,
-     socket
-     |> assign(:page_title, title(socket.assigns.live_action))
-     |> assign(:title, title(socket.assigns.live_action))
-     |> assign(:person, person)
-     |> assign(:pattern, pattern)
-     |> assign(:subject, pattern || person)
-     |> assign(:weekdays, @weekdays)
-     |> assign(
-       :form,
-       to_form(People.change_work_pattern(pattern || person, opening(pattern, person)))
-     )}
+    {:ok, opened(socket, person, amending(socket.assigns.live_action, person, params))}
   end
 
   @impl Phoenix.LiveView
@@ -79,12 +67,27 @@ defmodule LeafWeb.WorkPatternLive do
     """
   end
 
-  defp amending(:new, _params), do: nil
+  defp amending(:new, _person, _params), do: {:ok, nil}
+  defp amending(:edit, person, %{"id" => id}), do: People.fetch_work_pattern(person, id)
 
-  defp amending(:edit, %{"id" => id}) do
-    {:ok, pattern} = People.fetch_work_pattern(id)
+  defp opened(socket, person, {:ok, pattern}) do
+    socket
+    |> assign(:page_title, title(socket.assigns.live_action))
+    |> assign(:title, title(socket.assigns.live_action))
+    |> assign(:person, person)
+    |> assign(:pattern, pattern)
+    |> assign(:subject, pattern || person)
+    |> assign(:weekdays, @weekdays)
+    |> assign(
+      :form,
+      to_form(People.change_work_pattern(pattern || person, opening(pattern, person)))
+    )
+  end
 
-    pattern
+  defp opened(socket, person, :error) do
+    socket
+    |> put_flash(:error, "That work pattern is not theirs.")
+    |> push_navigate(to: ~p"/people/#{person}")
   end
 
   defp title(:new), do: "Add a work pattern"

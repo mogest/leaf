@@ -166,6 +166,45 @@ defmodule LeafWeb.PeopleLiveTest do
     assert [_only] = People.work_patterns(context.person)
   end
 
+  test "one person's page will not act on somebody else's records", context do
+    other = Fixtures.person(%{organisation_id: context.organisation.id, name: "Ines Vasquez"})
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+    calendar = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
+    pattern = Fixtures.work_pattern(%{person_id: other.id})
+
+    assigned_policy =
+      Fixtures.policy_assignment(%{person_id: other.id, leave_policy_id: policy.id})
+
+    assigned_calendar =
+      Fixtures.calendar_assignment(%{person_id: other.id, holiday_calendar_id: calendar.id})
+
+    {:ok, live, _html} = live(context.conn, ~p"/people/#{context.person}")
+
+    assert render_click(live, "remove-work-pattern", %{"id" => pattern.id}) =~
+             "That is not on their record."
+
+    assert render_click(live, "remove-policy-assignment", %{"id" => assigned_policy.id}) =~
+             "That is not on their record."
+
+    assert render_click(live, "remove-calendar-assignment", %{"id" => assigned_calendar.id}) =~
+             "That is not on their record."
+
+    assert Enum.map(People.work_patterns(other), & &1.id) == [pattern.id]
+    assert Enum.map(People.policy_assignments(other), & &1.id) == [assigned_policy.id]
+    assert Enum.map(People.calendar_assignments(other), & &1.id) == [assigned_calendar.id]
+  end
+
+  test "somebody else's work pattern cannot be edited under this person's name", context do
+    other = Fixtures.person(%{organisation_id: context.organisation.id, name: "Ines Vasquez"})
+    pattern = Fixtures.work_pattern(%{person_id: other.id})
+
+    assert {:error, {:live_redirect, %{to: to, flash: flash}}} =
+             live(context.conn, ~p"/people/#{context.person}/work-patterns/#{pattern}")
+
+    assert to == "/people/#{context.person.id}"
+    assert flash["error"] == "That work pattern is not theirs."
+  end
+
   test "a balance can be entered by hand", context do
     {:ok, live, _html} = live(context.conn, ~p"/people/#{context.person}/balance-entries/new")
 

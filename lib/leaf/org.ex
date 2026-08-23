@@ -79,9 +79,12 @@ defmodule Leaf.Org do
   @spec fetch_holiday_calendar(Ecto.UUID.t()) :: {:ok, HolidayCalendar.t()} | :error
   def fetch_holiday_calendar(id), do: fetched(Repo.get(HolidayCalendar, id))
 
-  @doc "The public holiday, or `:error` where no such holiday exists."
-  @spec fetch_public_holiday(Ecto.UUID.t()) :: {:ok, PublicHoliday.t()} | :error
-  def fetch_public_holiday(id), do: fetched(Repo.get(PublicHoliday, id))
+  @doc "One of the calendar's public holidays, or `:error` where it is not on it."
+  @spec fetch_public_holiday(HolidayCalendar.t(), Ecto.UUID.t()) ::
+          {:ok, PublicHoliday.t()} | :error
+  def fetch_public_holiday(calendar, id) do
+    fetched(Repo.get_by(PublicHoliday, id: id, holiday_calendar_id: calendar.id))
+  end
 
   @doc "Creates a holiday calendar."
   @spec create_holiday_calendar(Organisation.t(), Person.t() | nil, map()) ::

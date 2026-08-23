@@ -50,10 +50,7 @@ defmodule LeafWeb.PolicyLive do
 
   @role :admin
   def handle_event("remove", %{"id" => id}, socket) do
-    {:ok, entitlement} = Policies.fetch_entitlement(id)
-    written = Policies.delete_entitlement(entitlement, socket.assigns.current_person)
-
-    {:noreply, socket |> removed(written) |> listed()}
+    {:noreply, remove(socket, Policies.fetch_entitlement(socket.assigns.policy, id))}
   end
 
   @impl Phoenix.LiveView
@@ -230,6 +227,16 @@ defmodule LeafWeb.PolicyLive do
 
   defp saved(socket, {:error, changeset}) do
     assign(socket, :form, to_form(changeset, action: :validate))
+  end
+
+  defp remove(socket, :error) do
+    put_flash(socket, :error, "That entitlement is not on this policy.")
+  end
+
+  defp remove(socket, {:ok, entitlement}) do
+    written = Policies.delete_entitlement(entitlement, socket.assigns.current_person)
+
+    socket |> removed(written) |> listed()
   end
 
   defp removed(socket, {:ok, _entitlement}), do: put_flash(socket, :info, "Removed.")

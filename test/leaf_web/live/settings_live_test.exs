@@ -152,6 +152,54 @@ defmodule LeafWeb.SettingsLiveTest do
     assert Org.public_holidays(calendar.id) == []
   end
 
+  test "a policy will not act on another policy's entitlement", context do
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+    other = Fixtures.leave_policy(%{organisation_id: context.organisation.id, name: "Contractor"})
+    leave_type = Fixtures.leave_type(%{organisation_id: context.organisation.id})
+
+    entitlement =
+      Fixtures.policy_entitlement(%{leave_policy_id: other.id, leave_type_id: leave_type.id})
+
+    {:ok, live, _html} = live(context.conn, ~p"/settings/policies/#{policy}")
+
+    assert render_click(live, "remove", %{"id" => entitlement.id}) =~
+             "That entitlement is not on this policy."
+
+    assert [%{id: id}] = Policies.entitlements(other.id)
+    assert id == entitlement.id
+  end
+
+  test "another policy's entitlement cannot be edited under this policy's name", context do
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+    other = Fixtures.leave_policy(%{organisation_id: context.organisation.id, name: "Contractor"})
+    leave_type = Fixtures.leave_type(%{organisation_id: context.organisation.id})
+
+    entitlement =
+      Fixtures.policy_entitlement(%{leave_policy_id: other.id, leave_type_id: leave_type.id})
+
+    assert {:error, {:live_redirect, %{to: to, flash: flash}}} =
+             live(context.conn, ~p"/settings/policies/#{policy}/entitlements/#{entitlement}")
+
+    assert to == "/settings/policies/#{policy.id}"
+    assert flash["error"] == "That entitlement is not on this policy."
+  end
+
+  test "a calendar will not let a holiday off another calendar", context do
+    calendar = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
+
+    other =
+      Fixtures.holiday_calendar(%{organisation_id: context.organisation.id, name: "Australia"})
+
+    holiday = Fixtures.public_holiday(%{holiday_calendar_id: other.id})
+
+    {:ok, live, _html} = live(context.conn, ~p"/settings/calendars/#{calendar}")
+
+    assert render_click(live, "remove", %{"id" => holiday.id}) =~
+             "That holiday is not on this calendar."
+
+    assert [^holiday] = Org.public_holidays(other.id)
+  end
+
   test "the audit log says who changed what, and narrows to one person", context do
     {:ok, _leave_type} =
       Policies.create_leave_type(context.organisation, context.admin, %{
