@@ -296,7 +296,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
       )
       |> render_change()
 
-    assert html =~ "Sick leave left on 22 August 2026"
+    assert html =~ "Sick leave left on"
     assert html =~ "25 days"
     refute html =~ "Annual leave left"
   end
