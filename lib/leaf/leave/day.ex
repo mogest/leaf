@@ -14,6 +14,10 @@ defmodule Leaf.Leave.Day do
   not work — one off their pattern, or a public holiday their policy grants them off — is refused
   where it happens, against the date it happened on. A date nobody knows the hours of is refused
   with it: a hole in the record is not a day off, and leave filed into one cannot be measured.
+
+  Leave dated before a person's first work pattern is therefore filed by recording a pattern that
+  reaches back over it, which is how a sick day found after go-live is entered (§4.10). Every day
+  held here has hours on record for its date, and everything measuring one may rely on that.
   """
 
   use Leaf.Schema
@@ -80,7 +84,9 @@ defmodule Leaf.Leave.Day do
     known(changeset, get_field(changeset, :hours_in_day))
   end
 
-  defp known(changeset, nil), do: add_error(changeset, :date, "has no work pattern on record")
+  defp known(changeset, nil),
+    do: add_error(changeset, :date, "is before the first work pattern on record")
+
   defp known(changeset, hours), do: worked(changeset, Decimal.positive?(hours))
 
   defp worked(changeset, true), do: changeset

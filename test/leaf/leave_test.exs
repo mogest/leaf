@@ -117,10 +117,16 @@ defmodule Leaf.LeaveTest do
     assert {:ok, %{status: :pending}} = file(context, [@friday])
   end
 
-  test "leave cannot be filed on a date with no work pattern on record", context do
+  test "leave cannot be filed on a date before the person's first work pattern", context do
     assert {:error, changeset} = file(context, [~D[2024-02-01]])
-    assert [%{date: ["has no work pattern on record"]}] = errors_on(changeset).days
+    assert [%{date: ["is before the first work pattern on record"]}] = errors_on(changeset).days
     assert Repo.all(Entry) == []
+  end
+
+  test "a pattern reaching back over the date is what makes it filable", context do
+    Fixtures.work_pattern(%{person_id: context.person.id, effective_from: ~D[2024-01-01]})
+
+    assert {:ok, %{status: :pending}} = file(context, [~D[2024-02-01]])
   end
 
   test "leave cannot be filed over a day already spoken for, decided or not", context do
