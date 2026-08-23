@@ -161,12 +161,15 @@ defmodule Leaf.Ledger do
   # A day asked for in the unit its leave type counts in converts through nothing, and most are,
   # so the work patterns are read only where one is not. A day older than the person's pattern
   # history still counts for as much as it says, so long as nobody has to say how long it was.
+  # The hours are the ones the request and the calendar are measured against, public holidays
+  # granted off included, so a day off one draws what it was worth on the date rather than a
+  # figure only the ledger believes.
   defp hours_taken_against(person, taken, leave_types) do
     units = Map.new(leave_types, &{&1.id, &1.unit})
 
     case Enum.reject(taken, &(&1.unit == Map.fetch!(units, &1.leave_type_id))) do
       [] -> %{}
-      converting -> person |> People.hours_per_day!(dates_spanned(converting)) |> Map.new()
+      converting -> person |> Leave.hours_per_day!(dates_spanned(converting)) |> Map.new()
     end
   end
 

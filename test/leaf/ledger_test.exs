@@ -114,6 +114,8 @@ defmodule Leaf.LedgerTest do
     Enum.map(statement.lots, &{Decimal.round(&1.amount, 2), &1.expires_on})
   end
 
+  defp drawn(statement), do: Enum.filter(statement.movements, &(&1.kind == :taken))
+
   test "annual leave accrues across its year, pro-rated by the hours worked", context do
     part_time(context.person)
     annual = leave_type(context, %{})
@@ -142,6 +144,77 @@ defmodule Leaf.LedgerTest do
 
     assert Enum.map(taken, &Decimal.round(&1.amount, 2)) ==
              [Decimal.new("-7.00"), Decimal.new("-8.00")]
+  end
+
+  test "a day worth no hours draws nothing rather than refusing to be counted", context do
+    person = context.person
+    full_time(person)
+    sick = leave_type(context, %{name: "Sick leave", unit: :days, position: 2})
+
+    entitlement(context, sick, %{
+      grant_amount: "10",
+      grant_timing: :period_start,
+      pro_rated_by_fte: false
+    })
+
+    take(person, sick, ~D[2024-05-01], "4.5", :hours)
+
+    # The Wednesday those hours were filed on is corrected to a day the person does not work.
+    Fixtures.work_pattern(%{
+      person_id: person.id,
+      effective_from: ~D[2024-04-01],
+      wednesday_hours: "0"
+    })
+
+    assert Decimal.equal?(statement(person, sick, ~D[2024-05-31]).balance, "10.00")
+  end
+
+  test "a public holiday added over booked leave deducts nothing for it", context do
+    person = context.person
+    full_time(person)
+    annual = leave_type(context, %{})
+    entitlement(context, annual, %{grant_amount: "200"})
+
+    take(person, annual, ~D[2024-05-01], "1", :days)
+
+    # The day is granted off after the fact, so it stopped being a day off anybody spent.
+    observes(context, person, [~D[2024-05-01]])
+
+    assert [taken] = drawn(statement(person, annual, ~D[2024-05-31]))
+    assert Decimal.equal?(taken.amount, 0)
+  end
+
+  test "converting a day rounds once, where the figure is shown", context do
+    person = context.person
+    weekdays(person, @started, "9")
+    sick = leave_type(context, %{name: "Sick leave", unit: :days, position: 2})
+
+    entitlement(context, sick, %{
+      grant_amount: "10",
+      grant_timing: :period_start,
+      pro_rated_by_fte: false
+    })
+
+    # An hour off on each of eight nine-hour days: eight ninths of a day, not eight elevenths.
+    Enum.each(
+      [
+        ~D[2024-05-01],
+        ~D[2024-05-02],
+        ~D[2024-05-03],
+        ~D[2024-05-06],
+        ~D[2024-05-07],
+        ~D[2024-05-08],
+        ~D[2024-05-09],
+        ~D[2024-05-10]
+      ],
+      &take(person, sick, &1, "1", :hours)
+    )
+
+    statement = statement(person, sick, ~D[2024-05-31])
+    taken = Enum.reduce(drawn(statement), Decimal.new(0), &Decimal.add(&2, &1.amount))
+
+    assert Decimal.equal?(Decimal.round(taken, 4), "-0.8889")
+    assert Decimal.equal?(statement.balance, "9.11")
   end
 
   test "a block grant lands whole at the start of its period, or not at all", context do

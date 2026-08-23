@@ -24,6 +24,8 @@ defmodule Leaf.Leave.Day do
   @type t :: %__MODULE__{}
   @type unit :: :hours | :days
 
+  @none Decimal.new(0)
+
   @units [:hours, :days]
 
   @fields [:leave_type_id, :date, :amount, :unit, :hours_in_day]
@@ -58,13 +60,21 @@ defmodule Leaf.Leave.Day do
 
   `hours_in_day` is unread where the day is already in the unit asked for, which is most of them,
   so a caller with nothing to convert need not go and find it.
+
+  A date worth no hours — a public holiday their policy grants them off, or a pattern since
+  corrected to none — is worth nothing in either unit. The figure is exact: it is rounded where it
+  is stored or shown and never on the way there.
   """
   @spec in_unit(t(), unit(), Decimal.t() | nil) :: Decimal.t()
   def in_unit(%{unit: unit} = day, unit, _hours_in_day), do: day.amount
-  def in_unit(%{unit: :days} = day, :hours, hours), do: round2(Decimal.mult(day.amount, hours))
-  def in_unit(%{unit: :hours} = day, :days, hours), do: round2(Decimal.div(day.amount, hours))
+  def in_unit(%{unit: :days} = day, :hours, hours), do: Decimal.mult(day.amount, hours)
 
-  defp round2(amount), do: Decimal.round(amount, 2)
+  def in_unit(%{unit: :hours} = day, :days, hours) do
+    over(day.amount, hours, Decimal.positive?(hours))
+  end
+
+  defp over(amount, hours, true), do: Decimal.div(amount, hours)
+  defp over(_amount, _hours, false), do: @none
 
   defp validate_working_day(changeset) do
     known(changeset, get_field(changeset, :hours_in_day))
