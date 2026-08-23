@@ -43,10 +43,10 @@ defmodule LeafWeb.RequestLeaveLive do
 
   @role :member
   def handle_event("save", %{"request" => params}, socket) do
-    {entries, _problems} = asked(socket, params)
-    attrs = %{days: entries, note: blank(params["note"])}
+    socket = filled(socket, params)
+    attrs = %{days: socket.assigns.entries, note: blank(params["note"])}
 
-    {:noreply, socket |> filled(params) |> saved(file(socket, attrs))}
+    {:noreply, saved(socket, file(socket, attrs))}
   end
 
   @impl Phoenix.LiveView
@@ -174,20 +174,35 @@ defmodule LeafWeb.RequestLeaveLive do
   # is typed into the form.
   defp holding(socket, person, today) do
     ready? = Ledger.ready?(person, today)
-    held = held(person, today, ready?)
-    offered = Leave.requestable(person, Date.range(today, today))
 
     socket
     |> assign(:person, person)
     |> assign(:ready?, ready?)
-    |> assign(:offered, offered)
-    |> assign(:leave_types, Enum.map(offered, &{offering(&1, held[&1.id]), &1.id}))
+    |> assign(:held, held(person, today, ready?))
   end
 
   defp held(_person, _today, false), do: %{}
 
   defp held(person, today, true) do
     person |> Ledger.statements(today) |> Map.new(&{&1.leave_type.id, &1})
+  end
+
+  # Which types can be asked for turns on the dates being asked about, so a stretch that is over
+  # offers what was offered then: leave is filed after the entitlement that covered it has closed as
+  # readily as before. A form nobody has put dates in yet asks about today.
+  defp choices(socket, params) do
+    offered = Leave.requestable(socket.assigns.person, asked_about(socket, params))
+
+    socket
+    |> assign(:offered, offered)
+    |> assign(:leave_types, Enum.map(offered, &{offering(&1, socket.assigns.held[&1.id]), &1.id}))
+  end
+
+  defp asked_about(socket, params) do
+    case range(params["from"], params["to"]) do
+      {:ok, range} -> range
+      _blank_or_wrong -> Date.range(socket.assigns.today, socket.assigns.today)
+    end
   end
 
   # A type is offered with what is left in it, so that choosing one is not a guess.
@@ -259,6 +274,7 @@ defmodule LeafWeb.RequestLeaveLive do
   defp ordered("to", entered, kept), do: min(entered, kept)
 
   defp filled(socket, params) do
+    socket = choices(socket, params)
     {entries, problems} = asked(socket, params)
 
     socket
@@ -353,9 +369,13 @@ defmodule LeafWeb.RequestLeaveLive do
     end
   end
 
+  # A type chosen and then dated outside what it was offered over is no longer in the list to choose
+  # from, so it is said rather than left to a select that has quietly stopped showing a choice.
+  defp chosen(_socket, blank) when blank in [nil, ""], do: :none
+
   defp chosen(socket, id) do
     case offered(socket, id) do
-      nil -> :none
+      nil -> {:error, "That leave type was not offered then."}
       leave_type -> {:ok, leave_type}
     end
   end

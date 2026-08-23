@@ -5,6 +5,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
   alias Leaf.Fixtures
   alias Leaf.Leave
+  alias Leaf.Policies
 
   @week Date.range(~D[2026-03-02], ~D[2026-03-06])
   @monday ~D[2026-03-02]
@@ -20,10 +21,23 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     leave_type = Fixtures.leave_type(%{organisation_id: organisation.id})
     policy = Fixtures.leave_policy(%{organisation_id: organisation.id})
 
-    Fixtures.policy_entitlement(%{leave_policy_id: policy.id, leave_type_id: leave_type.id})
+    entitlement =
+      Fixtures.policy_entitlement(%{leave_policy_id: policy.id, leave_type_id: leave_type.id})
+
     Fixtures.policy_assignment(%{person_id: person.id, leave_policy_id: policy.id})
 
-    %{conn: sign_in(conn, person), person: person, leave_type: leave_type, policy: policy}
+    %{
+      conn: sign_in(conn, person),
+      person: person,
+      leave_type: leave_type,
+      policy: policy,
+      entitlement: entitlement
+    }
+  end
+
+  defp closed_on(context, date) do
+    {:ok, _entitlement} =
+      Policies.update_entitlement(context.entitlement, nil, %{effective_to: date})
   end
 
   defp asking(context, params) do
@@ -42,6 +56,12 @@ defmodule LeafWeb.RequestLeaveLiveTest do
   defp asking_hours(live, context, params) do
     live |> form("form", request: asking(context, %{})) |> render_change()
     live |> form("form", request: asking(context, params))
+  end
+
+  # Dates are entered while a type is already chosen, so the change carries the choice the options
+  # before it offered rather than one of the options the new dates offer.
+  defp dating(live, context, params) do
+    render_change(live, "validate", %{"request" => asking(context, params)})
   end
 
   # A second type on the same policy, counted in days where annual leave is counted in hours.
@@ -74,6 +94,32 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert html =~ "Annual leave —"
     assert html =~ "hours left"
     refute html =~ other.id
+  end
+
+  test "a type whose entitlement has closed is offered for the dates it covered", context do
+    closed_on(context, @friday)
+
+    {:ok, live, html} = live(context.conn, ~p"/leave/new")
+
+    refute html =~ "Annual leave"
+    assert dating(live, context, %{"to" => to_string(@friday)}) =~ "Annual leave"
+
+    live
+    |> form("form", request: asking(context, %{"to" => to_string(@friday)}))
+    |> render_submit()
+
+    assert [%{days: days}] = Leave.requests(context.person)
+    assert Enum.map(days, & &1.date) == Enum.to_list(@week)
+  end
+
+  test "a type dated outside what it was offered over says so", context do
+    closed_on(context, @friday)
+
+    {:ok, live, _html} = live(context.conn, ~p"/leave/new")
+
+    dated = %{"from" => to_string(@next_monday), "to" => to_string(@next_monday)}
+
+    assert dating(live, context, dated) =~ "That leave type was not offered then."
   end
 
   test "the dates start blank, and a last day left blank asks for the first day alone", context do
