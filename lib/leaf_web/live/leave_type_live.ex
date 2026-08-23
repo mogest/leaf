@@ -29,12 +29,14 @@ defmodule LeafWeb.LeaveTypeLive do
   end
 
   @impl Phoenix.LiveView
+  @role :admin
   def handle_event("validate", %{"leave_type" => params}, socket) do
     changeset = Policies.change_leave_type(socket.assigns.leave_type, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
+  @role :admin
   def handle_event("save", %{"leave_type" => params}, socket) do
     written =
       Policies.update_leave_type(socket.assigns.leave_type, socket.assigns.current_person, params)
@@ -42,6 +44,7 @@ defmodule LeafWeb.LeaveTypeLive do
     {:noreply, saved(socket, written)}
   end
 
+  @role :admin
   def handle_event("archive", _params, socket) do
     leave_type = socket.assigns.leave_type
     attrs = %{archived_at: archived_at(leave_type)}

@@ -18,12 +18,14 @@ defmodule LeafWeb.CalendarsLive do
   end
 
   @impl Phoenix.LiveView
+  @role :admin
   def handle_event("validate", %{"holiday_calendar" => params}, socket) do
     changeset = Org.change_holiday_calendar(socket.assigns.organisation, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
+  @role :admin
   def handle_event("save", %{"holiday_calendar" => params}, socket) do
     created =
       Org.create_holiday_calendar(

@@ -40,12 +40,14 @@ defmodule LeafWeb.WorkPatternLive do
   end
 
   @impl Phoenix.LiveView
+  @role :admin
   def handle_event("validate", %{"work_pattern" => params}, socket) do
     changeset = People.change_work_pattern(socket.assigns.subject, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
+  @role :admin
   def handle_event("save", %{"work_pattern" => params}, socket) do
     {:noreply, saved(socket, write(socket.assigns, params))}
   end

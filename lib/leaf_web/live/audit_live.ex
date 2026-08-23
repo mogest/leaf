@@ -25,6 +25,7 @@ defmodule LeafWeb.AuditLive do
   end
 
   @impl Phoenix.LiveView
+  @role :admin
   def handle_event("filter", %{"filter" => %{"person_id" => id}}, socket) do
     {:noreply,
      socket

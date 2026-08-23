@@ -12,6 +12,7 @@ defmodule LeafWeb.SignIn do
   import Plug.Conn
 
   alias Leaf.People
+  alias LeafWeb.AuthorizedEvents
   alias LeafWeb.Viewer
   alias Phoenix.Component
   alias Phoenix.LiveView
@@ -28,7 +29,9 @@ defmodule LeafWeb.SignIn do
   Puts whoever the session names on the socket, and turns anybody else away from an admin page.
 
   `:current_person` assigns the person twice over: as themselves, which is the actor every context
-  write takes, and as a `Viewer`, which is all the chrome around a page is given.
+  write takes, and as a `Viewer`, which is all the chrome around a page is given. It also puts
+  `LeafWeb.AuthorizedEvents` in front of every event, since a page a member may open can still
+  carry an administrator's buttons.
 
   `:admin` runs after `:current_person`, so the pages only an administrator may open say so in the
   router rather than each checking for themselves.
@@ -71,6 +74,7 @@ defmodule LeafWeb.SignIn do
     socket
     |> Component.assign(:current_person, person)
     |> Component.assign(:viewer, viewer(person))
+    |> AuthorizedEvents.enforce()
   end
 
   defp viewer(nil), do: nil

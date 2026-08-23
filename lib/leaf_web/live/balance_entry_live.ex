@@ -33,12 +33,14 @@ defmodule LeafWeb.BalanceEntryLive do
   end
 
   @impl Phoenix.LiveView
+  @role :admin
   def handle_event("validate", %{"balance_entry" => params}, socket) do
     changeset = Leave.change_balance_entry(socket.assigns.person, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
+  @role :admin
   def handle_event("save", %{"balance_entry" => params}, socket) do
     entry =
       Leave.create_balance_entry(socket.assigns.person, socket.assigns.current_person, params)

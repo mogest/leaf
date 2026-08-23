@@ -25,12 +25,14 @@ defmodule LeafWeb.CalendarLive do
   end
 
   @impl Phoenix.LiveView
+  @role :admin
   def handle_event("validate-calendar", %{"holiday_calendar" => params}, socket) do
     changeset = Org.change_holiday_calendar(socket.assigns.calendar, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
+  @role :admin
   def handle_event("save-calendar", %{"holiday_calendar" => params}, socket) do
     written =
       Org.update_holiday_calendar(socket.assigns.calendar, socket.assigns.current_person, params)
@@ -38,12 +40,14 @@ defmodule LeafWeb.CalendarLive do
     {:noreply, renamed(socket, written)}
   end
 
+  @role :admin
   def handle_event("validate-holiday", %{"public_holiday" => params}, socket) do
     changeset = Org.change_public_holiday(socket.assigns.calendar, params)
 
     {:noreply, assign(socket, :holiday_form, to_form(changeset, action: :validate))}
   end
 
+  @role :admin
   def handle_event("save-holiday", %{"public_holiday" => params}, socket) do
     created =
       Org.create_public_holiday(socket.assigns.calendar, socket.assigns.current_person, params)
@@ -51,6 +55,7 @@ defmodule LeafWeb.CalendarLive do
     {:noreply, added(socket, created)}
   end
 
+  @role :admin
   def handle_event("remove", %{"id" => id}, socket) do
     {:ok, holiday} = Org.fetch_public_holiday(id)
     written = Org.delete_public_holiday(holiday, socket.assigns.current_person)

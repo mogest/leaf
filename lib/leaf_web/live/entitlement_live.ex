@@ -61,12 +61,14 @@ defmodule LeafWeb.EntitlementLive do
   end
 
   @impl Phoenix.LiveView
+  @role :admin
   def handle_event("validate", %{"policy_entitlement" => params}, socket) do
     changeset = change(socket.assigns, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
+  @role :admin
   def handle_event("save", %{"policy_entitlement" => params}, socket) do
     {:noreply, saved(socket, write(socket.assigns, params))}
   end
