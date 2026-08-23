@@ -143,10 +143,10 @@ defmodule Leaf.Policies do
   @spec fetch_leave_policy(Ecto.UUID.t()) :: {:ok, LeavePolicy.t()} | :error
   def fetch_leave_policy(id), do: fetched(Repo.get(LeavePolicy, id))
 
-  @doc "The entitlement with its leave type, or `:error` where no such entitlement exists."
-  @spec fetch_entitlement(Ecto.UUID.t()) :: {:ok, PolicyEntitlement.t()} | :error
-  def fetch_entitlement(id) do
-    case Repo.get(PolicyEntitlement, id) do
+  @doc "One of the policy's entitlements with its leave type, or `:error` where it is not on it."
+  @spec fetch_entitlement(LeavePolicy.t(), Ecto.UUID.t()) :: {:ok, PolicyEntitlement.t()} | :error
+  def fetch_entitlement(policy, id) do
+    case Repo.get_by(PolicyEntitlement, id: id, leave_policy_id: policy.id) do
       nil -> :error
       entitlement -> {:ok, Repo.preload(entitlement, :leave_type)}
     end

@@ -42,22 +42,8 @@ defmodule LeafWeb.EntitlementLive do
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
     {:ok, policy} = Policies.fetch_leave_policy(params["policy_id"])
-    {:ok, organisation} = Org.fetch_organisation(policy.organisation_id)
-    entitlement = amending(socket.assigns.live_action, params)
-    types = Policies.leave_types(policy.organisation_id)
 
-    socket =
-      socket
-      |> assign(:page_title, title(socket.assigns.live_action))
-      |> assign(:title, title(socket.assigns.live_action))
-      |> assign(:policy, policy)
-      |> assign(:entitlement, entitlement)
-      |> assign(:leave_types, offered(types))
-      |> assign(:types, Map.new(types, &{&1.id, &1}))
-      |> assign(:choices, choices())
-
-    {:ok,
-     assign(socket, :form, to_form(change(socket.assigns, opening(entitlement, organisation))))}
+    {:ok, opened(socket, policy, amending(socket.assigns.live_action, policy, params))}
   end
 
   @impl Phoenix.LiveView
@@ -188,12 +174,30 @@ defmodule LeafWeb.EntitlementLive do
     """
   end
 
-  defp amending(:new, _params), do: nil
+  defp amending(:new, _policy, _params), do: {:ok, nil}
+  defp amending(:edit, policy, %{"id" => id}), do: Policies.fetch_entitlement(policy, id)
 
-  defp amending(:edit, %{"id" => id}) do
-    {:ok, entitlement} = Policies.fetch_entitlement(id)
+  defp opened(socket, policy, {:ok, entitlement}) do
+    {:ok, organisation} = Org.fetch_organisation(policy.organisation_id)
+    types = Policies.leave_types(policy.organisation_id)
 
-    entitlement
+    socket =
+      socket
+      |> assign(:page_title, title(socket.assigns.live_action))
+      |> assign(:title, title(socket.assigns.live_action))
+      |> assign(:policy, policy)
+      |> assign(:entitlement, entitlement)
+      |> assign(:leave_types, offered(types))
+      |> assign(:types, Map.new(types, &{&1.id, &1}))
+      |> assign(:choices, choices())
+
+    assign(socket, :form, to_form(change(socket.assigns, opening(entitlement, organisation))))
+  end
+
+  defp opened(socket, policy, :error) do
+    socket
+    |> put_flash(:error, "That entitlement is not on this policy.")
+    |> push_navigate(to: ~p"/settings/policies/#{policy}")
   end
 
   defp title(:new), do: "Add an entitlement"

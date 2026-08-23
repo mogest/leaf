@@ -36,25 +36,23 @@ defmodule LeafWeb.PersonLive do
   @impl Phoenix.LiveView
   @role :admin
   def handle_event("remove-work-pattern", %{"id" => id}, socket) do
-    {:ok, pattern} = People.fetch_work_pattern(id)
+    pattern = People.fetch_work_pattern(socket.assigns.person, id)
 
-    {:noreply, socket |> removed(People.delete_work_pattern(pattern, actor(socket))) |> loaded()}
+    {:noreply, remove(socket, pattern, &People.delete_work_pattern/2)}
   end
 
   @role :admin
   def handle_event("remove-policy-assignment", %{"id" => id}, socket) do
-    {:ok, assignment} = People.fetch_policy_assignment(id)
+    assignment = People.fetch_policy_assignment(socket.assigns.person, id)
 
-    {:noreply,
-     socket |> removed(People.delete_policy_assignment(assignment, actor(socket))) |> loaded()}
+    {:noreply, remove(socket, assignment, &People.delete_policy_assignment/2)}
   end
 
   @role :admin
   def handle_event("remove-calendar-assignment", %{"id" => id}, socket) do
-    {:ok, assignment} = People.fetch_calendar_assignment(id)
+    assignment = People.fetch_calendar_assignment(socket.assigns.person, id)
 
-    {:noreply,
-     socket |> removed(People.delete_calendar_assignment(assignment, actor(socket))) |> loaded()}
+    {:noreply, remove(socket, assignment, &People.delete_calendar_assignment/2)}
   end
 
   @impl Phoenix.LiveView
@@ -370,6 +368,14 @@ defmodule LeafWeb.PersonLive do
 
   defp kind(:opening_balance), do: "Brought in"
   defp kind(:adjustment), do: "Adjusted"
+
+  defp remove(socket, :error, _delete) do
+    put_flash(socket, :error, "That is not on their record.")
+  end
+
+  defp remove(socket, {:ok, record}, delete) do
+    socket |> removed(delete.(record, actor(socket))) |> loaded()
+  end
 
   defp removed(socket, {:ok, _record}), do: put_flash(socket, :info, "Removed.")
 

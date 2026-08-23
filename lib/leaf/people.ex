@@ -193,17 +193,19 @@ defmodule Leaf.People do
     person |> succession(WorkPattern) |> Timeline.fetch(date)
   end
 
-  @doc "The work pattern, or `:error` where no such pattern exists."
-  @spec fetch_work_pattern(Ecto.UUID.t()) :: {:ok, WorkPattern.t()} | :error
-  def fetch_work_pattern(id), do: fetched(Repo.get(WorkPattern, id))
+  @doc "One of the person's work patterns, or `:error` where it is not theirs."
+  @spec fetch_work_pattern(Person.t(), Ecto.UUID.t()) :: {:ok, WorkPattern.t()} | :error
+  def fetch_work_pattern(person, id), do: fetch_of(WorkPattern, person, id)
 
-  @doc "The policy assignment, or `:error` where no such assignment exists."
-  @spec fetch_policy_assignment(Ecto.UUID.t()) :: {:ok, PersonPolicyAssignment.t()} | :error
-  def fetch_policy_assignment(id), do: fetched(Repo.get(PersonPolicyAssignment, id))
+  @doc "One of the person's policy assignments, or `:error` where it is not theirs."
+  @spec fetch_policy_assignment(Person.t(), Ecto.UUID.t()) ::
+          {:ok, PersonPolicyAssignment.t()} | :error
+  def fetch_policy_assignment(person, id), do: fetch_of(PersonPolicyAssignment, person, id)
 
-  @doc "The calendar assignment, or `:error` where no such assignment exists."
-  @spec fetch_calendar_assignment(Ecto.UUID.t()) :: {:ok, PersonHolidayCalendar.t()} | :error
-  def fetch_calendar_assignment(id), do: fetched(Repo.get(PersonHolidayCalendar, id))
+  @doc "One of the person's calendar assignments, or `:error` where it is not theirs."
+  @spec fetch_calendar_assignment(Person.t(), Ecto.UUID.t()) ::
+          {:ok, PersonHolidayCalendar.t()} | :error
+  def fetch_calendar_assignment(person, id), do: fetch_of(PersonHolidayCalendar, person, id)
 
   @doc "Every work pattern a person has been on, earliest first."
   @spec work_patterns(Person.t()) :: [WorkPattern.t()]
@@ -349,6 +351,11 @@ defmodule Leaf.People do
 
   defp fetched(nil), do: :error
   defp fetched(record), do: {:ok, record}
+
+  # Everything effective-dated is looked up through the person it hangs off, so an id belonging to
+  # somebody else reads as missing rather than as theirs.
+  defp fetch_of(schema, person, id),
+    do: fetched(Repo.get_by(schema, id: id, person_id: person.id))
 
   defp effective_dated(schema, person) do
     from row in schema, where: row.person_id == ^person.id, order_by: row.effective_from

@@ -57,10 +57,7 @@ defmodule LeafWeb.CalendarLive do
 
   @role :admin
   def handle_event("remove", %{"id" => id}, socket) do
-    {:ok, holiday} = Org.fetch_public_holiday(id)
-    written = Org.delete_public_holiday(holiday, socket.assigns.current_person)
-
-    {:noreply, socket |> removed(written) |> listed()}
+    {:noreply, remove(socket, Org.fetch_public_holiday(socket.assigns.calendar, id))}
   end
 
   @impl Phoenix.LiveView
@@ -189,6 +186,16 @@ defmodule LeafWeb.CalendarLive do
 
   defp added(socket, {:error, changeset}) do
     assign(socket, :holiday_form, to_form(changeset, action: :validate))
+  end
+
+  defp remove(socket, :error) do
+    put_flash(socket, :error, "That holiday is not on this calendar.")
+  end
+
+  defp remove(socket, {:ok, holiday}) do
+    written = Org.delete_public_holiday(holiday, socket.assigns.current_person)
+
+    socket |> removed(written) |> listed()
   end
 
   defp removed(socket, {:ok, _holiday}), do: put_flash(socket, :info, "Removed.")
