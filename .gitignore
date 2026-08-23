@@ -38,3 +38,6 @@ npm-debug.log
 
 # Design canvas working files, kept out of the repository.
 /design/
+
+# Deployment config for one particular cluster, kept out of the repository.
+/infrastructure/
