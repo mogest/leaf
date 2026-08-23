@@ -15,7 +15,7 @@ defmodule LeafWeb.AtAGlanceLive do
   @months 3
 
   # How many requests the page shows. The sentence under them says so in words.
-  @shown 4
+  @shown 5
 
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
@@ -53,7 +53,7 @@ defmodule LeafWeb.AtAGlanceLive do
         <Parts.requests requests={@requests} title="Requests">
           <:empty>You have not asked for any leave yet.</:empty>
           <:footer :if={@more?}>
-            Showing four, anything still waiting first. <.link navigate={~p"/leave"}>See all {@filed}</.link>.
+            Showing five. <.link navigate={~p"/leave"}>See all {@filed}</.link>.
           </:footer>
         </Parts.requests>
       </div>
