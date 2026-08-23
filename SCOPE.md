@@ -208,7 +208,10 @@ The organisation records the date it started tracking leave here. Nothing is acc
 expired before that date, so every person employed on it needs an opening balance per leave type,
 imported from existing spreadsheets/payroll — those balances are the whole story up to that point.
 Leave dated earlier can still be recorded and draws down what was brought in, which is what makes
-a sick day discovered after go-live land correctly.
+a sick day discovered after go-live land correctly. What a day of it was worth follows from the
+person's work pattern on the date, so recording one is what makes an earlier date filable: an admin
+who wants to enter pre-go-live leave records a pattern reaching back over it, as far back as they
+care to go. Nothing asks them to reach all the way to the employment start date.
 
 Moving that date re-works every balance in the organisation at once. It is the one setting that
 does, so it is worth being deliberate about.

@@ -159,8 +159,8 @@ defmodule Leaf.Ledger do
   end
 
   # A day asked for in the unit its leave type counts in converts through nothing, and most are,
-  # so the work patterns are read only where one is not. A day older than the person's pattern
-  # history still counts for as much as it says, so long as nobody has to say how long it was.
+  # so the work patterns are read only where one is not. Nothing is filed that cannot be measured,
+  # so a day that does convert has hours on record for its date and asking for them is safe.
   # The hours are the ones the request and the calendar are measured against, public holidays
   # granted off included, so a day off one draws what it was worth on the date rather than a
   # figure only the ledger believes.
