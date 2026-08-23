@@ -365,4 +365,61 @@ defmodule Leaf.LeaveTest do
     assert Enum.map(days, & &1.leave_request.status) == [:pending, :approved]
     assert hd(days).leave_request.id == pending.id
   end
+
+  describe "requestable/2" do
+    setup context do
+      policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+
+      sick_leave =
+        Fixtures.leave_type(%{
+          organisation_id: context.organisation.id,
+          name: "Sick leave",
+          unit: :days,
+          position: 2
+        })
+
+      Fixtures.policy_entitlement(%{
+        leave_policy_id: policy.id,
+        leave_type_id: context.leave_type.id,
+        effective_to: ~D[2026-03-31]
+      })
+
+      Fixtures.policy_entitlement(%{leave_policy_id: policy.id, leave_type_id: sick_leave.id})
+      Fixtures.policy_assignment(%{person_id: context.person.id, leave_policy_id: policy.id})
+
+      %{policy: policy}
+    end
+
+    defp offered(person, first, last) do
+      person |> Leave.requestable(Date.range(first, last)) |> Enum.map(& &1.name)
+    end
+
+    test "a closed entitlement still answers for the dates it covered", context do
+      assert offered(context.person, ~D[2026-02-02], ~D[2026-02-06]) ==
+               ["Annual leave", "Sick leave"]
+    end
+
+    test "and for none of the dates after it", context do
+      assert offered(context.person, ~D[2026-04-01], ~D[2026-04-03]) == ["Sick leave"]
+    end
+
+    test "a type offered over part of a range is not offered over the range", context do
+      assert offered(context.person, ~D[2026-03-30], ~D[2026-04-03]) == ["Sick leave"]
+    end
+
+    test "a type closed and offered again covers what the pair of them cover", context do
+      Fixtures.policy_entitlement(%{
+        leave_policy_id: context.policy.id,
+        leave_type_id: context.leave_type.id,
+        effective_from: ~D[2026-04-01]
+      })
+
+      assert offered(context.person, ~D[2026-03-30], ~D[2026-04-03]) ==
+               ["Annual leave", "Sick leave"]
+    end
+
+    test "a range the person was on no policy over offers nothing", context do
+      assert offered(context.person, ~D[2024-03-01], ~D[2024-03-06]) == []
+    end
+  end
 end
