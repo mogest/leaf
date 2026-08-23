@@ -10,9 +10,10 @@ defmodule Leaf.Policies.PolicyEntitlement do
 
   `grant_amount` is per `grant_period`, at 1.0 FTE, in the leave type's unit.
 
-  Two entitlements for one leave type under one policy may not overlap: the balance would be
-  granted twice over. Succeeding one therefore means closing the old window, not just opening a
-  new one.
+  Two grant windows for one leave type under one policy may not overlap: the balance would be
+  granted twice over. Changing the terms therefore means closing the old row with `granted_to` and
+  opening the next the day after — their lives may overlap, and it is closing with `effective_to`
+  that lapses what the old row granted, which is a discontinuation rather than a change of terms.
   """
 
   use Leaf.Schema

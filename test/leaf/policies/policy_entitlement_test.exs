@@ -132,4 +132,26 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
 
     assert {:ok, _entitlement} = Repo.insert(changeset(reoffered, pairing))
   end
+
+  test "new terms may take over the day after the old ones stop granting" do
+    organisation = Fixtures.organisation()
+    policy = Fixtures.leave_policy(%{organisation_id: organisation.id})
+    leave_type = Fixtures.leave_type(%{organisation_id: organisation.id})
+    pairing = %{leave_policy_id: policy.id, leave_type_id: leave_type.id}
+
+    # Granting stops at the turn of the year, but the balance it granted stays spendable, so the
+    # row's life runs on and it is only the grant windows that may not overlap.
+    granting = Map.put(@quarterly, :granted_to, ~D[2005-12-31])
+
+    assert {:ok, _granting} = Repo.insert(changeset(granting, pairing))
+    assert {:error, changeset} = Repo.insert(changeset(granting, pairing))
+
+    assert errors_on(changeset).effective_from == [
+             "overlaps another entitlement for this leave type"
+           ]
+
+    successor = Map.put(@quarterly, :effective_from, ~D[2006-01-01])
+
+    assert {:ok, _successor} = Repo.insert(changeset(successor, pairing))
+  end
 end

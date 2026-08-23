@@ -58,8 +58,8 @@ defmodule Leaf.Ledger.Grant do
   def caps(spans) do
     spans
     |> Enum.filter(&capped?/1)
-    |> Enum.map(&{&1.period.last, &1.entitlement.rollover_cap})
-    |> Enum.uniq()
+    |> Enum.group_by(& &1.period.last, & &1.entitlement)
+    |> Enum.map(fn {date, entitlements} -> {date, governing(entitlements, date).rollover_cap} end)
   end
 
   defp capped?(%{entitlement: %{expiry_rule: :cap}} = span) do
@@ -67,6 +67,18 @@ defmodule Leaf.Ledger.Grant do
   end
 
   defp capped?(_span), do: false
+
+  # A succession hands over part-way through a period, so both entitlements govern its end and only
+  # one cap can fall due there: the one still granting, since those are the terms in force — and no
+  # two grant windows overlap, so there is at most one. Where neither is, granting has stopped
+  # altogether and the cap still trims what it left behind, under the last terms to have granted.
+  defp governing(entitlements, date) do
+    Enum.find(entitlements, &granting_on?(&1, date)) ||
+      Enum.max_by(entitlements, & &1.effective_from, Date)
+  end
+
+  defp granting_on?(%{granted_to: nil}, _date), do: true
+  defp granting_on?(entitlement, date), do: not Date.before?(entitlement.granted_to, date)
 
   defp arrival(span, measured, organisation, holidays) do
     {kind, date} = lands(span.entitlement.grant_timing, measured)

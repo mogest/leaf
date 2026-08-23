@@ -519,6 +519,28 @@ defmodule Leaf.LedgerTest do
     assert Decimal.equal?(ended.balance, "0.00")
   end
 
+  test "raising what an entitlement grants keeps what it has already granted", context do
+    person = context.person
+    full_time(person)
+    annual = leave_type(context, %{})
+
+    # A raise from 200 to 220 hours part-way through the second year. The old row stops granting on
+    # the 15th and the new one opens on the 16th; the old row's life runs on, so nothing lapses and
+    # the year splits 73 days to 292.
+    entitlement(context, annual, %{grant_amount: "200", granted_to: ~D[2025-05-15]})
+    entitlement(context, annual, %{grant_amount: "220", effective_from: ~D[2025-05-16]})
+
+    statement = statement(person, annual, ~D[2026-03-03])
+
+    assert movements(statement) == [
+             {:accrual, ~D[2025-03-03], Decimal.new("200.00"), nil},
+             {:accrual, ~D[2025-05-15], Decimal.new("40.00"), nil},
+             {:accrual, ~D[2026-03-03], Decimal.new("176.00"), nil}
+           ]
+
+    assert Decimal.equal?(statement.balance, "416.00")
+  end
+
   test "taking more than is held goes negative, and what arrives next pays it off", context do
     person = context.person
     full_time(person)
@@ -616,12 +638,13 @@ defmodule Leaf.LedgerTest do
       expiry_rule: :cap
     }
 
-    # The organisation tightens the cap part-way through, so each entitlement governs the period
-    # ends it covers and no others.
+    # The organisation tightens the cap part-way through the second year, so each entitlement
+    # governs the period ends it covers and no others. The handover is mid-period, so both rows
+    # reach its end and the cap that falls due is the one still granting there.
     entitlement(
       context,
       sick,
-      Map.merge(capped, %{rollover_cap: "40", effective_to: ~D[2025-06-30]})
+      Map.merge(capped, %{rollover_cap: "40", granted_to: ~D[2025-06-30]})
     )
 
     entitlement(
@@ -636,12 +659,10 @@ defmodule Leaf.LedgerTest do
 
     assert movements(statement) == [
              {:opening_balance, ~D[2024-01-01], Decimal.new("30.00"), nil},
-             {:grant, @started, Decimal.new("20.00"), ~D[2025-06-30]},
+             {:grant, @started, Decimal.new("20.00"), nil},
              {:rollover_cap, ~D[2025-03-03], Decimal.new("-10.00"), nil},
-             {:grant, ~D[2025-03-04], Decimal.new("20.00"), ~D[2025-06-30]},
-             {:expiry, ~D[2025-06-30], Decimal.new("-20.00"), nil},
-             {:expiry, ~D[2025-06-30], Decimal.new("-20.00"), nil},
-             {:rollover_cap, ~D[2026-03-03], Decimal.new("-15.00"), nil}
+             {:grant, ~D[2025-03-04], Decimal.new("20.00"), nil},
+             {:rollover_cap, ~D[2026-03-03], Decimal.new("-55.00"), nil}
            ]
 
     assert Decimal.equal?(statement.balance, "5.00")
