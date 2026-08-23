@@ -24,12 +24,14 @@ defmodule LeafWeb.PolicyLive do
   end
 
   @impl Phoenix.LiveView
+  @role :admin
   def handle_event("validate", %{"leave_policy" => params}, socket) do
     changeset = Policies.change_leave_policy(socket.assigns.policy, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
+  @role :admin
   def handle_event("save", %{"leave_policy" => params}, socket) do
     written =
       Policies.update_leave_policy(socket.assigns.policy, socket.assigns.current_person, params)
@@ -37,6 +39,7 @@ defmodule LeafWeb.PolicyLive do
     {:noreply, saved(socket, written)}
   end
 
+  @role :admin
   def handle_event("archive", _params, socket) do
     policy = socket.assigns.policy
     attrs = %{archived_at: archived_at(policy)}
@@ -45,6 +48,7 @@ defmodule LeafWeb.PolicyLive do
      saved(socket, Policies.update_leave_policy(policy, socket.assigns.current_person, attrs))}
   end
 
+  @role :admin
   def handle_event("remove", %{"id" => id}, socket) do
     {:ok, entitlement} = Policies.fetch_entitlement(id)
     written = Policies.delete_entitlement(entitlement, socket.assigns.current_person)

@@ -37,6 +37,7 @@ defmodule LeafWeb.BalancesLive do
   end
 
   @impl Phoenix.LiveView
+  @role :member
   def handle_event("as-at", %{"ledger" => %{"as_at" => as_at}}, socket) do
     %{person: person, mine?: mine?, selected: selected} = socket.assigns
 

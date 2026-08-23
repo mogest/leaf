@@ -31,14 +31,17 @@ defmodule LeafWeb.RequestLeaveLive do
   end
 
   @impl Phoenix.LiveView
+  @role :member
   def handle_event("validate", %{"request" => params}, socket) do
     {:noreply, filled(socket, params)}
   end
 
+  @role :member
   def handle_event("settle", %{"end" => moved}, socket) do
     {:noreply, filled(socket, paired(socket.assigns.form.params, moved))}
   end
 
+  @role :member
   def handle_event("save", %{"request" => params}, socket) do
     {entries, _problems} = asked(socket, params)
     attrs = %{days: entries, note: blank(params["note"])}

@@ -24,12 +24,14 @@ defmodule LeafWeb.PoliciesLive do
   end
 
   @impl Phoenix.LiveView
+  @role :admin
   def handle_event("validate", %{"leave_policy" => params}, socket) do
     changeset = Policies.change_leave_policy(socket.assigns.organisation, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
+  @role :admin
   def handle_event("save", %{"leave_policy" => params}, socket) do
     created =
       Policies.create_leave_policy(

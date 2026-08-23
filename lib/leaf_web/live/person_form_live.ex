@@ -31,12 +31,14 @@ defmodule LeafWeb.PersonFormLive do
   end
 
   @impl Phoenix.LiveView
+  @role :admin
   def handle_event("validate", %{"person" => params}, socket) do
     changeset = People.change_person(socket.assigns.subject, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
+  @role :admin
   def handle_event("save", %{"person" => params}, socket) do
     {:noreply, saved(socket, write(socket.assigns, params))}
   end

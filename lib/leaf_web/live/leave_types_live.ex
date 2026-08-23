@@ -30,12 +30,14 @@ defmodule LeafWeb.LeaveTypesLive do
   end
 
   @impl Phoenix.LiveView
+  @role :admin
   def handle_event("validate", %{"leave_type" => params}, socket) do
     changeset = Policies.change_leave_type(socket.assigns.organisation, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
+  @role :admin
   def handle_event("save", %{"leave_type" => params}, socket) do
     created =
       Policies.create_leave_type(

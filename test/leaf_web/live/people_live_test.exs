@@ -52,6 +52,38 @@ defmodule LeafWeb.PeopleLiveTest do
     assert flash["error"] == "That record is not yours to read."
   end
 
+  test "a member reading their own page cannot fire the removals it does not show them",
+       context do
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+    calendar = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
+    Fixtures.policy_assignment(%{person_id: context.person.id, leave_policy_id: policy.id})
+
+    Fixtures.calendar_assignment(%{
+      person_id: context.person.id,
+      holiday_calendar_id: calendar.id
+    })
+
+    [pattern] = People.work_patterns(context.person)
+    [assigned_policy] = People.policy_assignments(context.person)
+    [assigned_calendar] = People.calendar_assignments(context.person)
+
+    {:ok, live, html} = live(sign_in(context.conn, context.person), ~p"/people/#{context.person}")
+    refute html =~ "Remove"
+
+    assert render_click(live, "remove-work-pattern", %{"id" => pattern.id}) =~
+             "That is not yours to do."
+
+    assert render_click(live, "remove-policy-assignment", %{"id" => assigned_policy.id}) =~
+             "That is not yours to do."
+
+    assert render_click(live, "remove-calendar-assignment", %{"id" => assigned_calendar.id}) =~
+             "That is not yours to do."
+
+    assert People.work_patterns(context.person) == [pattern]
+    assert [^assigned_policy] = People.policy_assignments(context.person)
+    assert [^assigned_calendar] = People.calendar_assignments(context.person)
+  end
+
   test "adding somebody puts them on record and opens their page", context do
     {:ok, live, _html} = live(context.conn, ~p"/people/new")
 

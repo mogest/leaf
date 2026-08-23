@@ -49,6 +49,7 @@ defmodule LeafWeb do
   def live_view do
     quote do
       use Phoenix.LiveView
+      use LeafWeb.AuthorizedEvents
 
       unquote(html_helpers())
     end

@@ -25,12 +25,14 @@ defmodule LeafWeb.CalendarAssignmentLive do
   end
 
   @impl Phoenix.LiveView
+  @role :admin
   def handle_event("validate", %{"person_holiday_calendar" => params}, socket) do
     changeset = People.change_calendar_assignment(socket.assigns.person, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
+  @role :admin
   def handle_event("save", %{"person_holiday_calendar" => params}, socket) do
     assignment =
       People.create_calendar_assignment(

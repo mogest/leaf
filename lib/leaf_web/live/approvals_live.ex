@@ -16,6 +16,7 @@ defmodule LeafWeb.ApprovalsLive do
   end
 
   @impl Phoenix.LiveView
+  @role :member
   def handle_event("decide", %{"request_id" => id, "decision" => decision} = params, socket) do
     {:noreply, socket |> decide(decision, id, params["comment"]) |> queued()}
   end

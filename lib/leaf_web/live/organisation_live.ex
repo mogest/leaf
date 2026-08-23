@@ -38,12 +38,14 @@ defmodule LeafWeb.OrganisationLive do
   end
 
   @impl Phoenix.LiveView
+  @role :admin
   def handle_event("validate", %{"organisation" => params}, socket) do
     changeset = Org.change_organisation(socket.assigns.organisation, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
+  @role :admin
   def handle_event("save", %{"organisation" => params}, socket) do
     saved =
       Org.update_organisation(socket.assigns.organisation, socket.assigns.current_person, params)

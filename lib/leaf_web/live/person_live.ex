@@ -34,12 +34,14 @@ defmodule LeafWeb.PersonLive do
   end
 
   @impl Phoenix.LiveView
+  @role :admin
   def handle_event("remove-work-pattern", %{"id" => id}, socket) do
     {:ok, pattern} = People.fetch_work_pattern(id)
 
     {:noreply, socket |> removed(People.delete_work_pattern(pattern, actor(socket))) |> loaded()}
   end
 
+  @role :admin
   def handle_event("remove-policy-assignment", %{"id" => id}, socket) do
     {:ok, assignment} = People.fetch_policy_assignment(id)
 
@@ -47,6 +49,7 @@ defmodule LeafWeb.PersonLive do
      socket |> removed(People.delete_policy_assignment(assignment, actor(socket))) |> loaded()}
   end
 
+  @role :admin
   def handle_event("remove-calendar-assignment", %{"id" => id}, socket) do
     {:ok, assignment} = People.fetch_calendar_assignment(id)
 

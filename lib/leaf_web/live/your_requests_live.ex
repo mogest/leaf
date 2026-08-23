@@ -17,6 +17,7 @@ defmodule LeafWeb.YourRequestsLive do
   end
 
   @impl Phoenix.LiveView
+  @role :member
   def handle_event("cancel", %{"id" => id}, socket) do
     {:ok, request} = Leave.fetch_request(id)
 
