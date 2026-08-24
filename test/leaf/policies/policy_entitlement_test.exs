@@ -33,6 +33,22 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
     assert changeset(@quarterly).valid?
   end
 
+  test "a grant may be as large as it likes, up to what the column holds" do
+    assert changeset(%{@quarterly | grant_amount: "99999999.99"}).valid?
+
+    errors = errors_on(changeset(%{@quarterly | grant_amount: "1200000000"}))
+
+    assert errors.grant_amount == ["must be less than or equal to 99999999.99"]
+  end
+
+  test "an expiry window is refused where it overflows its column rather than raising" do
+    attrs = Map.merge(@quarterly, %{expiry_rule: :window, expiry_window_days: 99_999_999_999})
+
+    assert errors_on(changeset(attrs)).expiry_window_days == [
+             "must be less than or equal to 2147483647"
+           ]
+  end
+
   test "requires the grant group when the amount is fixed" do
     errors = errors_on(changeset(%{amount_source: :fixed}))
 

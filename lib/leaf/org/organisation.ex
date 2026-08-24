@@ -28,8 +28,8 @@ defmodule Leaf.Org.Organisation do
     organisation
     |> cast(attrs, @fields)
     |> validate_required(@fields)
-    |> validate_number(:full_time_week_hours, greater_than: 0)
-    |> validate_number(:standard_day_hours, greater_than: 0)
+    |> validate_number(:full_time_week_hours, greater_than: 0, less_than_or_equal_to: 168)
+    |> validate_number(:standard_day_hours, greater_than: 0, less_than_or_equal_to: 24)
     |> validate_inclusion(:year_start_month, 1..12)
   end
 end
