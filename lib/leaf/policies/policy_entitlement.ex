@@ -39,9 +39,7 @@ defmodule Leaf.Policies.PolicyEntitlement do
     :pro_rated_by_fte,
     :expiry_rule,
     :rollover_cap,
-    :expiry_window_days,
-    :allow_negative,
-    :excess_threshold | @grant_fields
+    :expiry_window_days | @grant_fields
   ]
 
   schema "policy_entitlements" do
@@ -57,8 +55,6 @@ defmodule Leaf.Policies.PolicyEntitlement do
     field :expiry_rule, Ecto.Enum, values: @expiry_rules
     field :rollover_cap, :decimal
     field :expiry_window_days, :integer
-    field :allow_negative, :boolean
-    field :excess_threshold, :decimal
 
     belongs_to :leave_policy, LeavePolicy
     belongs_to :leave_type, LeaveType
@@ -76,14 +72,12 @@ defmodule Leaf.Policies.PolicyEntitlement do
       :effective_from,
       :amount_source,
       :pro_rated_by_fte,
-      :expiry_rule,
-      :allow_negative
+      :expiry_rule
     ])
     |> validate_amount_source()
     |> validate_expiry_rule()
     |> validate_number(:grant_amount, greater_than_or_equal_to: 0)
     |> validate_number(:rollover_cap, greater_than_or_equal_to: 0)
-    |> validate_number(:excess_threshold, greater_than_or_equal_to: 0)
     |> validate_number(:expiry_window_days, greater_than: 0)
     |> validate_date_order(:effective_from, :granted_to)
     |> validate_date_order(:effective_from, :effective_to)

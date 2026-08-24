@@ -90,8 +90,7 @@ defmodule Leaf.Fixtures do
       grant_period: :year,
       grant_timing: :daily,
       pro_rated_by_fte: true,
-      expiry_rule: :never,
-      allow_negative: false
+      expiry_rule: :never
     })
   end
 

@@ -86,8 +86,7 @@ defmodule LeafWeb.SettingsLiveTest do
         "grant_basis" => "employment_date",
         "grant_timing" => "daily",
         "pro_rated_by_fte" => "true",
-        "expiry_rule" => "never",
-        "allow_negative" => "false"
+        "expiry_rule" => "never"
       }
     )
     |> render_submit()
@@ -117,8 +116,7 @@ defmodule LeafWeb.SettingsLiveTest do
           "amount_source" => "none",
           "grant_period" => "year",
           "pro_rated_by_fte" => "false",
-          "expiry_rule" => "never",
-          "allow_negative" => "false"
+          "expiry_rule" => "never"
         }
       )
       |> render_submit()

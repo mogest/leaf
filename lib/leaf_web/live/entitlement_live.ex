@@ -156,13 +156,6 @@ defmodule LeafWeb.EntitlementLive do
             type="number"
             label="Days before it lapses, where it lapses on a window"
           />
-          <.input field={@form[:allow_negative]} type="checkbox" label="May be taken in advance" />
-          <.input
-            field={@form[:excess_threshold]}
-            type="text"
-            label="Report a balance over"
-            placeholder="no threshold"
-          />
         </section>
 
         <footer>
@@ -223,8 +216,7 @@ defmodule LeafWeb.EntitlementLive do
       "grant_basis" => "employment_date",
       "grant_timing" => "daily",
       "pro_rated_by_fte" => "true",
-      "expiry_rule" => "never",
-      "allow_negative" => "false"
+      "expiry_rule" => "never"
     }
   end
 

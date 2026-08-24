@@ -660,8 +660,7 @@ defmodule Leaf.LedgerTest do
       grant_amount: nil,
       grant_basis: nil,
       grant_period: nil,
-      grant_timing: nil,
-      allow_negative: true
+      grant_timing: nil
     })
 
     take(person, bereavement, ~D[2024-05-01], "1", :days)
