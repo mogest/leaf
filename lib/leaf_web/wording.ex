@@ -77,6 +77,54 @@ defmodule LeafWeb.Wording do
     }
   end
 
+  @typedoc "A balance a page shows as it would stand were the leave against it approved."
+  @type projected :: %{
+          name: String.t(),
+          date: String.t(),
+          left: String.t(),
+          overdrawn: boolean()
+        }
+
+  @doc """
+  What one account would be left at were the leave against it approved.
+
+  `left` is the bare figure, for a page that labels it itself. `overdrawn` is a balance that would
+  come out under nothing, which is allowed and is the thing worth showing differently: leave may be
+  taken in advance.
+  """
+  @spec projected(Statement.t()) :: projected()
+  def projected(statement) do
+    %{
+      name: statement.leave_type.name,
+      date: date(statement.as_at),
+      left: figure(statement.balance, statement.leave_type.unit),
+      overdrawn: Decimal.negative?(statement.balance)
+    }
+  end
+
+  @doc """
+  What the leave asked for would leave behind: "18 days left", or what it would go over by.
+
+  `statements` is `Leaf.Ledger.projected/2`. A balance under nothing is said as what it is
+  overdrawn by rather than as a minus sign, which is read twice beside a figure it is measured
+  against. Nothing at all where there is nothing to say, which is a record too incomplete to work
+  a balance out of.
+  """
+  @spec remaining([Statement.t()]) :: String.t() | nil
+  def remaining([]), do: nil
+  def remaining(statements), do: joined(Enum.map(statements, &left_in/1))
+
+  @doc "Whether approving would take any balance it draws on under nothing."
+  @spec overdrawn?([Statement.t()]) :: boolean()
+  def overdrawn?(statements), do: Enum.any?(statements, &Decimal.negative?(&1.balance))
+
+  defp left_in(%{balance: balance, leave_type: %{unit: unit}}) do
+    case Decimal.negative?(balance) do
+      true -> "#{figure(Decimal.abs(balance), unit)} overdrawn"
+      false -> "#{figure(balance, unit)} left"
+    end
+  end
+
   @doc "The span a request's days cover, as one date or as two."
   @spec dates(Request.t()) :: String.t()
   def dates(request) do

@@ -9,6 +9,7 @@ defmodule LeafWeb.ApprovalsLive do
   use LeafWeb, :live_view
 
   alias Leaf.Leave
+  alias Leaf.Ledger
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
@@ -33,11 +34,19 @@ defmodule LeafWeb.ApprovalsLive do
         <li :for={request <- @waiting}>
           <p>
             <.link navigate={~p"/people/#{request.person_id}"}>{request.person}</.link>
-            <span>{request.dates}</span>
+          </p>
+          <p>
+            {request.dates}
             <span>{request.amount}</span>
+            <span :if={request.remaining} data-tone={request.overdrawn && "wrong"}>
+              {request.remaining}
+            </span>
           </p>
           <p>{request.detail}</p>
-          <p :if={request.note}>“{request.note}”</p>
+          <blockquote :if={request.note}>“{request.note}”</blockquote>
+          <p :if={request.overdrawn} data-tone="wrong">
+            Taking leave in advance. It can still be approved.
+          </p>
           <form id={"decide-#{request.id}"} phx-submit="decide">
             <input type="hidden" name="request_id" value={request.id} />
             <input type="text" name="comment" placeholder="A comment, if you have one" />
@@ -60,6 +69,8 @@ defmodule LeafWeb.ApprovalsLive do
   end
 
   defp shown(request) do
+    projected = Ledger.projected(request.person, request.days)
+
     %{
       id: request.id,
       person: request.person.name,
@@ -68,7 +79,9 @@ defmodule LeafWeb.ApprovalsLive do
       amount: Wording.amount(request),
       detail:
         "#{Wording.types(request)} · asked on #{Wording.day_and_month(request.inserted_at)}",
-      note: request.note
+      note: request.note,
+      remaining: Wording.remaining(projected),
+      overdrawn: Wording.overdrawn?(projected)
     }
   end
 

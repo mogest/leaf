@@ -31,7 +31,13 @@ defmodule LeafWeb.ApprovalsLiveTest do
     days = [%{leave_type_id: leave_type.id, date: @date, amount: "8", unit: :hours}]
     {:ok, _request} = Leave.request(person, person, %{days: days, note: "A wedding"})
 
-    %{conn: conn, organisation: organisation, manager: manager, person: person}
+    %{
+      conn: conn,
+      organisation: organisation,
+      manager: manager,
+      person: person,
+      leave_type: leave_type
+    }
   end
 
   test "a manager sees what their reports have asked for", context do
@@ -40,6 +46,28 @@ defmodule LeafWeb.ApprovalsLiveTest do
     assert html =~ "Rae Halloran"
     assert html =~ "Monday 4 March"
     assert html =~ "A wedding"
+  end
+
+  test "a request the balance will not cover is flagged where it is decided", context do
+    {:ok, _live, html} = live(sign_in(context.conn, context.manager), ~p"/approvals")
+
+    assert html =~ ~s(data-tone="wrong")
+    assert html =~ "8 hours overdrawn"
+    assert html =~ "Taking leave in advance. It can still be approved."
+  end
+
+  test "a request the balance covers shows what approving leaves, and flags nothing", context do
+    Fixtures.balance_entry(%{
+      person_id: context.person.id,
+      leave_type_id: context.leave_type.id,
+      amount: "40"
+    })
+
+    {:ok, _live, html} = live(sign_in(context.conn, context.manager), ~p"/approvals")
+
+    assert html =~ "32 hours left"
+    refute html =~ "Taking leave in advance"
+    refute html =~ ~s(data-tone="wrong")
   end
 
   test "somebody with no reports has nothing waiting on them", context do

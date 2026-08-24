@@ -85,6 +85,28 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     leave_type
   end
 
+  # A type the policy records and grants nothing in, so anything filed against it goes negative.
+  defp unfunded(context) do
+    leave_type =
+      Fixtures.leave_type(%{
+        organisation_id: context.person.organisation_id,
+        name: "Unpaid leave",
+        position: 3
+      })
+
+    Fixtures.policy_entitlement(%{
+      leave_policy_id: context.policy.id,
+      leave_type_id: leave_type.id,
+      amount_source: :none,
+      grant_amount: nil,
+      grant_basis: nil,
+      grant_period: nil,
+      grant_timing: nil
+    })
+
+    leave_type
+  end
+
   test "a leave type is offered with what is left in it, and only where the policy offers it",
        context do
     other = Fixtures.leave_type(%{organisation_id: context.person.organisation_id, position: 2})
@@ -205,13 +227,30 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert html =~ "<td>2 days</td>"
   end
 
-  test "one day says nothing: its date and its hours are the fields above", context do
+  test "one day has no rows worth reading, and still says what it would leave", context do
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
 
     html = live |> form("form", request: asking(context, %{})) |> render_change()
 
     refute html =~ "Day by day"
+    assert html =~ "Annual leave left on"
     assert html =~ "Send the request"
+  end
+
+  test "leave the balance will not cover says so, and is filed all the same", context do
+    unpaid = unfunded(context)
+
+    {:ok, live, _html} = live(context.conn, ~p"/leave/new")
+    asked = asking(context, %{"leave_type_id" => unpaid.id})
+
+    html = live |> form("form", request: asked) |> render_change()
+
+    assert html =~ "-8 hours"
+    assert html =~ "That is more leave than the balance holds. It can still be approved."
+
+    live |> form("form", request: asked) |> render_submit()
+
+    assert [%{status: :pending}] = Leave.requests(context.person)
   end
 
   test "a range with nothing workable in it says so and files nothing", context do

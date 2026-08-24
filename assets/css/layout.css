@@ -571,43 +571,82 @@ main.who-is-away {
   }
 }
 
-/* What is waiting on you, each with the deciding of it. */
+/* What is waiting on you: a card a decision, read top to bottom — who and when, what they said,
+   what saying yes leaves them, and the saying of it. Cards rather than a running list because each
+   one is answered on its own, and narrower than the measure so the figure stays beside the ask. */
+main.approvals > ol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step-4);
+  max-inline-size: 44rem;
+}
+
 main.approvals > ol > li {
   display: flex;
   flex-direction: column;
-  gap: var(--step-2);
-  padding-block: var(--step-4);
-  border-block-end: 1px solid var(--rule);
+  gap: var(--step-1);
+  padding: var(--step-5);
+  border-radius: var(--radius-panel);
+  background: var(--panel);
 
   & > p:first-child {
-    display: flex;
-    align-items: baseline;
-    gap: 0.875rem;
+    font-size: var(--size-lg);
     font-weight: 500;
+  }
 
-    & > span {
-      font-weight: 400;
-      font-variant-numeric: tabular-nums;
+  /* When it is, how much of their leave it is, and what that leaves them: the three the decision
+     turns on, on one line. The marks say how the three relate — a dot between the date and the
+     amount, which are two facts, and an arrow to the balance, which is what the amount comes to. */
+  & > p:nth-child(2) {
+    font-variant-numeric: tabular-nums;
+
+    & > span:first-of-type::before {
+      content: "\00b7";
+      margin-inline: var(--step-3);
+      color: var(--ink-faint);
     }
 
-    & > span:first-of-type {
-      flex-grow: 1;
+    & > span + span::before {
+      content: "\2192";
+      margin-inline: var(--step-3);
+      color: var(--ink-faint);
+    }
+
+    & > span[data-tone="wrong"] {
+      color: var(--clay-ink);
     }
   }
 
-  & > p + p {
-    font-size: var(--size-base);
+  & > p:nth-child(3) {
+    font-size: var(--size-sm);
     color: var(--ink-soft);
+  }
+
+  & > blockquote {
+    margin: 0;
+    padding-block-start: var(--step-2);
+    padding-inline-start: var(--step-4);
+    color: var(--ink-quiet);
+  }
+
+  & > p[data-tone="wrong"] {
+    font-size: var(--size-sm);
+    color: var(--clay-ink);
   }
 
   & > form {
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--step-2);
-    padding-block-start: var(--step-1);
+    gap: var(--step-3);
+    margin-block-start: var(--step-3);
 
     & > input {
-      max-inline-size: 22rem;
+      max-inline-size: 18rem;
+    }
+
+    & > button.button {
+      margin-inline-start: auto;
     }
   }
 }
