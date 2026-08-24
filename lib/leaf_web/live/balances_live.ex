@@ -54,7 +54,7 @@ defmodule LeafWeb.BalancesLive do
       </header>
 
       <.form id="as-at" for={@form} phx-change="as-at">
-        <.input field={@form[:as_at]} type="date" label="As at" />
+        <.input field={@form[:as_at]} type="date" label="As at" phx-debounce="500" />
       </.form>
 
       <p :if={@nothing}>{@nothing}</p>

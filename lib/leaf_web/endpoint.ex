@@ -4,11 +4,15 @@ defmodule LeafWeb.Endpoint do
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
   # Set :encryption_salt if you would also like to encrypt it.
+  #
+  # `secure_cookie` is on wherever the site is served over HTTPS, which is production. It is off in
+  # development and test because a `Secure` cookie is never sent back over plain HTTP.
   @session_options [
     store: :cookie,
     key: "_leaf_key",
     signing_salt: "qCGiQR0P",
-    same_site: "Lax"
+    same_site: "Lax",
+    secure: Application.compile_env(:leaf, :secure_cookie, false)
   ]
 
   socket "/live", Phoenix.LiveView.Socket,

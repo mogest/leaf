@@ -10,14 +10,15 @@ config :leaf, LeafWeb.Endpoint, cache_static_manifest: "priv/static/cache_manife
 # Force using SSL in production. This also sets the "strict-security-transport" header,
 # known as HSTS. If you have a health check endpoint, you may want to exclude it below.
 # Note `:force_ssl` is required to be set at compile-time.
+#
+# Only the health check is excluded: the probe reaches the pod over plain HTTP with no proxy in
+# front of it. A host exclusion would be read off the client's own `Host` header, so anybody
+# sending `Host: localhost` would be excluding themselves.
 config :leaf, LeafWeb.Endpoint,
-  force_ssl: [
-    rewrite_on: [:x_forwarded_proto],
-    exclude: [
-      paths: ["/healthz"],
-      hosts: ["localhost", "127.0.0.1"]
-    ]
-  ]
+  force_ssl: [rewrite_on: [:x_forwarded_proto], exclude: [paths: ["/healthz"]]]
+
+# Everything reaches production over HTTPS, so the session cookie says `Secure`.
+config :leaf, secure_cookie: true
 
 # Configure Swoosh API Client
 config :swoosh, api_client: Swoosh.ApiClient.Req

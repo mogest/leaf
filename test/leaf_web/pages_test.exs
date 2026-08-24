@@ -1,10 +1,14 @@
 defmodule LeafWeb.PagesTest do
   @moduledoc """
-  Every page, against the example organisation, as an administrator.
+  Every page, against the example organisation, as an administrator and as a member.
 
   The seed is the one place a whole configured organisation exists — two policies, a real holiday
   calendar, people on both — so it is what catches a page that only works against a fixture with
   nothing in it.
+
+  The member's pass is the other half: every page the administrator's live session holds turns them
+  away, and every page that is theirs still renders. What they may *do* on a page they may open is
+  `LeafWeb.AuthorizedEvents`' to say, and it will not compile an event that does not say it.
   """
 
   use LeafWeb.ConnCase, async: true
@@ -37,7 +41,8 @@ defmodule LeafWeb.PagesTest do
     }
   end
 
-  defp paths(context) do
+  # The pages anybody signed in may open, read as `who`.
+  defp theirs(context, who) do
     [
       ~p"/",
       ~p"/leave",
@@ -46,12 +51,18 @@ defmodule LeafWeb.PagesTest do
       ~p"/away",
       ~p"/balances",
       ~p"/balances/#{context.leave_type}",
+      ~p"/people/#{who}",
+      ~p"/people/#{who}/balances",
+      ~p"/people/#{who}/balances/#{context.leave_type}"
+    ]
+  end
+
+  # The pages the administrator's live session holds, all of them.
+  defp the_administrators(context) do
+    [
       ~p"/people",
       ~p"/people/new",
-      ~p"/people/#{context.admin}",
       ~p"/people/#{context.admin}/edit",
-      ~p"/people/#{context.other}",
-      ~p"/people/#{context.admin}/balances/#{context.leave_type}",
       ~p"/people/#{context.admin}/work-patterns/new",
       ~p"/people/#{context.admin}/work-patterns/#{context.pattern}",
       ~p"/people/#{context.admin}/policy-assignments/new",
@@ -71,9 +82,39 @@ defmodule LeafWeb.PagesTest do
   end
 
   test "every page renders", context do
-    Enum.each(paths(context), fn path ->
+    paths =
+      theirs(context, context.admin) ++
+        the_administrators(context) ++ [~p"/people/#{context.other}"]
+
+    Enum.each(paths, fn path ->
       assert {:ok, _live, html} = live(context.conn, path)
       assert html =~ "Fernbank Collective" or html =~ "<h1>"
+    end)
+  end
+
+  test "a page is served with a policy naming the only hosts it loads from", context do
+    assert ["default-src 'self'" <> _rest = policy] =
+             context.conn |> get(~p"/") |> get_resp_header("content-security-policy")
+
+    assert policy =~ "style-src 'self' https://fonts.googleapis.com"
+    assert policy =~ "font-src https://fonts.gstatic.com"
+  end
+
+  test "every page that is a member's own renders for them", context do
+    conn = sign_in(build_conn(), context.other)
+
+    Enum.each(theirs(context, context.other), fn path ->
+      assert {:ok, _live, html} = live(conn, path)
+      assert html =~ "<h1>"
+    end)
+  end
+
+  test "a member is turned away from every page in the administrator's live session", context do
+    conn = sign_in(build_conn(), context.other)
+
+    Enum.each(the_administrators(context), fn path ->
+      assert {:error, {:redirect, %{to: "/", flash: flash}}} = live(conn, path)
+      assert flash == %{"error" => "That page is the administrator's."}
     end)
   end
 

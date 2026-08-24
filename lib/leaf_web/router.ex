@@ -3,13 +3,29 @@ defmodule LeafWeb.Router do
 
   import LeafWeb.SignIn
 
+  # Everything the site loads comes from the site, bar the web fonts, and there is no inline script
+  # or style anywhere — so neither is allowed, and an injected one is what that stops. The
+  # directives that do not fall back to `default-src` are stated in full.
+  @content_security_policy Enum.join(
+                             [
+                               "default-src 'self'",
+                               "style-src 'self' https://fonts.googleapis.com",
+                               "font-src https://fonts.gstatic.com",
+                               "form-action 'self'",
+                               "frame-ancestors 'none'",
+                               "base-uri 'self'",
+                               "object-src 'none'"
+                             ],
+                             "; "
+                           )
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :fetch_live_flash
     plug :put_root_layout, html: {LeafWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug :put_secure_browser_headers, %{"content-security-policy" => @content_security_policy}
     plug :fetch_current_person
   end
 

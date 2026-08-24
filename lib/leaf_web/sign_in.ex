@@ -26,12 +26,16 @@ defmodule LeafWeb.SignIn do
   end
 
   @doc """
-  Puts whoever the session names on the socket, and turns anybody else away from an admin page.
+  Puts whoever the session names on the socket, and turns anybody else away.
 
   `:current_person` assigns the person twice over: as themselves, which is the actor every context
   write takes, and as a `Viewer`, which is all the chrome around a page is given. It also puts
   `LeafWeb.AuthorizedEvents` in front of every event, since a page a member may open can still
   carry an administrator's buttons.
+
+  A session naming nobody is sent to sign in, the same as `require_person/2` sends the dead render.
+  The requirement is not a hook of its own: every live session needs `:current_person`, so a page
+  cannot be mounted by a stranger through having forgotten one.
 
   `:admin` runs after `:current_person`, so the pages only an administrator may open say so in the
   router rather than each checking for themselves.
@@ -39,7 +43,10 @@ defmodule LeafWeb.SignIn do
   @spec on_mount(atom(), map(), map(), LiveView.Socket.t()) ::
           {:cont, LiveView.Socket.t()} | {:halt, LiveView.Socket.t()}
   def on_mount(:current_person, _params, session, socket) do
-    {:cont, viewing(socket, named(session[@named]))}
+    case named(session[@named]) do
+      nil -> {:halt, LiveView.redirect(socket, to: "/sign-in")}
+      person -> {:cont, viewing(socket, person)}
+    end
   end
 
   def on_mount(:admin, _params, _session, %{assigns: %{current_person: %{role: :admin}}} = socket) do
@@ -73,12 +80,9 @@ defmodule LeafWeb.SignIn do
   defp viewing(socket, person) do
     socket
     |> Component.assign(:current_person, person)
-    |> Component.assign(:viewer, viewer(person))
+    |> Component.assign(:viewer, Viewer.new(person))
     |> AuthorizedEvents.enforce()
   end
-
-  defp viewer(nil), do: nil
-  defp viewer(person), do: Viewer.new(person)
 
   defp named(nil), do: nil
 
