@@ -34,19 +34,30 @@ defmodule Leaf.Ledger.Grant do
   An accrual is measured over the span it lands at the end of. A block grant is measured over its
   whole grant period, which can open before the span does and run past the date being asked about,
   and only a span that starts granting when its period does holds one — which is what leaves
-  someone who joined part-way through a period without one until the next period starts.
+  someone who joined part-way through a period without one until the next period starts. The one
+  block measured in something other than dates — a share of the holiday calendar — stops where the
+  person's employment does.
   """
   @spec measured(Span.t()) :: [Date.Range.t()]
   def measured(%{granting: nil}), do: []
 
   def measured(%{entitlement: %{grant_timing: :period_start}} = span) do
     case Date.compare(span.granting.first, span.period.first) do
-      :eq -> [span.period]
+      :eq -> [block(span)]
       _ -> []
     end
   end
 
   def measured(span), do: [span.granting]
+
+  # An allowance drawn from the holiday calendar is the share of it the person observes, so a period
+  # they leave part-way through is measured only as far as they are there for. A fixed amount is a
+  # block whatever the period holds, and §4.7 deliberately does not pro-rate a partial one.
+  defp block(%{entitlement: %{amount_source: :public_holidays}} = span) do
+    Date.range(span.period.first, earliest(span.period.last, span.employed_to))
+  end
+
+  defp block(span), do: span.period
 
   @doc """
   The end of each grant period over which a leave type rolls over only up to a cap.

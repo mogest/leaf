@@ -15,6 +15,10 @@ defmodule Leaf.Ledger.Span do
   spend. Grants come from `granting`; a rollover cap falls due at the end of a `period` that
   `dates` covers, since a balance that is still spendable is still subject to its cap.
 
+  Both stop at the date being asked about, so neither says how long the person is there for.
+  `employed_to` does, where their employment ends at all, for the one grant that is measured over
+  a whole period rather than over the span.
+
   An entitlement anchored to a birthday covers nothing where the organisation holds no birth date,
   since there is no run of periods to place it in. That is deliberate and it is quiet: the person
   is granted no birthday leave and nothing says so.
@@ -33,11 +37,12 @@ defmodule Leaf.Ledger.Span do
           period: Date.Range.t(),
           dates: Date.Range.t(),
           granting: Date.Range.t() | nil,
+          employed_to: Date.t() | nil,
           work_pattern: WorkPattern.t()
         }
 
-  @enforce_keys [:entitlement, :period, :dates, :granting, :work_pattern]
-  defstruct [:entitlement, :period, :dates, :granting, :work_pattern]
+  @enforce_keys [:entitlement, :period, :dates, :granting, :employed_to, :work_pattern]
+  defstruct [:entitlement, :period, :dates, :granting, :employed_to, :work_pattern]
 
   @doc "Every span up to and including `as_at` over which the person is entitled to something."
   @spec all(Person.t(), Organisation.t(), Date.t()) :: [t()]
@@ -49,6 +54,7 @@ defmodule Leaf.Ledger.Span do
       {:ok, range} ->
         context = %{
           anchors: anchors(person, organisation),
+          employed_to: person.employment_end_date,
           patterns: People.work_pattern_segments!(person, range)
         }
 
@@ -119,11 +125,11 @@ defmodule Leaf.Ledger.Span do
     {:ok, covered} = intersect(life, period.first, period.last)
 
     Enum.flat_map(context.patterns, fn {worked, pattern} ->
-      pattern_span(entitlement, period, covered, worked, pattern)
+      pattern_span(context, entitlement, period, covered, worked, pattern)
     end)
   end
 
-  defp pattern_span(entitlement, period, covered, worked, pattern) do
+  defp pattern_span(context, entitlement, period, covered, worked, pattern) do
     case intersect(covered, worked.first, worked.last) do
       :error ->
         []
@@ -135,6 +141,7 @@ defmodule Leaf.Ledger.Span do
             period: period,
             dates: dates,
             granting: granting(entitlement, dates),
+            employed_to: context.employed_to,
             work_pattern: pattern
           }
         ]

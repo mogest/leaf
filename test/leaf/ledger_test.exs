@@ -441,6 +441,36 @@ defmodule Leaf.LedgerTest do
              [{:grant, @started, Decimal.new("2.70"), nil}]
   end
 
+  test "a public holiday allowance credits only the holidays a leaver is there for", context do
+    person =
+      Fixtures.person(%{
+        organisation_id: context.organisation.id,
+        employment_end_date: ~D[2024-05-01]
+      })
+
+    part_time(person)
+
+    Fixtures.policy_assignment(%{
+      person_id: person.id,
+      leave_policy_id: context.policy.id,
+      effective_from: @started
+    })
+
+    allowance = leave_type(context, %{name: "Public holiday allowance", position: 2})
+
+    entitlement(context, allowance, %{
+      amount_source: :public_holidays,
+      grant_amount: nil,
+      grant_timing: :period_start
+    })
+
+    observes(context, person, [~D[2024-04-25], ~D[2024-12-25], ~D[2025-01-01]])
+
+    # One of the leave year's three holidays falls before they left; the rest are none of theirs.
+    assert movements(statement(person, allowance, ~D[2024-06-30])) ==
+             [{:grant, @started, Decimal.new("7.20"), nil}]
+  end
+
   test "a public holiday allowance is not worked out over an unknown calendar", context do
     person = context.person
     part_time(person)
