@@ -5,7 +5,8 @@ defmodule LeafWeb.PersonLive do
 
   Everything effective-dated here can be put right after the fact (§4.4), so each succession is
   shown as its own list with the row it is made of editable and removable. Only an administrator
-  sees those; a manager reading their report's page sees the record and nothing to change on it.
+  sees those; a manager reading their report's page sees the record and nothing to change on it,
+  nor why a balance was ever put right by hand.
   """
 
   use LeafWeb, :live_view
@@ -182,7 +183,7 @@ defmodule LeafWeb.PersonLive do
                 <th scope="col">Leave type</th>
                 <th scope="col">Amount</th>
                 <th scope="col">Lapses</th>
-                <th scope="col">Reason</th>
+                <th :if={@reasons?} scope="col">Reason</th>
               </tr>
             </thead>
             <tbody>
@@ -192,7 +193,7 @@ defmodule LeafWeb.PersonLive do
                 <td>{entry.leave_type}</td>
                 <td>{entry.amount}</td>
                 <td>{entry.expires}</td>
-                <td>{entry.reason}</td>
+                <td :if={@reasons?}>{entry.reason}</td>
               </tr>
             </tbody>
           </table>
@@ -231,6 +232,7 @@ defmodule LeafWeb.PersonLive do
 
     socket
     |> assign(:admin?, socket.assigns.current_person.role == :admin)
+    |> assign(:reasons?, reasons?(socket.assigns.current_person, person))
     |> assign(:role, role(person))
     |> assign(:employment, employment(person))
     |> assign(:born, Wording.date(person.birth_date) || "not on record")
@@ -248,6 +250,10 @@ defmodule LeafWeb.PersonLive do
   end
 
   defp actor(socket), do: socket.assigns.current_person
+
+  # §5.9: why a balance was put right by hand is the kind of detail a manager should not be
+  # reading. It is the person's own and the administrator's.
+  defp reasons?(viewer, person), do: viewer.role == :admin or viewer.id == person.id
 
   defp role(%{role: :admin}), do: "Administrator"
   defp role(_person), do: "Member"
