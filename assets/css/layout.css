@@ -255,7 +255,8 @@ main.styleguide > section {
     gap: var(--step-3);
   }
 
-  /* Each swatch paints the token named on it. */
+  /* Each swatch paints the token named on it. The naming is a table here rather than a style
+     attribute on the swatch, because the content security policy allows no inline style. */
   & > ul {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
@@ -273,6 +274,38 @@ main.styleguide > section {
         border: 1px solid var(--edge);
         border-radius: var(--radius);
         background: var(--swatch);
+      }
+
+      &[data-swatch="ground"] {
+        --swatch: var(--ground);
+      }
+
+      &[data-swatch="sheet"] {
+        --swatch: var(--sheet);
+      }
+
+      &[data-swatch="panel"] {
+        --swatch: var(--panel);
+      }
+
+      &[data-swatch="ink"] {
+        --swatch: var(--ink);
+      }
+
+      &[data-swatch="ink-soft"] {
+        --swatch: var(--ink-soft);
+      }
+
+      &[data-swatch="green"] {
+        --swatch: var(--green);
+      }
+
+      &[data-swatch="clay"] {
+        --swatch: var(--clay);
+      }
+
+      &[data-swatch="ochre"] {
+        --swatch: var(--ochre);
       }
     }
   }

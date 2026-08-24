@@ -12,15 +12,17 @@ defmodule LeafWeb.StyleguideLive do
   alias Leaf.People.Person
   alias LeafWeb.Viewer
 
+  # The stylesheet paints each swatch from the name on it, since the page may carry no style of its
+  # own: the content security policy allows no inline style anywhere.
   @swatches [
-    {"Ground", "--ground", "Behind the rail"},
-    {"Sheet", "--sheet", "What a page sits on"},
-    {"Panel", "--panel", "A block set apart"},
-    {"Ink", "--ink", "Reading text"},
-    {"Ink soft", "--ink-soft", "Anything secondary"},
-    {"Green", "--green", "Leave you have, and the one action"},
-    {"Clay", "--clay", "Leave spent, and refusals"},
-    {"Ochre", "--ochre", "Time running out"}
+    {"Ground", "ground", "Behind the rail"},
+    {"Sheet", "sheet", "What a page sits on"},
+    {"Panel", "panel", "A block set apart"},
+    {"Ink", "ink", "Reading text"},
+    {"Ink soft", "ink-soft", "Anything secondary"},
+    {"Green", "green", "Leave you have, and the one action"},
+    {"Clay", "clay", "Leave spent, and refusals"},
+    {"Ochre", "ochre", "Time running out"}
   ]
 
   @standings [
@@ -119,7 +121,7 @@ defmodule LeafWeb.StyleguideLive do
           <h2>Palette</h2>
         </header>
         <ul>
-          <li :for={{name, token, use_for} <- @swatches} style={"--swatch: var(#{token})"}>
+          <li :for={{name, token, use_for} <- @swatches} data-swatch={token}>
             <span>{name}</span>
             <small>{use_for}</small>
           </li>
