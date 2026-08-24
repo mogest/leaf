@@ -12,6 +12,10 @@ defmodule Leaf.Leave do
   person has no manager, an administrator stands in. A refusal comes back as `{:error, :forbidden}`
   rather than a changeset — nothing about it is a matter of what was filled in — and a write that
   goes through records itself in the audit log.
+
+  Every write against one person's leave happens one at a time, and reads what it is about inside
+  that: two of them cannot each find the same day free, nor each decide a request the other has
+  already decided.
   """
 
   import Ecto.Query
@@ -61,13 +65,15 @@ defmodule Leaf.Leave do
   @spec request(Person.t(), Person.t(), map()) ::
           {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden}
   def request(person, actor, attrs) do
-    with :ok <- permit(person.id == actor.id or approver?(person, actor)) do
-      %Request{person_id: person.id, submitted_by_id: actor.id, status: :pending}
-      |> Request.changeset(measured(person, attrs))
-      |> Offer.validate(person)
-      |> Booked.validate(person)
-      |> Audit.write("leave_request.requested", actor, person.id)
-    end
+    serialised(person.id, fn ->
+      with :ok <- permit(person.id == actor.id or approver?(person, actor)) do
+        %Request{person_id: person.id, submitted_by_id: actor.id, status: :pending}
+        |> Request.changeset(measured(person, attrs))
+        |> Offer.validate(person)
+        |> Booked.validate(person)
+        |> Audit.write("leave_request.requested", actor, person.id)
+      end
+    end)
   end
 
   @doc """
@@ -78,13 +84,15 @@ defmodule Leaf.Leave do
   @spec amend(Request.t(), Person.t(), map()) ::
           {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden}
   def amend(request, actor, attrs) do
-    with :ok <- permit(revisable?(request, actor)) do
-      request
-      |> Request.changeset(measured(request.person, attrs))
-      |> Offer.validate(request.person)
-      |> Booked.validate(request.person)
-      |> Audit.write("leave_request.amended", actor, request.person_id)
-    end
+    as_it_stands(request, fn request ->
+      with :ok <- permit(revisable?(request, actor)) do
+        request
+        |> Request.changeset(measured(request.person, attrs))
+        |> Offer.validate(request.person)
+        |> Booked.validate(request.person)
+        |> Audit.write("leave_request.amended", actor, request.person_id)
+      end
+    end)
   end
 
   @doc "Approves a pending request."
@@ -106,9 +114,11 @@ defmodule Leaf.Leave do
   @spec cancel(Request.t(), Person.t()) ::
           {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden}
   def cancel(request, actor) do
-    with :ok <- permit(revisable?(request, actor)) do
-      review(request, actor, :cancelled, nil)
-    end
+    as_it_stands(request, fn request ->
+      with :ok <- permit(revisable?(request, actor)) do
+        review(request, actor, :cancelled, nil)
+      end
+    end)
   end
 
   @doc """
@@ -347,9 +357,39 @@ defmodule Leaf.Leave do
   defp overseen(approver), do: dynamic([_request, person], person.manager_id == ^approver.id)
 
   defp decide(request, actor, status, comment) do
-    with :ok <- permit(request.status == :pending and approver?(request.person, actor)) do
-      review(request, actor, status, comment)
-    end
+    as_it_stands(request, fn request ->
+      with :ok <- permit(request.status == :pending and approver?(request.person, actor)) do
+        review(request, actor, status, comment)
+      end
+    end)
+  end
+
+  # A request is decided or amended from a struct somebody has been holding, which by then may say
+  # a status that is no longer true: two approvals, or an approval racing a cancellation, would
+  # each be checked against a state the other is about to leave behind, and the audit entry would
+  # record a before-value that never was. Reading it again inside the lock is what makes the check
+  # and the entry about the row as it stands.
+  defp as_it_stands(request, fun) do
+    serialised(request.person_id, fn ->
+      {:ok, request} = fetch_request(request.id)
+
+      fun.(request)
+    end)
+  end
+
+  # Everything filed against one person's dates has to agree about what those dates already hold,
+  # so every write against them takes the person's row first and they happen one at a time. Nothing
+  # else would stop two requests filed at once from each finding the same day free.
+  defp serialised(person_id, fun) do
+    Repo.transact(fn ->
+      Repo.one!(locked(person_id))
+
+      fun.()
+    end)
+  end
+
+  defp locked(person_id) do
+    from person in Person, where: person.id == ^person_id, select: 1, lock: "FOR UPDATE"
   end
 
   defp review(request, actor, status, comment) do
