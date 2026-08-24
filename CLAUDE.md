@@ -53,8 +53,10 @@ Every write follows this. One that doesn't is a bug, not a variation.
   Do not propose one, and do not offer one as the thorough version of a changeset validation.
 - The database holds only integrity the application genuinely cannot express: foreign keys, unique
   indexes, exclusion constraints.
-- A column's storage range is not a domain rule, but exceeding it raises rather than erroring, so
-  `Leaf.Changeset.validate_storable/2` bounds it where the domain has no ceiling of its own.
+- **Every numeric field goes through `Leaf.Changeset.as_stored/3`**, which scales it to its column
+  and bounds it — by the domain where the domain has bounds to state, by the column where it does
+  not. The value validated must be the value stored: Postgres raises on one too large and rounds
+  one too small to zero, both silently. No bare `validate_number` on a stored number.
 
 ## Comments
 

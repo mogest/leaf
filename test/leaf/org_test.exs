@@ -6,9 +6,11 @@ defmodule Leaf.OrgTest do
   alias Leaf.Org
 
   test "an organisation works a positive week, in a month of the year" do
+    # Sub-cent rather than zero: the column rounds it to nothing, and a full-time week of nothing
+    # divides by zero in every FTE on the site.
     attrs = %{
       name: "Fernbank Collective",
-      full_time_week_hours: "0",
+      full_time_week_hours: "0.001",
       standard_day_hours: "8",
       year_start_month: 13,
       tracked_from: ~D[2024-01-01]
