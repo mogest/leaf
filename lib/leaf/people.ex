@@ -293,6 +293,24 @@ defmodule Leaf.People do
     |> Enum.map(fn {span, assignment} -> {span, assignment.leave_policy_id} end)
   end
 
+  @doc """
+  Everyone who has ever been put on that leave policy, by name.
+
+  Whoever has been on it at some point, not who is on it now: what a policy granted somebody is
+  still theirs after they move off it.
+  """
+  @spec on_policy(Ecto.UUID.t()) :: [Person.t()]
+  def on_policy(leave_policy_id) do
+    Repo.all(
+      from person in Person,
+        join: assignment in PersonPolicyAssignment,
+        on: assignment.person_id == person.id,
+        where: assignment.leave_policy_id == ^leave_policy_id,
+        distinct: true,
+        order_by: person.name
+    )
+  end
+
   @doc "Everyone in an organisation, by name."
   @spec people(Ecto.UUID.t()) :: [Person.t()]
   def people(organisation_id) do

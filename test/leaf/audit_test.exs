@@ -75,6 +75,41 @@ defmodule Leaf.AuditTest do
     assert Repo.all(PublicHoliday) == []
   end
 
+  test "a change to nested rows names the rows it created", context do
+    %{actor: actor, person: person} = context
+    leave_type = Fixtures.leave_type(%{organisation_id: context.organisation.id})
+
+    days = [
+      %{
+        leave_type_id: leave_type.id,
+        date: ~D[2026-08-20],
+        amount: "8",
+        unit: :hours,
+        hours_in_day: "8"
+      }
+    ]
+
+    assert {:ok, filed} =
+             %Request{person_id: person.id, submitted_by_id: person.id, status: :pending}
+             |> Request.changeset(%{days: days})
+             |> Audit.write("leave_request.requested", actor, person.id)
+
+    assert [%{changes: changes}] = Repo.all(Entry)
+    assert [%{"id" => id}] = changes["days"]["to"]
+    assert [%{id: ^id}] = filed.days
+  end
+
+  test "a save that changed nothing is not recorded", context do
+    %{actor: actor, person: person} = context
+
+    assert {:ok, _unchanged} =
+             person
+             |> Person.changeset(%{name: person.name})
+             |> Audit.write("person.updated", actor, person.id)
+
+    assert Repo.all(Entry) == []
+  end
+
   test "a refused change is not recorded", context do
     %{actor: actor, person: person} = context
 

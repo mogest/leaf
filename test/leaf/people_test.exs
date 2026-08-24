@@ -27,6 +27,30 @@ defmodule Leaf.PeopleTest do
 
   defp ids(segments), do: Enum.map(segments, fn {span, row} -> {span, row.id} end)
 
+  test "an email address is the same address whatever case it was typed in", context do
+    %{organisation: organisation} = context
+
+    assert {:ok, person} =
+             People.create_person(organisation, nil, %{
+               name: "Wren Okafor",
+               email: "Wren.Okafor@Example.test",
+               role: :member,
+               employment_start_date: ~D[2026-01-05]
+             })
+
+    assert person.email == "wren.okafor@example.test"
+
+    assert {:error, changeset} =
+             People.create_person(organisation, nil, %{
+               name: "Wren Okafor",
+               email: "WREN.OKAFOR@example.test",
+               role: :member,
+               employment_start_date: ~D[2026-01-05]
+             })
+
+    assert errors_on(changeset).email == ["has already been taken"]
+  end
+
   test "a work pattern applies until the next one supersedes it", %{person: person} do
     full_time = Fixtures.work_pattern(%{person_id: person.id})
     part_time = part_time(person)

@@ -39,6 +39,7 @@ defmodule LeafWeb.Router do
 
   scope "/", LeafWeb do
     get "/healthz", HealthController, :show
+    get "/healthz/ready", HealthController, :ready
   end
 
   scope "/", LeafWeb do

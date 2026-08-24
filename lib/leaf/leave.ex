@@ -322,6 +322,15 @@ defmodule Leaf.Leave do
   def days_filed(person, range), do: Booked.days(person, range)
 
   @doc """
+  Whether the person holds any leave of that type within `range`.
+
+  Approved and pending both, by the same rule as `days_filed/2`: a day nobody has decided yet is
+  one the person is counting on, and it draws on the same balance.
+  """
+  @spec taken?(Person.t(), Ecto.UUID.t(), Date.Range.t()) :: boolean()
+  def taken?(person, leave_type_id, range), do: Booked.any?(person, leave_type_id, range)
+
+  @doc """
   Whether `actor` may amend or cancel `request` as it stands.
 
   Its person must be loaded. This is the rule §5.4 states, asked rather than repeated: a page

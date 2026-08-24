@@ -50,7 +50,9 @@ defmodule Leaf.Repo.Migrations.CreateLeavePolicies do
 
     create index(:policy_entitlements, [:leave_type_id])
 
-    execute "CREATE EXTENSION IF NOT EXISTS btree_gist", "DROP EXTENSION IF EXISTS btree_gist"
+    # The extension belongs to the database rather than to this migration, and anything else in it
+    # may be relying on it, so rolling back takes away only what this migration itself added.
+    execute "CREATE EXTENSION IF NOT EXISTS btree_gist", fn -> :ok end
 
     # An entitlement is a window rather than a row in a succession, so two windows for one leave
     # type under one policy would grant the same balance twice over. This subsumes uniqueness on

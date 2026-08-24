@@ -16,7 +16,6 @@ defmodule Mix.Tasks.Leaf.Seed do
 
   use Mix.Task
 
-  alias Leaf.Org
   alias Leaf.People
   alias Leaf.Seed
 
@@ -24,9 +23,7 @@ defmodule Mix.Tasks.Leaf.Seed do
 
   @impl Mix.Task
   def run(_args) do
-    refuse_if_seeded()
-
-    %{organisation: organisation, people: people} = Seed.run()
+    %{organisation: organisation, people: people} = seeded(Seed.run())
 
     Mix.shell().info("Seeded #{organisation.name}.")
 
@@ -45,13 +42,6 @@ defmodule Mix.Tasks.Leaf.Seed do
       "#{weekly_hours}h a week (#{fte} FTE)"
   end
 
-  defp refuse_if_seeded do
-    case Org.organisations() do
-      [] ->
-        :ok
-
-      [organisation | _rest] ->
-        Mix.raise("#{organisation.name} is already seeded; run mix ecto.reset first")
-    end
-  end
+  defp seeded({:ok, seeded}), do: seeded
+  defp seeded({:error, message}), do: Mix.raise("#{message}; run mix ecto.reset first")
 end

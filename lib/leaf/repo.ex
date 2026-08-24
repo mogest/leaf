@@ -4,6 +4,19 @@ defmodule Leaf.Repo do
     adapter: Ecto.Adapters.Postgres
 
   @doc """
+  Whether the database is answering.
+
+  A pod that has lost its database can serve nothing, and a probe has to be told so rather than
+  raised at, so a connection that is gone entirely reads the same as a query that failed.
+  """
+  @spec reachable?() :: boolean()
+  def reachable? do
+    match?({:ok, _result}, query("SELECT 1"))
+  rescue
+    _error -> false
+  end
+
+  @doc """
   The row with that id, or `:error` where none has it.
 
   Ids reach this from the URL, so one that could not name a row whatever the database holds —
