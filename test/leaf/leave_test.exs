@@ -298,6 +298,17 @@ defmodule Leaf.LeaveTest do
     assert Leave.approve(request, context.manager) == {:error, :forbidden}
   end
 
+  test "a request cannot be decided from a struct somebody has since decided", context do
+    {:ok, pending} = file(context, [@thursday])
+    stale = reload(pending)
+
+    assert {:ok, %{status: :cancelled}} = Leave.cancel(stale, context.manager)
+
+    assert Leave.approve(stale, context.manager) == {:error, :forbidden}
+    assert reload(stale).status == :cancelled
+    refute Enum.any?(Repo.all(Entry), &(&1.action == "leave_request.approved"))
+  end
+
   test "only an administrator may enter a balance figure", context do
     attrs = %{leave_type_id: context.leave_type.id, date: @thursday, amount: "40"}
 
