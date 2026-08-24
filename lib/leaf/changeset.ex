@@ -11,16 +11,25 @@ defmodule Leaf.Changeset do
   @integer_limits [greater_than_or_equal_to: -2_147_483_648, less_than_or_equal_to: 2_147_483_647]
 
   @doc """
-  Errors on `field` where the number is too large for its column to hold.
+  Puts `field` in the form its column will hold it in, and bounds it by `opts` or by the column.
 
-  Postgres answers an out-of-range number with `22003`, which is not a constraint violation, so
-  Ecto cannot turn it into an error on the field and the caller gets a raise naming nothing. This
-  is the database's limit rather than the domain's: use it only where the domain has no ceiling of
-  its own to state, and state that one instead wherever it does.
+  Both ends go wrong silently otherwise, because the value validated is not the value stored:
+  Postgres answers one too large with `22003`, which is not a constraint violation and so cannot be
+  turned into an error on the field, and it rounds one too small to zero *after* `greater_than: 0`
+  has already passed it. Rounding here is the one rounding — the column would do it anyway, to the
+  same half-up rule.
+
+  `opts` are `validate_number/3`'s and narrow the column's own range, which is what is left where
+  the domain has no ceiling to state. This is every numeric rule the field has, so nothing else
+  reads the value before it is the stored one.
   """
-  @spec validate_storable(Ecto.Changeset.t(), atom()) :: Ecto.Changeset.t()
-  def validate_storable(changeset, field) do
-    validate_number(changeset, field, limits(changeset.types[field]))
+  @spec as_stored(Ecto.Changeset.t(), atom(), keyword()) :: Ecto.Changeset.t()
+  def as_stored(changeset, field, opts \\ []) do
+    type = changeset.types[field]
+
+    changeset
+    |> scaled(field, type)
+    |> validate_number(field, Keyword.merge(limits(type), opts))
   end
 
   @doc """
@@ -41,6 +50,12 @@ defmodule Leaf.Changeset do
   def validate_absent(changeset, fields) do
     Enum.reduce(fields, changeset, &absent(&2, &1, get_field(changeset, &1)))
   end
+
+  defp scaled(changeset, field, :decimal), do: update_change(changeset, field, &to_scale/1)
+  defp scaled(changeset, _field, :integer), do: changeset
+
+  defp to_scale(nil), do: nil
+  defp to_scale(amount), do: Decimal.round(amount, 2)
 
   defp limits(:decimal), do: @decimal_limits
   defp limits(:integer), do: @integer_limits

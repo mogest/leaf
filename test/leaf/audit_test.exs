@@ -42,7 +42,7 @@ defmodule Leaf.AuditTest do
     assert entry.entity_id == filed.id
     assert entry.actor_id == actor.id
     assert entry.changes["note"] == %{"from" => nil, "to" => "Away"}
-    assert [%{"amount" => "8", "unit" => "hours"}] = entry.changes["days"]["to"]
+    assert [%{"amount" => "8.00", "unit" => "hours"}] = entry.changes["days"]["to"]
   end
 
   test "an update is recorded with the value it replaced", context do

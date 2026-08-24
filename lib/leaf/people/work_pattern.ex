@@ -84,7 +84,7 @@ defmodule Leaf.People.WorkPattern do
     Enum.reduce(
       @hour_fields,
       changeset,
-      &validate_number(&2, &1, greater_than_or_equal_to: 0, less_than_or_equal_to: 24)
+      &as_stored(&2, &1, greater_than_or_equal_to: 0, less_than_or_equal_to: 24)
     )
   end
 end

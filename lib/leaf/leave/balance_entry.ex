@@ -41,7 +41,7 @@ defmodule Leaf.Leave.BalanceEntry do
     entry
     |> cast(attrs, @fields)
     |> validate_required([:person_id, :leave_type_id, :date, :kind, :amount])
-    |> validate_storable(:amount)
+    |> as_stored(:amount)
     |> validate_reason()
     |> validate_date_order(:date, :expires_on)
     |> assoc_constraint(:person)

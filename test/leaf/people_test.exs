@@ -80,7 +80,7 @@ defmodule Leaf.PeopleTest do
              Repo.all(Entry)
 
     assert subject == person.id
-    assert changes["wednesday_hours"] == %{"from" => "4", "to" => "9"}
+    assert changes["wednesday_hours"] == %{"from" => "4.00", "to" => "9.00"}
   end
 
   test "removing a work pattern lets the one before it run on", context do

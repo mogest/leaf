@@ -53,7 +53,7 @@ defmodule Leaf.Leave.Day do
     day
     |> cast(attrs, @fields)
     |> validate_required(@required)
-    |> validate_number(:amount, greater_than: 0)
+    |> as_stored(:amount, greater_than: 0)
     |> validate_working_day()
     |> assoc_constraint(:leave_request)
     |> assoc_constraint(:leave_type)
