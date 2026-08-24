@@ -226,6 +226,14 @@ defmodule LeafWeb.PolicyLive do
 
   defp removed(socket, {:ok, _entitlement}), do: put_flash(socket, :info, "Removed.")
 
+  defp removed(socket, {:error, :drawn_on}) do
+    put_flash(
+      socket,
+      :error,
+      "Leave has been taken against that entitlement. Stop it granting instead of removing it."
+    )
+  end
+
   defp removed(socket, {:error, _changeset}) do
     put_flash(socket, :error, "That would not come off the policy.")
   end

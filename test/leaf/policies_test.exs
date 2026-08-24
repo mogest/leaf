@@ -111,6 +111,42 @@ defmodule Leaf.PoliciesTest do
     assert changes["effective_to"] == %{"from" => nil, "to" => "2026-03-31"}
   end
 
+  test "an entitlement leave has been taken against will not be deleted", context do
+    %{organisation: organisation, policy: policy, quarterly: quarterly} = context
+    admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+    person = Fixtures.person(%{organisation_id: organisation.id})
+    offered = quarterly_entitlement(policy, quarterly, %{})
+
+    Fixtures.policy_assignment(%{person_id: person.id, leave_policy_id: policy.id})
+
+    Fixtures.leave_request(%{
+      person_id: person.id,
+      days: [%{leave_type_id: quarterly.id, date: ~D[2026-08-20], amount: "4", unit: :hours}]
+    })
+
+    assert Policies.delete_entitlement(offered, admin) == {:error, :drawn_on}
+    assert Enum.map(Policies.entitlements(policy.id), & &1.id) == [offered.id]
+    assert Repo.all(Entry) == []
+  end
+
+  test "an entitlement nobody has drawn on comes off", context do
+    %{organisation: organisation, policy: policy, annual: annual, quarterly: quarterly} = context
+    admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+    person = Fixtures.person(%{organisation_id: organisation.id})
+    offered = quarterly_entitlement(policy, quarterly, %{})
+
+    Fixtures.policy_assignment(%{person_id: person.id, leave_policy_id: policy.id})
+
+    Fixtures.leave_request(%{
+      person_id: person.id,
+      days: [%{leave_type_id: annual.id, date: ~D[2026-08-20], amount: "4", unit: :hours}]
+    })
+
+    assert {:ok, _removed} = Policies.delete_entitlement(offered, admin)
+    assert Policies.entitlements(policy.id) == []
+    assert [%{action: "policy_entitlement.deleted"}] = Repo.all(Entry)
+  end
+
   test "a leave type stops being offered by being archived, so what it granted still reads",
        context do
     %{organisation: organisation, quarterly: quarterly} = context

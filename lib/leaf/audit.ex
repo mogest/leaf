@@ -38,10 +38,7 @@ defmodule Leaf.Audit do
   def write(changeset, action, actor, subject_person_id \\ nil) do
     Multi.new()
     |> Multi.insert_or_update(:record, changeset)
-    |> Multi.insert(
-      :entry,
-      &entry(&1.record, changes(changeset), action, actor, subject_person_id)
-    )
+    |> record(changeset, action, actor, subject_person_id)
     |> Repo.transaction()
     |> outcome()
   end
@@ -86,6 +83,20 @@ defmodule Leaf.Audit do
     raise "audit entry refused: #{inspect(changeset.errors)}"
   end
 
+  # Saving a form unchanged is not an action anybody took: there is no before and no after to
+  # record, and an entry saying so is noise in the log.
+  defp record(multi, %Changeset{changes: changes}, _action, _actor, _subject_person_id)
+       when changes == %{},
+       do: multi
+
+  defp record(multi, changeset, action, actor, subject_person_id) do
+    Multi.insert(
+      multi,
+      :entry,
+      &entry(&1.record, changes(changeset, &1.record), action, actor, subject_person_id)
+    )
+  end
+
   defp entry(record, changes, action, actor, subject_person_id) do
     Entry.changeset(%Entry{}, %{
       actor_id: actor && actor.id,
@@ -101,9 +112,11 @@ defmodule Leaf.Audit do
     Map.new(record_fields(record), fn {field, value} -> {field, %{from: value, to: nil}} end)
   end
 
-  defp changes(changeset) do
-    Map.new(changeset.changes, fn {field, value} ->
-      {field, %{from: previous(changeset.data, field), to: recorded(value)}}
+  # What a field became is read off the written row rather than off the changeset, so that rows
+  # created alongside it are named by the ids they were given.
+  defp changes(changeset, record) do
+    Map.new(changeset.changes, fn {field, _value} ->
+      {field, %{from: previous(changeset.data, field), to: recorded(Map.get(record, field))}}
     end)
   end
 
@@ -115,20 +128,13 @@ defmodule Leaf.Audit do
   defp recorded(nil), do: nil
   defp recorded(value) when is_binary(value) or is_number(value) or is_boolean(value), do: value
 
-  defp recorded(%Changeset{} = changeset),
-    do: changeset |> Changeset.apply_changes() |> recorded()
-
   defp recorded(%{__meta__: %Ecto.Schema.Metadata{}} = record), do: record_fields(record)
 
   defp recorded(%NotLoaded{__field__: field}) do
     raise "#{field} must be loaded before a change to it can be recorded"
   end
 
-  # A has_many keeps the rows it is dropping in the changeset, so that they are deleted. They are
-  # what the change is from, not what it is to.
-  defp recorded(values) when is_list(values) do
-    values |> Enum.reject(&dropped?/1) |> Enum.map(&recorded/1)
-  end
+  defp recorded(values) when is_list(values), do: Enum.map(values, &recorded/1)
 
   defp recorded(value), do: to_string(value)
 
@@ -137,7 +143,4 @@ defmodule Leaf.Audit do
     |> Kernel.--([:inserted_at, :updated_at])
     |> Map.new(&{&1, recorded(Map.get(record, &1))})
   end
-
-  defp dropped?(%Changeset{action: action}), do: action in [:replace, :delete]
-  defp dropped?(_value), do: false
 end

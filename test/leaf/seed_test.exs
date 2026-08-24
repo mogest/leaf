@@ -2,6 +2,7 @@ defmodule Leaf.SeedTest do
   use Leaf.DataCase, async: true
 
   alias Leaf.Ledger
+  alias Leaf.Org
   alias Leaf.People
   alias Leaf.Policies
   alias Leaf.Seed
@@ -18,7 +19,7 @@ defmodule Leaf.SeedTest do
   end
 
   test "the example organisation is configured as SCOPE.md describes it" do
-    %{organisation: organisation, policies: policies, people: people} = Seed.run()
+    {:ok, %{organisation: organisation, policies: policies, people: people}} = Seed.run()
     year = Date.range(~D[2026-01-01], ~D[2026-12-31])
 
     assert names(policies["New Zealand employee"], year) == [
@@ -45,14 +46,20 @@ defmodule Leaf.SeedTest do
     assert length(People.public_holidays(person, year)) == 12
   end
 
+  test "seeding a database that already holds an organisation writes nothing" do
+    assert {:ok, %{organisation: organisation}} = Seed.run()
+    assert Seed.run() == {:error, "#{organisation.name} is already seeded"}
+    assert length(Org.organisations()) == 1
+  end
+
   test "quarterly leave grants the person's share of it at the start of the quarter" do
-    %{people: people} = Seed.run()
+    {:ok, %{people: people}} = Seed.run()
 
     assert Decimal.equal?(balance(people["Mog"], "Quarterly leave", ~D[2026-01-05]), "7.20")
   end
 
   test "the contractor is credited their share of the public holidays for their leave year" do
-    %{people: people} = Seed.run()
+    {:ok, %{people: people}} = Seed.run()
 
     assert Decimal.equal?(
              balance(people["Ari Kelburn"], "Public holiday allowance", ~D[2025-01-01]),

@@ -22,7 +22,7 @@ defmodule LeafWeb.PagesTest do
   alias Leaf.Seed
 
   setup %{conn: conn} do
-    %{organisation: organisation, people: people, policies: policies} = Seed.run()
+    {:ok, %{organisation: organisation, people: people, policies: policies}} = Seed.run()
     admin = people["Mog"]
     [leave_type | _rest] = Policies.leave_types(organisation.id)
     [calendar | _rest] = Org.calendars(organisation.id)

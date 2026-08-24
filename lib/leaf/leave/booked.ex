@@ -33,14 +33,24 @@ defmodule Leaf.Leave.Booked do
   @spec days(Person.t(), Date.Range.t()) :: [Day.t()]
   def days(person, range) do
     Repo.all(
-      from day in Day,
-        join: request in assoc(day, :leave_request),
-        where: request.person_id == ^person.id,
-        where: request.status in [:approved, :pending],
-        where: day.date >= ^range.first and day.date <= ^range.last,
+      from [day, request] in held(person, range),
         order_by: day.date,
         preload: [leave_request: request]
     )
+  end
+
+  @doc "Whether the person holds any leave of that type within `range`, by the same rule."
+  @spec any?(Person.t(), Ecto.UUID.t(), Date.Range.t()) :: boolean()
+  def any?(person, leave_type_id, range) do
+    Repo.exists?(from day in held(person, range), where: day.leave_type_id == ^leave_type_id)
+  end
+
+  defp held(person, range) do
+    from day in Day,
+      join: request in assoc(day, :leave_request),
+      where: request.person_id == ^person.id,
+      where: request.status in [:approved, :pending],
+      where: day.date >= ^range.first and day.date <= ^range.last
   end
 
   @doc """

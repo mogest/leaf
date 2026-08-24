@@ -236,17 +236,31 @@ defmodule Leaf.Seed do
     }
   ]
 
-  @doc """
-  Builds the whole example, returning what it made by name.
-
-  Raises on anything that will not validate. Expects an empty database — the caller checks that.
-  """
-  @spec run() :: %{
+  @typedoc "What the seed made, by name."
+  @type seeded :: %{
           organisation: Organisation.t(),
           policies: %{String.t() => LeavePolicy.t()},
           people: %{String.t() => Person.t()}
         }
+
+  @doc """
+  Builds the whole example, returning what it made by name.
+
+  Refuses a database that already holds an organisation: seeding a second one leaves it invisible
+  in the UI and present in every unscoped query. The guard is here rather than in the mix task
+  because a release has the task nowhere and `Leaf.Seed.run/0` everywhere.
+
+  Raises on anything that will not validate.
+  """
+  @spec run() :: {:ok, seeded()} | {:error, String.t()}
   def run do
+    case Org.organisations() do
+      [] -> {:ok, seed()}
+      [organisation | _rest] -> {:error, "#{organisation.name} is already seeded"}
+    end
+  end
+
+  defp seed do
     organisation = add_organisation()
     calendars = add_calendars(organisation)
     leave_types = add_leave_types(organisation)

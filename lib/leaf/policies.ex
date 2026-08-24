@@ -11,12 +11,18 @@ defmodule Leaf.Policies do
   import Ecto.Query
 
   alias Leaf.Audit
+  alias Leaf.Leave
   alias Leaf.Org.Organisation
+  alias Leaf.People
   alias Leaf.People.Person
   alias Leaf.Policies.LeavePolicy
   alias Leaf.Policies.LeaveType
   alias Leaf.Policies.PolicyEntitlement
   alias Leaf.Repo
+
+  # An entitlement with no end governs everything after it, and leave can be filed years ahead, so
+  # the window it could have been drawn on within has to be closed somewhere past all of it.
+  @forever ~D[9999-12-31]
 
   @doc "Creates a leave type."
   @spec create_leave_type(Organisation.t(), Person.t() | nil, map()) ::
@@ -107,13 +113,41 @@ defmodule Leaf.Policies do
   @doc """
   Removes an entitlement outright.
 
-  For one that should never have existed. An entitlement that ran and is now over is closed with
-  `effective_to` instead, so what it granted still has something to account for it.
+  For one that should never have existed. One leave has already been taken against is refused with
+  `{:error, :drawn_on}`: what it granted has been spent, and taking it away leaves the people on
+  the policy owing a balance with nothing to account for it. An entitlement that ran and is now
+  over is closed with `effective_to` instead, so what it granted still has something to account
+  for it.
   """
   @spec delete_entitlement(PolicyEntitlement.t(), Person.t() | nil) ::
-          Audit.written(PolicyEntitlement.t())
+          Audit.written(PolicyEntitlement.t()) | {:error, :drawn_on}
   def delete_entitlement(entitlement, actor) do
+    removed(entitlement, actor, drawn_on?(entitlement))
+  end
+
+  defp removed(_entitlement, _actor, true), do: {:error, :drawn_on}
+
+  defp removed(entitlement, actor, false) do
     Audit.delete(entitlement, "policy_entitlement.deleted", actor)
+  end
+
+  # Leave draws on a pool rather than on the row that filled it, so what counts as having drawn on
+  # an entitlement is leave of its type taken by somebody its policy governed while it was in force.
+  defp drawn_on?(entitlement) do
+    window = Date.range(entitlement.effective_from, entitlement.effective_to || @forever)
+
+    entitlement.leave_policy_id
+    |> People.on_policy()
+    |> Enum.any?(&drawn_on?(&1, entitlement, window))
+  end
+
+  defp drawn_on?(person, entitlement, window) do
+    person
+    |> People.leave_policy_segments(window)
+    |> Enum.filter(fn {_span, policy_id} -> policy_id == entitlement.leave_policy_id end)
+    |> Enum.any?(fn {span, _policy_id} ->
+      Leave.taken?(person, entitlement.leave_type_id, span)
+    end)
   end
 
   @doc "Every leave type the organisation offers, archived ones included, in its own order then by name."

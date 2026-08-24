@@ -49,7 +49,7 @@ defmodule Tui do
 
     case ask("Seed the example organisation? (y/n)") do
       "y" ->
-        %{organisation: org} = Seed.run()
+        {:ok, %{organisation: org}} = Seed.run()
         IO.puts("Seeded #{org.name}.")
         start(org)
 
