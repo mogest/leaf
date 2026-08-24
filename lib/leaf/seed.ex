@@ -56,9 +56,7 @@ defmodule Leaf.Seed do
     grant_period: :year,
     grant_timing: :daily,
     pro_rated_by_fte: true,
-    expiry_rule: :never,
-    allow_negative: false,
-    excess_threshold: "300"
+    expiry_rule: :never
   }
 
   @sick %{
@@ -70,8 +68,7 @@ defmodule Leaf.Seed do
     grant_timing: :period_start,
     pro_rated_by_fte: false,
     expiry_rule: :cap,
-    rollover_cap: "20",
-    allow_negative: false
+    rollover_cap: "20"
   }
 
   @quarterly %{
@@ -82,8 +79,7 @@ defmodule Leaf.Seed do
     grant_period: :quarter,
     grant_timing: :period_start,
     pro_rated_by_fte: true,
-    expiry_rule: :grant_period_end,
-    allow_negative: false
+    expiry_rule: :grant_period_end
   }
 
   @birthday %{
@@ -95,8 +91,7 @@ defmodule Leaf.Seed do
     grant_timing: :period_start,
     pro_rated_by_fte: false,
     expiry_rule: :window,
-    expiry_window_days: 14,
-    allow_negative: true
+    expiry_window_days: 14
   }
 
   @longevity %{
@@ -107,8 +102,7 @@ defmodule Leaf.Seed do
     grant_period: :year,
     grant_timing: :period_start,
     pro_rated_by_fte: false,
-    expiry_rule: :grant_period_end,
-    allow_negative: false
+    expiry_rule: :grant_period_end
   }
 
   # The amount is the calendar's own: the holidays in the person's leave year, at their hours.
@@ -119,16 +113,14 @@ defmodule Leaf.Seed do
     grant_period: :year,
     grant_timing: :period_start,
     pro_rated_by_fte: true,
-    expiry_rule: :never,
-    allow_negative: false
+    expiry_rule: :never
   }
 
   @bereavement %{
     leave_type: "Bereavement leave",
     amount_source: :none,
     pro_rated_by_fte: false,
-    expiry_rule: :never,
-    allow_negative: true
+    expiry_rule: :never
   }
 
   @policies [

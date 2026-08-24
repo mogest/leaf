@@ -130,7 +130,7 @@ defmodule LeafWeb.PolicyLive do
       leave_type: entitlement.leave_type.name,
       window: window(entitlement),
       grant: grant(entitlement),
-      expiry: expiry(entitlement),
+      expiry: lapsing(entitlement),
       path: ~p"/settings/policies/#{policy}/entitlements/#{entitlement}"
     }
   end
@@ -178,12 +178,6 @@ defmodule LeafWeb.PolicyLive do
   defp pro_rated(%{pro_rated_by_fte: true}), do: ", pro-rated by the hours they work"
   defp pro_rated(_entitlement), do: ""
 
-  defp expiry(entitlement) do
-    [lapsing(entitlement), negative(entitlement), threshold(entitlement)]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.join(" · ")
-  end
-
   defp lapsing(%{expiry_rule: :never}), do: "Rolls over indefinitely"
 
   defp lapsing(%{expiry_rule: :cap} = entitlement) do
@@ -194,15 +188,6 @@ defmodule LeafWeb.PolicyLive do
 
   defp lapsing(%{expiry_rule: :window} = entitlement) do
     "Lapses #{entitlement.expiry_window_days} days after it lands"
-  end
-
-  defp negative(%{allow_negative: true}), do: "may be taken in advance"
-  defp negative(_entitlement), do: nil
-
-  defp threshold(%{excess_threshold: nil}), do: nil
-
-  defp threshold(entitlement) do
-    "too much over #{figure(entitlement, entitlement.excess_threshold)}"
   end
 
   defp standing(%{archived_at: nil}), do: "In use, and offered when somebody is put on a policy."

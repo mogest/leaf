@@ -7,8 +7,7 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
   @base %{
     effective_from: ~D[2004-01-01],
     pro_rated_by_fte: true,
-    expiry_rule: :never,
-    allow_negative: false
+    expiry_rule: :never
   }
 
   @quarterly %{
