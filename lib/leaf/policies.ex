@@ -138,18 +138,17 @@ defmodule Leaf.Policies do
 
   @doc "The leave type, or `:error` where no such type exists."
   @spec fetch_leave_type(Ecto.UUID.t()) :: {:ok, LeaveType.t()} | :error
-  def fetch_leave_type(id), do: fetched(Repo.get(LeaveType, id))
+  def fetch_leave_type(id), do: Repo.fetch(LeaveType, id)
 
   @doc "The leave policy, or `:error` where no such policy exists."
   @spec fetch_leave_policy(Ecto.UUID.t()) :: {:ok, LeavePolicy.t()} | :error
-  def fetch_leave_policy(id), do: fetched(Repo.get(LeavePolicy, id))
+  def fetch_leave_policy(id), do: Repo.fetch(LeavePolicy, id)
 
   @doc "One of the policy's entitlements with its leave type, or `:error` where it is not on it."
   @spec fetch_entitlement(LeavePolicy.t(), Ecto.UUID.t()) :: {:ok, PolicyEntitlement.t()} | :error
   def fetch_entitlement(policy, id) do
-    case Repo.get_by(PolicyEntitlement, id: id, leave_policy_id: policy.id) do
-      nil -> :error
-      entitlement -> {:ok, Repo.preload(entitlement, :leave_type)}
+    with {:ok, entitlement} <- Repo.fetch(PolicyEntitlement, id, leave_policy_id: policy.id) do
+      {:ok, Repo.preload(entitlement, :leave_type)}
     end
   end
 
@@ -189,7 +188,4 @@ defmodule Leaf.Policies do
       ],
       preload: [leave_type: leave_type]
   end
-
-  defp fetched(nil), do: :error
-  defp fetched(record), do: {:ok, record}
 end

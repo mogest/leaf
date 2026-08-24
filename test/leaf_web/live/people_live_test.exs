@@ -52,6 +52,15 @@ defmodule LeafWeb.PeopleLiveTest do
     assert flash["error"] == "That record is not yours to read."
   end
 
+  test "a record that is not there reads as one that is not theirs", context do
+    for id <- [Ecto.UUID.generate(), "banana"] do
+      assert {:error, {:live_redirect, %{to: "/", flash: flash}}} =
+               live(context.conn, ~p"/people/#{id}")
+
+      assert flash["error"] == "That record is not yours to read."
+    end
+  end
+
   test "a member reading their own page cannot fire the removals it does not show them",
        context do
     policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})

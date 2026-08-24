@@ -64,6 +64,19 @@ defmodule LeafWeb.BalancesLiveTest do
     assert html =~ "Brought in"
   end
 
+  test "a date that is not a date reads as today", context do
+    {:ok, _live, html} = live(context.conn, ~p"/balances?as_at[x]=1")
+
+    assert html =~ "Balances"
+  end
+
+  test "balances that are not there are not theirs to read", context do
+    assert {:error, {:live_redirect, %{to: "/", flash: flash}}} =
+             live(context.conn, ~p"/people/#{Ecto.UUID.generate()}/balances")
+
+    assert flash["error"] == "Those balances are not yours to read."
+  end
+
   test "a type that is offered but grants nothing is listed, and reads as empty", context do
     bereavement = recorded_only(context)
 

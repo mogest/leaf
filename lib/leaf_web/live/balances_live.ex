@@ -125,20 +125,18 @@ defmodule LeafWeb.BalancesLive do
     """
   end
 
-  defp person(socket, nil), do: socket.assigns.current_person
+  defp person(socket, nil), do: {:ok, socket.assigns.current_person}
+  defp person(_socket, id), do: People.fetch_person(id)
 
-  defp person(_socket, id) do
-    {:ok, person} = People.fetch_person(id)
-
-    person
-  end
-
-  defp opened(socket, person, params) do
+  # An id naming nobody answers as one naming somebody whose balances are not theirs to read.
+  defp opened(socket, {:ok, person}, params) do
     case People.oversees?(socket.assigns.current_person, person) do
       true -> shown(socket, person, params)
       false -> refused(socket)
     end
   end
+
+  defp opened(socket, :error, _params), do: refused(socket)
 
   defp refused(socket) do
     socket
@@ -318,12 +316,12 @@ defmodule LeafWeb.BalancesLive do
   defp path(_person, true, id, as_at), do: ~p"/balances/#{id}?as_at=#{as_at}"
   defp path(person, false, id, as_at), do: ~p"/people/#{person}/balances/#{id}?as_at=#{as_at}"
 
-  defp as_at(nil, viewer), do: People.today(viewer)
-
-  defp as_at(entered, viewer) do
+  defp as_at(entered, viewer) when is_binary(entered) do
     case Date.from_iso8601(entered) do
       {:ok, date} -> date
       {:error, _reason} -> People.today(viewer)
     end
   end
+
+  defp as_at(_entered, viewer), do: People.today(viewer)
 end

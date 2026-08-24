@@ -259,5 +259,8 @@ defmodule LeafWeb.SettingsLiveTest do
     html = live |> form("#filter", filter: %{"person_id" => context.admin.id}) |> render_change()
 
     assert html =~ "Nothing has been recorded yet."
+
+    assert render_change(live, "filter", %{"filter" => %{"person_id" => "banana"}}) =~
+             "leave type created"
   end
 end

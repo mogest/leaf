@@ -29,9 +29,7 @@ defmodule LeafWeb.PersonLive do
 
   @impl Phoenix.LiveView
   def mount(%{"person_id" => id}, _session, socket) do
-    {:ok, person} = People.fetch_person(id)
-
-    {:ok, opened(socket, person, People.oversees?(socket.assigns.current_person, person))}
+    {:ok, opened(socket, People.fetch_person(id))}
   end
 
   @impl Phoenix.LiveView
@@ -216,11 +214,18 @@ defmodule LeafWeb.PersonLive do
     """
   end
 
-  defp opened(socket, person, true) do
-    socket |> assign(:person, person) |> assign(:page_title, person.name) |> loaded()
+  # An id naming nobody answers as one naming somebody they may not read, so the page cannot be
+  # used to find out who exists.
+  defp opened(socket, {:ok, person}) do
+    case People.oversees?(socket.assigns.current_person, person) do
+      true -> socket |> assign(:person, person) |> assign(:page_title, person.name) |> loaded()
+      false -> refused(socket)
+    end
   end
 
-  defp opened(socket, _person, false) do
+  defp opened(socket, :error), do: refused(socket)
+
+  defp refused(socket) do
     socket |> put_flash(:error, "That record is not yours to read.") |> push_navigate(to: ~p"/")
   end
 

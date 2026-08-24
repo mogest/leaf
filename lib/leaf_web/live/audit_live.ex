@@ -90,12 +90,13 @@ defmodule LeafWeb.AuditLive do
     |> Enum.map(&{&1.name, &1.id})
   end
 
-  defp about(id) when id in [nil, ""], do: nil
-
+  # The filter offers the organisation's people, so an id naming none of them is nobody to narrow
+  # to and the log reads as it does unfiltered.
   defp about(id) do
-    {:ok, person} = People.fetch_person(id)
-
-    person
+    case People.fetch_person(id) do
+      {:ok, person} -> person
+      :error -> nil
+    end
   end
 
   defp listed(socket, nil) do

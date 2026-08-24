@@ -164,9 +164,21 @@ defmodule LeafWeb.RequestLeaveLive do
     |> filled(%{})
   end
 
+  # A request that is not there and one that has been decided since the link was followed answer
+  # the same: there is nothing here to change.
   defp opened(socket, :amend, %{"id" => id}, today) do
-    {:ok, request} = Leave.fetch_request(id)
-    true = Leave.revisable?(request, socket.assigns.current_person)
+    with {:ok, request} <- Leave.fetch_request(id),
+         true <- Leave.revisable?(request, socket.assigns.current_person) do
+      amending(socket, request, today)
+    else
+      _refused ->
+        socket
+        |> put_flash(:error, "That request is not yours to change.")
+        |> push_navigate(to: ~p"/leave")
+    end
+  end
+
+  defp amending(socket, request, today) do
     {params, replaced} = asked_again(request)
 
     socket

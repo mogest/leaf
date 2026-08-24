@@ -98,7 +98,7 @@ defmodule Leaf.People do
 
   @doc "The person, or `:error` where no such person exists."
   @spec fetch_person(Ecto.UUID.t()) :: {:ok, Person.t()} | :error
-  def fetch_person(id), do: fetched(Repo.get(Person, id))
+  def fetch_person(id), do: Repo.fetch(Person, id)
 
   @doc "The person's manager, or `:error` where they have none."
   @spec fetch_manager(Person.t()) :: {:ok, Person.t()} | :error
@@ -362,13 +362,7 @@ defmodule Leaf.People do
   @spec fte(WorkPattern.t(), Decimal.t()) :: Decimal.t()
   defdelegate fte(work_pattern, full_time_week_hours), to: WorkPattern
 
-  defp fetched(nil), do: :error
-  defp fetched(record), do: {:ok, record}
-
-  # Everything effective-dated is looked up through the person it hangs off, so an id belonging to
-  # somebody else reads as missing rather than as theirs.
-  defp fetch_of(schema, person, id),
-    do: fetched(Repo.get_by(schema, id: id, person_id: person.id))
+  defp fetch_of(schema, person, id), do: Repo.fetch(schema, id, person_id: person.id)
 
   defp effective_dated(schema, person) do
     from row in schema, where: row.person_id == ^person.id, order_by: row.effective_from
