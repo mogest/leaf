@@ -67,13 +67,13 @@ defmodule Leaf.LedgerTest do
   end
 
   defp observes(context, person, dates) do
-    calendar = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
+    calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
 
-    Enum.each(dates, &Fixtures.public_holiday(%{holiday_calendar_id: calendar.id, date: &1}))
+    Enum.each(dates, &Fixtures.public_holiday(%{calendar_id: calendar.id, date: &1}))
 
     Fixtures.calendar_assignment(%{
       person_id: person.id,
-      holiday_calendar_id: calendar.id,
+      calendar_id: calendar.id,
       effective_from: @started
     })
   end
@@ -446,16 +446,16 @@ defmodule Leaf.LedgerTest do
       grant_timing: :period_start
     })
 
-    calendar = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
-    Fixtures.public_holiday(%{holiday_calendar_id: calendar.id, date: ~D[2024-12-25]})
+    calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
+    Fixtures.public_holiday(%{calendar_id: calendar.id, date: ~D[2024-12-25]})
 
     Fixtures.calendar_assignment(%{
       person_id: person.id,
-      holiday_calendar_id: calendar.id,
+      calendar_id: calendar.id,
       effective_from: ~D[2024-06-01]
     })
 
-    assert_raise RuntimeError, ~r/no holiday calendar in force on 2024-03-04/, fn ->
+    assert_raise RuntimeError, ~r/no calendar in force on 2024-03-04/, fn ->
       Ledger.statements(person, ~D[2024-04-01])
     end
   end

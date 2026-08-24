@@ -1,20 +1,20 @@
-defmodule Leaf.People.PersonHolidayCalendar do
-  @moduledoc "The holiday calendar a person observes, from `effective_from` until superseded."
+defmodule Leaf.People.PersonCalendar do
+  @moduledoc "The calendar a person is on, from `effective_from` until superseded."
 
   use Leaf.Schema
 
-  alias Leaf.Org.HolidayCalendar
+  alias Leaf.Org.Calendar
   alias Leaf.People.Person
 
   @type t :: %__MODULE__{}
 
-  @fields [:holiday_calendar_id, :effective_from]
+  @fields [:calendar_id, :effective_from]
 
-  schema "person_holiday_calendars" do
+  schema "person_calendars" do
     field :effective_from, :date
 
     belongs_to :person, Person
-    belongs_to :holiday_calendar, HolidayCalendar
+    belongs_to :calendar, Calendar
 
     timestamps()
   end
@@ -25,7 +25,7 @@ defmodule Leaf.People.PersonHolidayCalendar do
     |> cast(attrs, @fields)
     |> validate_required([:person_id | @fields])
     |> assoc_constraint(:person)
-    |> assoc_constraint(:holiday_calendar)
+    |> assoc_constraint(:calendar)
     |> unique_constraint([:person_id, :effective_from])
   end
 end

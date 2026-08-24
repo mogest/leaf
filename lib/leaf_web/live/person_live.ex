@@ -139,7 +139,7 @@ defmodule LeafWeb.PersonLive do
 
         <section>
           <header>
-            <h2>Holiday calendars</h2>
+            <h2>Calendars</h2>
             <.link
               :if={@admin?}
               class="add"
@@ -164,7 +164,7 @@ defmodule LeafWeb.PersonLive do
               </div>
             </li>
           </ol>
-          <p :if={@calendars == []}>Observing no calendar, so no public holidays.</p>
+          <p :if={@calendars == []}>On no calendar, so no public holidays and no time zone.</p>
         </section>
 
         <section>
@@ -225,7 +225,7 @@ defmodule LeafWeb.PersonLive do
 
   defp loaded(socket) do
     person = socket.assigns.person
-    today = Date.utc_today()
+    today = People.today(socket.assigns.current_person)
     {:ok, organisation} = Org.fetch_organisation(person.organisation_id)
     leave_types = Map.new(Policies.leave_types(organisation.id), &{&1.id, &1})
 
@@ -342,8 +342,8 @@ defmodule LeafWeb.PersonLive do
     %{
       id: assignment.id,
       from: "from #{Wording.brief_date(assignment.effective_from)}",
-      name: assignment.holiday_calendar.name,
-      path: ~p"/settings/calendars/#{assignment.holiday_calendar}"
+      name: Wording.calendar(assignment.calendar),
+      path: ~p"/settings/calendars/#{assignment.calendar}"
     }
   end
 

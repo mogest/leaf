@@ -2,13 +2,14 @@ defmodule Leaf.People do
   @moduledoc """
   People, and the effective-dated facts that follow them.
 
-  A person's work pattern, leave policy and holiday calendar each change over time, so most
-  questions here are asked either of a single date or of a span. A span comes back as segments —
-  one per stretch over which the answer holds — which is what anything working out entitlement
-  needs, since a mid-year change splits the year rather than replacing it.
+  A person's work pattern, leave policy and calendar each change over time, so most questions here
+  are asked either of a single date or of a span. A span comes back as segments — one per stretch
+  over which the answer holds — which is what anything working out entitlement needs, since a
+  mid-year change splits the year rather than replacing it.
 
   A `Person` and a `WorkPattern` are values other areas hold and read; the policy and the calendar
-  belong to other areas, so those come back as ids to look up there rather than as assignment rows.
+  belong to other areas, so what those answer is what the person's record says of them — which
+  holidays they observe, what zone they are in — rather than the assignment rows themselves.
 
   Everything effective-dated here can be amended or removed after the fact (§4.4). A superseding
   row is how a change from a date is recorded; amending and deleting are how a row that should
@@ -25,7 +26,7 @@ defmodule Leaf.People do
   alias Leaf.Org.Organisation
   alias Leaf.Org.PublicHoliday
   alias Leaf.People.Person
-  alias Leaf.People.PersonHolidayCalendar
+  alias Leaf.People.PersonCalendar
   alias Leaf.People.PersonPolicyAssignment
   alias Leaf.People.Timeline
   alias Leaf.People.WorkPattern
@@ -75,14 +76,13 @@ defmodule Leaf.People do
   end
 
   @doc "The changeset a calendar assignment's form binds to."
-  @spec change_calendar_assignment(Person.t() | PersonHolidayCalendar.t(), map()) ::
-          Ecto.Changeset.t()
+  @spec change_calendar_assignment(Person.t() | PersonCalendar.t(), map()) :: Ecto.Changeset.t()
   def change_calendar_assignment(%Person{} = person, attrs) do
-    PersonHolidayCalendar.changeset(%PersonHolidayCalendar{person_id: person.id}, attrs)
+    PersonCalendar.changeset(%PersonCalendar{person_id: person.id}, attrs)
   end
 
-  def change_calendar_assignment(%PersonHolidayCalendar{} = assignment, attrs) do
-    PersonHolidayCalendar.changeset(assignment, attrs)
+  def change_calendar_assignment(%PersonCalendar{} = assignment, attrs) do
+    PersonCalendar.changeset(assignment, attrs)
   end
 
   @doc """
@@ -158,27 +158,27 @@ defmodule Leaf.People do
     Audit.delete(assignment, "policy_assignment.deleted", actor, assignment.person_id)
   end
 
-  @doc "Puts a person on a holiday calendar from a date."
+  @doc "Puts a person on a calendar from a date."
   @spec create_calendar_assignment(Person.t(), Person.t() | nil, map()) ::
-          Audit.written(PersonHolidayCalendar.t())
+          Audit.written(PersonCalendar.t())
   def create_calendar_assignment(person, actor, attrs) do
-    %PersonHolidayCalendar{person_id: person.id}
-    |> PersonHolidayCalendar.changeset(attrs)
+    %PersonCalendar{person_id: person.id}
+    |> PersonCalendar.changeset(attrs)
     |> Audit.write("calendar_assignment.created", actor, person.id)
   end
 
-  @doc "Corrects which calendar a person observed, or from when."
-  @spec update_calendar_assignment(PersonHolidayCalendar.t(), Person.t() | nil, map()) ::
-          Audit.written(PersonHolidayCalendar.t())
+  @doc "Corrects which calendar a person was on, or from when."
+  @spec update_calendar_assignment(PersonCalendar.t(), Person.t() | nil, map()) ::
+          Audit.written(PersonCalendar.t())
   def update_calendar_assignment(assignment, actor, attrs) do
     assignment
-    |> PersonHolidayCalendar.changeset(attrs)
+    |> PersonCalendar.changeset(attrs)
     |> Audit.write("calendar_assignment.updated", actor, assignment.person_id)
   end
 
   @doc "Removes a calendar assignment, letting whatever preceded it run on."
-  @spec delete_calendar_assignment(PersonHolidayCalendar.t(), Person.t() | nil) ::
-          Audit.written(PersonHolidayCalendar.t())
+  @spec delete_calendar_assignment(PersonCalendar.t(), Person.t() | nil) ::
+          Audit.written(PersonCalendar.t())
   def delete_calendar_assignment(assignment, actor) do
     Audit.delete(assignment, "calendar_assignment.deleted", actor, assignment.person_id)
   end
@@ -203,9 +203,8 @@ defmodule Leaf.People do
   def fetch_policy_assignment(person, id), do: fetch_of(PersonPolicyAssignment, person, id)
 
   @doc "One of the person's calendar assignments, or `:error` where it is not theirs."
-  @spec fetch_calendar_assignment(Person.t(), Ecto.UUID.t()) ::
-          {:ok, PersonHolidayCalendar.t()} | :error
-  def fetch_calendar_assignment(person, id), do: fetch_of(PersonHolidayCalendar, person, id)
+  @spec fetch_calendar_assignment(Person.t(), Ecto.UUID.t()) :: {:ok, PersonCalendar.t()} | :error
+  def fetch_calendar_assignment(person, id), do: fetch_of(PersonCalendar, person, id)
 
   @doc "Every work pattern a person has been on, earliest first."
   @spec work_patterns(Person.t()) :: [WorkPattern.t()]
@@ -217,10 +216,10 @@ defmodule Leaf.People do
     Repo.all(preload(effective_dated(PersonPolicyAssignment, person), :leave_policy))
   end
 
-  @doc "Every calendar a person has observed, earliest first, each with the calendar."
-  @spec calendar_assignments(Person.t()) :: [PersonHolidayCalendar.t()]
+  @doc "Every calendar a person has been on, earliest first, each with the calendar and country."
+  @spec calendar_assignments(Person.t()) :: [PersonCalendar.t()]
   def calendar_assignments(person) do
-    Repo.all(preload(effective_dated(PersonHolidayCalendar, person), :holiday_calendar))
+    Repo.all(preload(effective_dated(PersonCalendar, person), calendar: :parent))
   end
 
   @doc """
@@ -294,21 +293,6 @@ defmodule Leaf.People do
     |> Enum.map(fn {span, assignment} -> {span, assignment.leave_policy_id} end)
   end
 
-  @doc "The id of the holiday calendar the person observes over each part of `range`."
-  @spec holiday_calendar_segments(Person.t(), Date.Range.t()) :: [segment(Ecto.UUID.t())]
-  def holiday_calendar_segments(person, range) do
-    person
-    |> succession(PersonHolidayCalendar)
-    |> Timeline.segments(range)
-    |> Enum.map(fn {span, assignment} -> {span, assignment.holiday_calendar_id} end)
-  end
-
-  @doc "The same, refusing a `range` the person observes no calendar over part of."
-  @spec holiday_calendar_segments!(Person.t(), Date.Range.t()) :: [segment(Ecto.UUID.t())]
-  def holiday_calendar_segments!(person, range) do
-    person |> holiday_calendar_segments(range) |> covering!(range, person, "holiday calendar")
-  end
-
   @doc "Everyone in an organisation, by name."
   @spec people(Ecto.UUID.t()) :: [Person.t()]
   def people(organisation_id) do
@@ -323,14 +307,43 @@ defmodule Leaf.People do
   The public holidays a person observes over `range`, in date order.
 
   Which calendar they are on can change within the range, so each stretch is read against the
-  calendar in force over it. A stretch they are on no calendar for contributes nothing, because a
-  calendar nobody has assigned holds no holidays to show.
+  calendar in force over it, its country's holidays included. A stretch they are on no calendar for
+  contributes nothing, because a calendar nobody has assigned holds no holidays to show.
   """
   @spec public_holidays(Person.t(), Date.Range.t()) :: [PublicHoliday.t()]
   def public_holidays(person, range) do
-    person
-    |> holiday_calendar_segments(range)
-    |> Enum.flat_map(fn {span, calendar_id} -> Org.public_holidays(calendar_id, span) end)
+    person |> calendar_segments(range) |> observed()
+  end
+
+  @doc """
+  The same, refusing a `range` the person is on no calendar over part of.
+
+  Anything counting a person's whole share of the calendar wants this rather than a partial answer:
+  a stretch nobody has said where they are is a hole in the record, and counted as none it would
+  quietly leave them short.
+  """
+  @spec public_holidays!(Person.t(), Date.Range.t()) :: [PublicHoliday.t()]
+  def public_holidays!(person, range) do
+    person |> calendar_segments(range) |> covering!(range, person, "calendar") |> observed()
+  end
+
+  @doc """
+  The date it is where the person is.
+
+  Every page showing a date shows it to somebody, and it is their day it is meant to be (§4.11).
+  """
+  @spec today(Person.t()) :: Date.t()
+  def today(person), do: person |> time_zone() |> DateTime.now!() |> DateTime.to_date()
+
+  @doc """
+  The time zone of the calendar the person is on, or UTC where they are on none.
+
+  Where somebody is is a question about now, so it is the calendar in force today that answers it
+  rather than the one in force on whatever date is being displayed.
+  """
+  @spec time_zone(Person.t()) :: String.t()
+  def time_zone(person) do
+    person |> succession(PersonCalendar, :calendar) |> Timeline.fetch(Date.utc_today()) |> zone()
   end
 
   @doc "The hours worked over a full week under a work pattern."
@@ -361,9 +374,23 @@ defmodule Leaf.People do
     from row in schema, where: row.person_id == ^person.id, order_by: row.effective_from
   end
 
-  defp succession(person, schema) do
-    Repo.all(from row in schema, where: row.person_id == ^person.id)
+  defp succession(person, schema, preloads \\ []) do
+    Repo.all(from row in schema, where: row.person_id == ^person.id, preload: ^preloads)
   end
+
+  defp calendar_segments(person, range) do
+    person
+    |> succession(PersonCalendar)
+    |> Timeline.segments(range)
+    |> Enum.map(fn {span, assignment} -> {span, assignment.calendar_id} end)
+  end
+
+  defp observed(segments) do
+    Enum.flat_map(segments, fn {span, calendar_id} -> Org.observed_holidays(calendar_id, span) end)
+  end
+
+  defp zone({:ok, assignment}), do: assignment.calendar.time_zone
+  defp zone(:error), do: "Etc/UTC"
 
   defp hours_worked(segments) do
     Enum.flat_map(segments, fn {span, pattern} -> Enum.map(span, &{&1, hours_on(pattern, &1)}) end)

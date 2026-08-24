@@ -58,11 +58,11 @@ defmodule Leaf.AuditTest do
   end
 
   test "a deleted row survives in what recorded it", context do
-    calendar = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
+    calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
 
     holiday =
       Fixtures.public_holiday(%{
-        holiday_calendar_id: calendar.id,
+        calendar_id: calendar.id,
         date: ~D[2026-06-19],
         name: "Entered twice"
       })

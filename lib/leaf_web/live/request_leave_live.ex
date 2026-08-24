@@ -22,10 +22,11 @@ defmodule LeafWeb.RequestLeaveLive do
 
   alias Leaf.Leave
   alias Leaf.Ledger
+  alias Leaf.People
 
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
-    today = Date.utc_today()
+    today = People.today(socket.assigns.current_person)
 
     {:ok, socket |> assign(:today, today) |> opened(socket.assigns.live_action, params, today)}
   end

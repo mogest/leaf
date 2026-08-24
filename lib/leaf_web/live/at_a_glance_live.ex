@@ -20,7 +20,7 @@ defmodule LeafWeb.AtAGlanceLive do
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
     person = socket.assigns.current_person
-    today = Date.utc_today()
+    today = People.today(person)
     from = from(params["from"], today)
     {shown, rest} = person |> Leave.requests_undecided_first() |> Enum.split(@shown)
     manager = manager(person)

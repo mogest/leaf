@@ -43,50 +43,118 @@ defmodule Leaf.OrgTest do
     assert Org.fetch_organisation(Ecto.UUID.generate()) == :error
   end
 
-  test "a calendar gives up the holidays falling inside a range, in date order" do
+  test "a calendar gives up the holidays falling inside a range, its country's included" do
     organisation = Fixtures.organisation()
-    calendar = Fixtures.holiday_calendar(%{organisation_id: organisation.id})
+    calendar = Fixtures.calendar(%{organisation_id: organisation.id})
 
     other =
-      Fixtures.holiday_calendar(%{
+      Fixtures.calendar(%{
         organisation_id: organisation.id,
         name: "Spain",
-        country_code: "ES"
+        country_code: "ES",
+        time_zone: "Europe/Madrid"
+      })
+
+    region =
+      Fixtures.calendar(%{
+        organisation_id: organisation.id,
+        parent_id: calendar.id,
+        name: "Wellington"
       })
 
     Fixtures.public_holiday(%{
-      holiday_calendar_id: calendar.id,
+      calendar_id: calendar.id,
       date: ~D[2026-02-06],
       name: "February holiday"
     })
 
-    Fixtures.public_holiday(%{holiday_calendar_id: calendar.id, date: ~D[2026-01-01]})
+    Fixtures.public_holiday(%{calendar_id: calendar.id, date: ~D[2026-01-01]})
 
     Fixtures.public_holiday(%{
-      holiday_calendar_id: calendar.id,
+      calendar_id: calendar.id,
       date: ~D[2026-04-03],
       name: "April holiday"
     })
 
     Fixtures.public_holiday(%{
-      holiday_calendar_id: other.id,
+      calendar_id: other.id,
       date: ~D[2026-01-06],
       name: "Epiphany"
     })
 
-    holidays = Org.public_holidays(calendar.id, Date.range(~D[2026-01-01], ~D[2026-03-31]))
+    Fixtures.public_holiday(%{
+      calendar_id: region.id,
+      date: ~D[2026-01-19],
+      name: "Anniversary Day"
+    })
 
-    assert Enum.map(holidays, & &1.date) == [~D[2026-01-01], ~D[2026-02-06]]
+    quarter = Date.range(~D[2026-01-01], ~D[2026-03-31])
+
+    assert Enum.map(Org.observed_holidays(calendar.id, quarter), & &1.date) == [
+             ~D[2026-01-01],
+             ~D[2026-02-06]
+           ]
+
+    assert Enum.map(Org.observed_holidays(region.id, quarter), & &1.date) == [
+             ~D[2026-01-01],
+             ~D[2026-01-19],
+             ~D[2026-02-06]
+           ]
+
+    assert Enum.map(Org.public_holidays(region.id), & &1.date) == [~D[2026-01-19]]
+  end
+
+  test "a day both a region and its country keep is observed once, under the region's name for it" do
+    organisation = Fixtures.organisation()
+    country = Fixtures.calendar(%{organisation_id: organisation.id})
+
+    region =
+      Fixtures.calendar(%{
+        organisation_id: organisation.id,
+        parent_id: country.id,
+        name: "Wellington"
+      })
+
+    Fixtures.public_holiday(%{
+      calendar_id: country.id,
+      date: ~D[2026-02-06],
+      name: "Waitangi Day"
+    })
+
+    Fixtures.public_holiday(%{
+      calendar_id: region.id,
+      date: ~D[2026-02-06],
+      name: "Waitangi here"
+    })
+
+    observed = Org.observed_holidays(region.id, Date.range(~D[2026-01-01], ~D[2026-12-31]))
+
+    assert Enum.map(observed, & &1.name) == ["Waitangi here"]
+  end
+
+  test "a calendar will not take a zone the database cannot read" do
+    organisation = Fixtures.organisation()
+    attrs = %{name: "Nowhere", country_code: "NZ", time_zone: "Pacific/Nowhere"}
+
+    assert {:error, changeset} = Org.create_calendar(organisation, nil, attrs)
+    assert errors_on(changeset).time_zone == ["is not a time zone"]
+  end
+
+  test "a calendar is offered the zones of its country, and all of them where it has no country" do
+    assert Org.time_zones("NZ") == ["Pacific/Auckland", "Pacific/Chatham"]
+    assert Org.time_zones("nz") == Org.time_zones("NZ")
+    assert Org.time_zones("ZZ") == Org.time_zones(nil)
+    assert "Etc/UTC" in Org.time_zones(nil)
   end
 
   test "a calendar cannot hold the same date twice, so an allowance cannot double-count it" do
     organisation = Fixtures.organisation()
-    calendar = Fixtures.holiday_calendar(%{organisation_id: organisation.id})
-    Fixtures.public_holiday(%{holiday_calendar_id: calendar.id, date: ~D[2026-01-01]})
+    calendar = Fixtures.calendar(%{organisation_id: organisation.id})
+    Fixtures.public_holiday(%{calendar_id: calendar.id, date: ~D[2026-01-01]})
 
     attrs = %{date: ~D[2026-01-01], name: "New Year"}
 
     assert {:error, changeset} = Org.create_public_holiday(calendar, nil, attrs)
-    assert errors_on(changeset).holiday_calendar_id == ["has already been taken"]
+    assert errors_on(changeset).calendar_id == ["has already been taken"]
   end
 end

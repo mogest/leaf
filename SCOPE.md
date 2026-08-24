@@ -44,12 +44,12 @@ circumstances are what make the requirements broad, not what the system is built
 ## 4. Core concepts
 
 ### 4.1 Organisation
-Owns the people, policies, leave types, public holiday calendars and roles. One organisation
-in v1.
+Owns the people, policies, leave types, calendars and roles. One organisation in v1.
 
 ### 4.2 Person
-An employee or contractor. Has an employment start date, a birth date, a country/holiday
-calendar, a manager, and a status (active / ended, with an end date).
+An employee or contractor. Has an employment start date, a birth date, a calendar — which is
+both whose public holidays they observe and what time zone they are in (§4.9, §4.11) — a
+manager, and a status (active / ended, with an end date).
 
 Employee vs contractor is **not** a distinction the system makes. It is expressed purely by
 which leave policy the person is on.
@@ -63,8 +63,8 @@ Work patterns are **effective-dated**: a person has a pattern from a given date,
 is preserved.
 
 ### 4.4 Everything is editable historically
-Work patterns, policy assignments, leave types, entitlements, leave records and public holiday
-calendars can all be created, amended or removed **retrospectively**. Admins can insert a work
+Work patterns, policy assignments, leave types, entitlements, leave records and calendars can
+all be created, amended or removed **retrospectively**. Admins can insert a work
 pattern change that started six months ago, correct an FTE that was wrong all year, or fix a
 back-dated start date.
 
@@ -104,7 +104,7 @@ set:
 | Quarterly leave | hours | Block grant on the first day of each quarter | Lapses at quarter end | 8h at 1.0 FTE, pro-rated (0.6 FTE = 4.8h) |
 | Birthday leave | days | Block grant on the person's birthday | Lapses a configurable window (default 2 weeks) after the birthday | Always 1 day, not pro-rated. May go negative |
 | Longevity leave | days | Block grant on employment anniversary | Lapses at the next anniversary | Always 1 day, not pro-rated |
-| Public holiday allowance | hours | Calculated from the country calendar × FTE (§4.9) | Follows annual leave | Only where holidays are included in entitlement |
+| Public holiday allowance | hours | Calculated from the person's calendar × FTE (§4.9) | Follows annual leave | Only where holidays are included in entitlement |
 | Unpaid leave | hours | Not granted | n/a | No balance, recorded only |
 | Bereavement / other | days | Org-configurable | Org-configurable | |
 
@@ -187,8 +187,8 @@ Two treatments, set by the policy:
 
 1. **Automatically granted off** — the public holiday is a non-working day. No leave is
    deducted; the person simply doesn't work. Standard employee case.
-2. **Included in entitlement** — the person's pro-rata share of the country's public holidays
-   is added to their allowance (e.g. 11 NZ/Canadian public holidays at 0.6 FTE = 6.6 days).
+2. **Included in entitlement** — the person's pro-rata share of the public holidays they
+   observe is added to their allowance (e.g. 11 NZ/Canadian public holidays at 0.6 FTE = 6.6 days).
    Public holidays are then ordinary working days for them: if they want one off, they submit
    a normal leave request for it, or shift their hours to another day. This is how the
    contractor/employee hybrid arrangement works.
@@ -200,8 +200,20 @@ annual leave, rather than silently folded into one number. When the holiday cale
 or someone's FTE changes mid-year, the allowance recalculates like any other entitlement
 (§4.4) and the change is audited.
 
-The system holds public holiday calendars per country (and region where relevant), and shows
-them on calendars and in reports.
+**A calendar is a country, and regions sit inside it.** The country's calendar holds the
+national holidays, entered once. A region within it — Auckland, British Columbia, Catalonia —
+holds only what is local: the anniversary or provincial days. A person goes on one calendar
+from a date, and observes its holidays *plus* the national ones of the country it sits in, so
+nothing national is ever entered twice and a new region is a day or two of work rather than a
+whole year of dates. Somebody in a country with no regional variation goes on the country's
+calendar itself.
+
+A region cannot decline a national holiday: whatever the country observes, every region in it
+observes. Where that is wrong the place is not a region of that country as far as this system
+is concerned, and belongs at the top level as a calendar of its own.
+
+Which calendars exist, and what is on them, is the organisation's own record — nothing is
+supplied with the system.
 
 ### 4.10 Opening balances
 The organisation records the date it started tracking leave here. Nothing is accrued, granted or
@@ -218,6 +230,16 @@ does, so it is worth being deliberate about.
 
 Admins can also make manual balance adjustments at any time, with a mandatory reason, fully
 audited.
+
+### 4.11 Time zones
+Every calendar carries a time zone, so putting somebody on a calendar (§4.9) is also what
+records where they are.
+
+There is no organisation-wide zone. An organisation with people in four countries has no one
+right answer to what day it is, and picking its head office's would make everybody else's
+dashboard a day out twice a day. Instead, whoever is reading a page sees dates and times in
+*their* zone: what today is, what date a request form opens on, what wall-clock an audit entry
+reads as. Somebody on no calendar has no zone, and sees UTC.
 
 ## 5. Functionality
 
@@ -267,7 +289,7 @@ configurable delegate in v1.
 ### 5.5 Calendars
 - Team/organisation calendar showing who is away, when, what type, and status
   (pending/approved).
-- Public holidays shown per person's country.
+- Public holidays shown per person's calendar.
 - Individual view of own leave and balances, and of how each balance was arrived at — what was
   granted or accrued, what was taken, and what lapsed.
 - A shared "who's around" spreadsheet should become unnecessary.
@@ -364,6 +386,10 @@ assertions, mobile app.
   which is the point. Where the change takes the day to no hours at all, the leave silently stops
   counting, and nobody is told. The system should surface this rather than let it vanish, and has
   nowhere to surface it yet.
+- **A region that does not observe one of its country's holidays.** A region adds to the national
+  list and cannot take from it (§4.9). Somewhere that genuinely skips a national holiday has to be
+  held as a top-level calendar instead, repeating the national dates it does keep. No jurisdiction
+  in front of us needs this; if one turns up, it is the rule to revisit rather than the model.
 - **Public holidays worked but not credited.** §4.9's two treatments are the only arrangements
   available. An arrangement where public holidays are ordinary working days and *no* allowance is
   credited — a pure contractor who simply does not bill them — cannot be configured.

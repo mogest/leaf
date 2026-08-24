@@ -21,7 +21,7 @@ defmodule LeafWeb.PagesTest do
     %{organisation: organisation, people: people, policies: policies} = Seed.run()
     admin = people["Mog"]
     [leave_type | _rest] = Policies.leave_types(organisation.id)
-    [calendar | _rest] = Org.holiday_calendars(organisation.id)
+    [calendar | _rest] = Org.calendars(organisation.id)
     [pattern | _rest] = People.work_patterns(admin)
     [entitlement | _rest] = Policies.entitlements(policies["New Zealand employee"].id)
 

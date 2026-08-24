@@ -17,6 +17,7 @@ defmodule Leaf.Leave.Booked do
   alias Ecto.Changeset
   alias Leaf.Dates
   alias Leaf.Leave.Day
+  alias Leaf.Leave.Request
   alias Leaf.Leave.WorkingDay
   alias Leaf.People.Person
   alias Leaf.Repo
@@ -75,21 +76,13 @@ defmodule Leaf.Leave.Booked do
   def validate(%{valid?: false} = changeset, _person), do: changeset
 
   def validate(changeset, person) do
-    fits(changeset, clashing(person, filing(changeset), changeset.data.id))
+    fits(changeset, clashing(person, Request.filing(changeset), changeset.data.id))
   end
 
   defp fits(changeset, []), do: changeset
 
   defp fits(changeset, [_clash | _rest]) do
     Changeset.add_error(changeset, :days, "ask for more of a day than is left in it")
-  end
-
-  # What the request will hold: an amendment carries the days it is dropping alongside them.
-  defp filing(changeset) do
-    changeset
-    |> Changeset.get_change(:days, [])
-    |> Enum.reject(&(&1.action in [:replace, :delete]))
-    |> Enum.map(&Changeset.apply_changes/1)
   end
 
   defp unspent(booked, hours) do

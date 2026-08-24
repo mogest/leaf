@@ -48,6 +48,21 @@ defmodule Leaf.Leave.Request do
   end
 
   @doc """
+  The days the request will hold once `changeset` is written, as days.
+
+  An amendment carries the days it is dropping alongside the ones it is keeping, so what it will
+  hold is what is left after those: a rule about the days is a rule about these and not about the
+  ones on their way out.
+  """
+  @spec filing(Ecto.Changeset.t()) :: [Day.t()]
+  def filing(changeset) do
+    changeset
+    |> get_change(:days, [])
+    |> Enum.reject(&(&1.action in [:replace, :delete]))
+    |> Enum.map(&apply_changes/1)
+  end
+
+  @doc """
   Records a decision.
 
   A cancellation is a decision too, so `reviewed_by` on a cancelled request is whoever cancelled

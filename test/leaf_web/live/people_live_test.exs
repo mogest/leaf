@@ -55,12 +55,12 @@ defmodule LeafWeb.PeopleLiveTest do
   test "a member reading their own page cannot fire the removals it does not show them",
        context do
     policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
-    calendar = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
+    calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
     Fixtures.policy_assignment(%{person_id: context.person.id, leave_policy_id: policy.id})
 
     Fixtures.calendar_assignment(%{
       person_id: context.person.id,
-      holiday_calendar_id: calendar.id
+      calendar_id: calendar.id
     })
 
     [pattern] = People.work_patterns(context.person)
@@ -192,14 +192,14 @@ defmodule LeafWeb.PeopleLiveTest do
   test "one person's page will not act on somebody else's records", context do
     other = Fixtures.person(%{organisation_id: context.organisation.id, name: "Ines Vasquez"})
     policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
-    calendar = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
+    calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
     pattern = Fixtures.work_pattern(%{person_id: other.id})
 
     assigned_policy =
       Fixtures.policy_assignment(%{person_id: other.id, leave_policy_id: policy.id})
 
     assigned_calendar =
-      Fixtures.calendar_assignment(%{person_id: other.id, holiday_calendar_id: calendar.id})
+      Fixtures.calendar_assignment(%{person_id: other.id, calendar_id: calendar.id})
 
     {:ok, live, _html} = live(context.conn, ~p"/people/#{context.person}")
 

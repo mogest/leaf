@@ -4,6 +4,7 @@ defmodule Leaf.LeaveTest do
   alias Leaf.Audit.Entry
   alias Leaf.Fixtures
   alias Leaf.Leave
+  alias Leaf.Policies
 
   @thursday ~D[2026-08-20]
   @friday ~D[2026-08-21]
@@ -23,12 +24,20 @@ defmodule Leaf.LeaveTest do
     Fixtures.work_pattern(%{person_id: person.id})
     leave_type = Fixtures.leave_type(%{organisation_id: organisation.id})
 
+    entitlement =
+      Fixtures.offering(%{
+        person_id: person.id,
+        organisation_id: organisation.id,
+        leave_type_id: leave_type.id
+      })
+
     %{
       organisation: organisation,
       person: person,
       manager: manager,
       admin: admin,
-      leave_type: leave_type
+      leave_type: leave_type,
+      entitlement: entitlement
     }
   end
 
@@ -49,26 +58,31 @@ defmodule Leaf.LeaveTest do
   end
 
   defp observes(context, holiday, name \\ "New Year's Day") do
-    calendar = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
-    Fixtures.public_holiday(%{holiday_calendar_id: calendar.id, date: holiday, name: name})
+    calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
+    Fixtures.public_holiday(%{calendar_id: calendar.id, date: holiday, name: name})
 
     Fixtures.calendar_assignment(%{
       person_id: context.person.id,
-      holiday_calendar_id: calendar.id
+      calendar_id: calendar.id
     })
   end
 
-  defp on_policy(context, entitlement) do
-    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
-
-    Fixtures.policy_entitlement(
-      Map.merge(entitlement, %{
-        leave_policy_id: policy.id,
-        leave_type_id: context.leave_type.id
+  # Public holidays are credited as a share of a leave type of their own, so this goes on the policy
+  # the person is already on rather than replacing the terms their annual leave is offered under.
+  defp crediting_holidays(context) do
+    leave_type =
+      Fixtures.leave_type(%{
+        organisation_id: context.organisation.id,
+        name: "Public holidays",
+        position: 3
       })
-    )
 
-    Fixtures.policy_assignment(%{person_id: context.person.id, leave_policy_id: policy.id})
+    Fixtures.policy_entitlement(%{
+      leave_policy_id: context.entitlement.leave_policy_id,
+      leave_type_id: leave_type.id,
+      amount_source: :public_holidays,
+      grant_amount: nil
+    })
   end
 
   defp taken(context) do
@@ -98,7 +112,6 @@ defmodule Leaf.LeaveTest do
 
   test "a public holiday the person is granted off is not a working day", context do
     observes(context, @friday)
-    on_policy(context, %{})
 
     assert Leave.working_days(context.person, Date.range(@thursday, @saturday)) ==
              [{@thursday, Decimal.new("8.00")}]
@@ -109,7 +122,7 @@ defmodule Leaf.LeaveTest do
 
   test "a public holiday is an ordinary day where the policy credits it instead", context do
     observes(context, @friday)
-    on_policy(context, %{amount_source: :public_holidays, grant_amount: nil})
+    crediting_holidays(context)
 
     assert Leave.working_days(context.person, Date.range(@thursday, @saturday)) ==
              [{@thursday, Decimal.new("8.00")}, {@friday, Decimal.new("8.00")}]
@@ -123,10 +136,60 @@ defmodule Leaf.LeaveTest do
     assert Repo.all(Entry) == []
   end
 
-  test "a pattern reaching back over the date is what makes it filable", context do
+  # Filing a day needs the record to reach back over it in both senses: hours to measure it by, and
+  # a policy offering its leave type on the date.
+  test "a pattern and a policy reaching back over the date are what make it filable", context do
     Fixtures.work_pattern(%{person_id: context.person.id, effective_from: ~D[2024-01-01]})
 
+    Fixtures.policy_assignment(%{
+      person_id: context.person.id,
+      leave_policy_id: context.entitlement.leave_policy_id,
+      effective_from: ~D[2024-01-01]
+    })
+
+    {:ok, _reaching} =
+      Policies.update_entitlement(context.entitlement, nil, %{effective_from: ~D[2024-01-01]})
+
     assert {:ok, %{status: :pending}} = file(context, [~D[2024-02-01]])
+  end
+
+  test "leave cannot be filed against a leave type nobody offers the person", context do
+    other = Fixtures.organisation(%{name: "Harbourline Trust"})
+    theirs = Fixtures.leave_type(%{organisation_id: other.id})
+
+    assert {:error, changeset} =
+             Leave.request(context.person, context.person, %{days: [entry(theirs, @friday)]})
+
+    assert errors_on(changeset).days == ["hold a leave type that was not on offer on its date"]
+    assert Repo.all(Entry) == []
+  end
+
+  test "withdrawing a leave type stops it being filed against, or amended into", context do
+    {:ok, filed} = file(context, [@thursday])
+
+    {:ok, _withdrawn} =
+      Policies.update_leave_type(context.leave_type, context.admin, %{
+        archived_at: DateTime.truncate(DateTime.utc_now(), :second)
+      })
+
+    assert {:error, filing} = file(context, [@friday])
+    assert errors_on(filing).days == ["hold a leave type that was not on offer on its date"]
+
+    assert {:error, amending} =
+             Leave.amend(reload(filed), context.person, %{
+               days: [entry(context.leave_type, @friday)]
+             })
+
+    assert errors_on(amending).days == ["hold a leave type that was not on offer on its date"]
+  end
+
+  test "leave cannot be filed on a date its entitlement no longer covers", context do
+    {:ok, _closed} =
+      Policies.update_entitlement(context.entitlement, nil, %{effective_to: @thursday})
+
+    assert {:error, changeset} = file(context, [@friday])
+    assert errors_on(changeset).days == ["hold a leave type that was not on offer on its date"]
+    assert {:ok, %{status: :pending}} = file(context, [@thursday])
   end
 
   test "leave cannot be filed over a day already spoken for, decided or not", context do
@@ -151,6 +214,11 @@ defmodule Leaf.LeaveTest do
         name: "Sick leave",
         position: 2
       })
+
+    Fixtures.offering(%{
+      leave_policy_id: context.entitlement.leave_policy_id,
+      leave_type_id: sick.id
+    })
 
     filing = fn leave_type, amount ->
       Leave.request(context.person, context.person, %{
@@ -368,7 +436,7 @@ defmodule Leaf.LeaveTest do
 
   describe "requestable/2" do
     setup context do
-      policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+      policy_id = context.entitlement.leave_policy_id
 
       sick_leave =
         Fixtures.leave_type(%{
@@ -378,16 +446,12 @@ defmodule Leaf.LeaveTest do
           position: 2
         })
 
-      Fixtures.policy_entitlement(%{
-        leave_policy_id: policy.id,
-        leave_type_id: context.leave_type.id,
-        effective_to: ~D[2026-03-31]
-      })
+      {:ok, _closed} =
+        Policies.update_entitlement(context.entitlement, nil, %{effective_to: ~D[2026-03-31]})
 
-      Fixtures.policy_entitlement(%{leave_policy_id: policy.id, leave_type_id: sick_leave.id})
-      Fixtures.policy_assignment(%{person_id: context.person.id, leave_policy_id: policy.id})
+      Fixtures.policy_entitlement(%{leave_policy_id: policy_id, leave_type_id: sick_leave.id})
 
-      %{policy: policy}
+      %{policy_id: policy_id}
     end
 
     defp offered(person, first, last) do
@@ -409,7 +473,7 @@ defmodule Leaf.LeaveTest do
 
     test "a type closed and offered again covers what the pair of them cover", context do
       Fixtures.policy_entitlement(%{
-        leave_policy_id: context.policy.id,
+        leave_policy_id: context.policy_id,
         leave_type_id: context.leave_type.id,
         effective_from: ~D[2026-04-01]
       })

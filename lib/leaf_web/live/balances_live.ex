@@ -147,7 +147,7 @@ defmodule LeafWeb.BalancesLive do
   end
 
   defp shown(socket, person, params) do
-    as_at = as_at(params["as_at"])
+    as_at = as_at(params["as_at"], socket.assigns.current_person)
     mine? = person.id == socket.assigns.current_person.id
 
     case chosen(accounts(person, as_at), person, params["leave_type_id"]) do
@@ -318,12 +318,12 @@ defmodule LeafWeb.BalancesLive do
   defp path(_person, true, id, as_at), do: ~p"/balances/#{id}?as_at=#{as_at}"
   defp path(person, false, id, as_at), do: ~p"/people/#{person}/balances/#{id}?as_at=#{as_at}"
 
-  defp as_at(nil), do: Date.utc_today()
+  defp as_at(nil, viewer), do: People.today(viewer)
 
-  defp as_at(entered) do
+  defp as_at(entered, viewer) do
     case Date.from_iso8601(entered) do
       {:ok, date} -> date
-      {:error, _reason} -> Date.utc_today()
+      {:error, _reason} -> People.today(viewer)
     end
   end
 end

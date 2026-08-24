@@ -12,17 +12,24 @@ defmodule LeafWeb.WhoIsAwayLiveTest do
     organisation = Fixtures.organisation()
     person = Fixtures.person(%{organisation_id: organisation.id, name: "Rae Halloran"})
     Fixtures.work_pattern(%{person_id: person.id})
-    calendar = Fixtures.holiday_calendar(%{organisation_id: organisation.id})
+    calendar = Fixtures.calendar(%{organisation_id: organisation.id})
 
-    Fixtures.calendar_assignment(%{person_id: person.id, holiday_calendar_id: calendar.id})
+    Fixtures.calendar_assignment(%{person_id: person.id, calendar_id: calendar.id})
 
     Fixtures.public_holiday(%{
-      holiday_calendar_id: calendar.id,
+      calendar_id: calendar.id,
       date: ~D[2030-03-06],
       name: "Fair Day"
     })
 
     leave_type = Fixtures.leave_type(%{organisation_id: organisation.id})
+
+    Fixtures.offering(%{
+      person_id: person.id,
+      organisation_id: organisation.id,
+      leave_type_id: leave_type.id
+    })
+
     days = [%{leave_type_id: leave_type.id, date: @date, amount: "8", unit: :hours}]
     {:ok, request} = Leave.request(person, person, %{days: days})
 

@@ -114,6 +114,19 @@ defmodule LeafWeb.Wording do
     joined([first | Enum.map(rest, &String.downcase/1)])
   end
 
+  @doc """
+  A calendar's name, said with the country it is a region of: New Zealand — Auckland.
+
+  The country has to have been read for it to be said, so one that was not refuses rather than
+  quietly saying the region alone.
+  """
+  @spec calendar(Leaf.Org.Calendar.t()) :: String.t()
+  def calendar(%{parent: %Leaf.Org.Calendar{name: country}} = calendar) do
+    "#{country} — #{calendar.name}"
+  end
+
+  def calendar(%{parent: nil} = calendar), do: calendar.name
+
   @doc "A stretch of dates, as one date or as two: Monday 2 – Friday 6 March."
   @spec span(Date.t(), Date.t()) :: String.t()
   def span(date, date), do: weekday(date)
@@ -146,9 +159,11 @@ defmodule LeafWeb.Wording do
   def month(%{year: year} = date, %{year: year}), do: Calendar.strftime(date, "%B")
   def month(date, _today), do: Calendar.strftime(date, "%B %Y")
 
-  @doc "A moment, to the minute: 22 August 2026, 14:32."
-  @spec moment(DateTime.t()) :: String.t()
-  def moment(at), do: Calendar.strftime(at, "%-d %B %Y, %H:%M")
+  @doc "A moment where the reader is, to the minute: 22 August 2026, 14:32."
+  @spec moment(DateTime.t(), String.t()) :: String.t()
+  def moment(at, zone) do
+    at |> DateTime.shift_zone!(zone) |> Calendar.strftime("%-d %B %Y, %H:%M")
+  end
 
   @doc "An amount with its unit in full: 9 hours, 1 day."
   @spec figure(Decimal.t(), Day.unit()) :: String.t()
