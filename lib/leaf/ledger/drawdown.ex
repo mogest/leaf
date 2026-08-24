@@ -3,8 +3,9 @@ defmodule Leaf.Ledger.Drawdown do
   Walks a leave type's movements in date order, holding what arrives and spending what does not.
 
   Anything that adds to a balance becomes a lot with the date it lapses on. Anything that takes
-  from one — leave filed, or an adjustment correcting a balance downwards — comes off the lot that
-  lapses soonest, so nothing lapses that could have been used.
+  from one — leave filed, or an adjustment correcting a balance downwards — comes off the soonest
+  to lapse of the lots still live on its date, so nothing lapses that could have been used and
+  nothing is paid for out of what had already gone.
 
   Every loss shows as a movement of its own, because a balance should never quietly disappear: a
   lot unspent on the day it lapses expires, and where a leave type rolls over only up to a cap,
@@ -69,7 +70,7 @@ defmodule Leaf.Ledger.Drawdown do
 
   defp move(state, movement) do
     case Decimal.negative?(movement.amount) do
-      true -> draw(state, Decimal.abs(movement.amount))
+      true -> draw(state, Decimal.abs(movement.amount), movement.date)
       false -> hold(state, movement.amount, movement.expires_on)
     end
   end
@@ -93,11 +94,17 @@ defmodule Leaf.Ledger.Drawdown do
     end
   end
 
-  defp draw(state, amount) do
-    {lots, shortfall} = consume(Lot.soonest_first(state.lots), amount)
+  # A lot that has lapsed by the date leave is taken on cannot pay for it, even where the walk is
+  # still holding it because nothing lapses past `as_at`.
+  defp draw(state, amount, date) do
+    {live, lapsed} = Enum.split_with(state.lots, &live?(&1, date))
+    {drawn, shortfall} = consume(Lot.soonest_first(live), amount)
 
-    %{state | lots: lots, deficit: Decimal.add(state.deficit, shortfall)}
+    %{state | lots: drawn ++ lapsed, deficit: Decimal.add(state.deficit, shortfall)}
   end
+
+  defp live?(%{expires_on: nil}, _date), do: true
+  defp live?(lot, date), do: not Date.before?(lot.expires_on, date)
 
   defp expire(state, date) do
     {lapsed, held} = Enum.split_with(state.lots, &lapsed?(&1, date))
