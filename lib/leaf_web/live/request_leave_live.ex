@@ -122,13 +122,22 @@ defmodule LeafWeb.RequestLeaveLive do
               </tr>
             </tfoot>
           </table>
-          <dl :if={@filing && @filing.balance}>
-            <dt>{@filing.balance.name} left on {@filing.balance.date}</dt>
-            <dd data-tone={@filing.balance.tone}>
-              {@filing.balance.left} <small>if approved</small>
+          <p :if={@replacing}>{@replacing}</p>
+        </section>
+
+        <section :if={@balance}>
+          <header>
+            <h2>What it would leave</h2>
+          </header>
+          <dl>
+            <dt>{@balance.name} left on {@balance.date}</dt>
+            <dd data-tone={@balance.overdrawn && "wrong"}>
+              {@balance.left} <small>if approved</small>
             </dd>
           </dl>
-          <p :if={@replacing}>{@replacing}</p>
+          <p :if={@balance.overdrawn}>
+            That is more leave than the balance holds. It can still be approved.
+          </p>
         </section>
 
         <footer>
@@ -284,6 +293,7 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:problems, problems)
     |> assign(:portion, portion(socket, params))
     |> assign(:filing, filing(socket, params, entries))
+    |> assign(:balance, moving(projection(socket, entries)))
     |> assign(:replacing, replacing(socket.assigns.replaced, entries))
   end
 
@@ -331,11 +341,7 @@ defmodule LeafWeb.RequestLeaveLive do
   defp spanned(socket, span, entries) do
     worked = Map.new(Leave.working_days(socket.assigns.person, span))
 
-    %{
-      days: Enum.map(span, &day(&1, worked[&1])),
-      total: total(entries),
-      balance: moving(projection(socket, entries))
-    }
+    %{days: Enum.map(span, &day(&1, worked[&1])), total: total(entries)}
   end
 
   # A day off is the hours in it, which is what a whole day of somebody's own is worth and not what
@@ -461,6 +467,8 @@ defmodule LeafWeb.RequestLeaveLive do
     end
   end
 
+  defp projection(_socket, []), do: nil
+
   # An approved request has nothing to project against: what it already draws is counted, so
   # adding what it would draw instead would count it twice over.
   defp projection(%{assigns: %{request: %{status: status}}}, _entries) when status != :pending,
@@ -477,26 +485,11 @@ defmodule LeafWeb.RequestLeaveLive do
     end
   end
 
-  # One leave type is asked for, so one balance is left: it is a line under the table rather than a
-  # row in it, because what is left afterwards is not one of the days being filed. What the leave
-  # draws is the table's own total, which is why the figure it came off is not shown beside it.
+  # One leave type is asked for, so one balance is left, and it is said whether the request is a
+  # stretch of days or a single one. What the leave draws is the table's own total, which is why
+  # the figure it came off is not shown beside it.
   defp moving(nil), do: nil
-
-  defp moving(statement) do
-    %{
-      name: statement.leave_type.name,
-      date: Wording.date(statement.as_at),
-      left: Wording.figure(statement.balance, statement.leave_type.unit),
-      tone: tone(statement.balance)
-    }
-  end
-
-  defp tone(balance) do
-    case Decimal.negative?(balance) do
-      true -> "wrong"
-      false -> nil
-    end
-  end
+  defp moving(statement), do: Wording.projected(statement)
 
   defp file(%{assigns: %{request: nil}} = socket, attrs) do
     Leave.request(socket.assigns.person, socket.assigns.current_person, attrs)

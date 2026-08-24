@@ -544,6 +544,29 @@ defmodule Leaf.LedgerTest do
              [{:accrual, ~D[2024-04-30], Decimal.new("66.12"), nil}]
   end
 
+  test "a projection is only the leave types the days themselves draw on", context do
+    person = context.person
+    full_time(person)
+    unpaid = leave_type(context, %{name: "Unpaid leave", position: 2})
+    study = leave_type(context, %{name: "Study leave", position: 3})
+
+    nothing = %{
+      amount_source: :none,
+      grant_amount: nil,
+      grant_basis: nil,
+      grant_period: nil,
+      grant_timing: nil
+    }
+
+    entitlement(context, unpaid, nothing)
+    entitlement(context, study, nothing)
+    take(person, study, ~D[2024-05-01], "8", :hours)
+
+    assert [statement] = Ledger.projected(person, [day(unpaid, ~D[2024-05-02], "8", :hours)])
+    assert statement.leave_type.id == unpaid.id
+    assert Decimal.equal?(statement.balance, "-8.00")
+  end
+
   test "moving to another policy part-way through a year splits the accrual", context do
     person = context.person
     full_time(person)

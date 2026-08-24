@@ -79,6 +79,32 @@ defmodule Leaf.Ledger do
   end
 
   @doc """
+  The accounts `days` would leave behind, in the organisation's order.
+
+  Only the leave types those days draw on: what approving a request comes to is a question about
+  what it draws and not about everything the person holds. A balance that comes out under nothing
+  is an answer rather than a refusal — leave may be taken in advance (§5.2), so nothing here
+  blocks anybody.
+  """
+  @spec projected(Person.t(), [Day.t()]) :: [Statement.t()]
+  def projected(person, days) do
+    today = People.today(person)
+
+    case ready?(person, today) do
+      false -> []
+      true -> drawing_on(person, today, days)
+    end
+  end
+
+  defp drawing_on(person, today, days) do
+    drawn = MapSet.new(days, & &1.leave_type_id)
+
+    person
+    |> statements(today, days)
+    |> Enum.filter(&MapSet.member?(drawn, &1.leave_type.id))
+  end
+
+  @doc """
   What each leave type has been asked for and not yet decided, in the unit the type counts in.
 
   A leave type nothing is waiting on is left out, so the map says what it has to say and nothing
