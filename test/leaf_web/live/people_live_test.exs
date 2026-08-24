@@ -248,6 +248,29 @@ defmodule LeafWeb.PeopleLiveTest do
     assert Decimal.equal?(entry.amount, "12.5")
   end
 
+  test "why a balance was adjusted is the person's and the administrator's, not their manager's",
+       context do
+    manager = Fixtures.person(%{organisation_id: context.organisation.id, name: "Ines Vasquez"})
+    {:ok, person} = People.update_person(context.person, context.admin, %{manager_id: manager.id})
+
+    Fixtures.balance_entry(%{
+      person_id: person.id,
+      leave_type_id: context.leave_type.id,
+      kind: :adjustment,
+      amount: "12.5",
+      reason: "Topped up while off after surgery"
+    })
+
+    {:ok, _live, admin} = live(context.conn, ~p"/people/#{person}")
+    {:ok, _live, theirs} = live(sign_in(context.conn, person), ~p"/people/#{person}")
+    {:ok, _live, managers} = live(sign_in(context.conn, manager), ~p"/people/#{person}")
+
+    assert admin =~ "Topped up while off after surgery"
+    assert theirs =~ "Topped up while off after surgery"
+    refute managers =~ "Topped up while off after surgery"
+    assert managers =~ "12.5"
+  end
+
   test "an adjustment without a reason is refused", context do
     {:ok, live, _html} = live(context.conn, ~p"/people/#{context.person}/balance-entries/new")
 
