@@ -23,11 +23,11 @@ defmodule Leaf.Leave do
   alias Leaf.Leave.Day
   alias Leaf.Leave.Diary
   alias Leaf.Leave.Month
+  alias Leaf.Leave.Offer
   alias Leaf.Leave.Request
   alias Leaf.Leave.WorkingDay
   alias Leaf.People
   alias Leaf.People.Person
-  alias Leaf.Policies
   alias Leaf.Policies.LeaveType
   alias Leaf.Repo
 
@@ -64,6 +64,7 @@ defmodule Leaf.Leave do
     with :ok <- permit(person.id == actor.id or approver?(person, actor)) do
       %Request{person_id: person.id, submitted_by_id: actor.id, status: :pending}
       |> Request.changeset(measured(person, attrs))
+      |> Offer.validate(person)
       |> Booked.validate(person)
       |> Audit.write("leave_request.requested", actor, person.id)
     end
@@ -80,6 +81,7 @@ defmodule Leaf.Leave do
     with :ok <- permit(revisable?(request, actor)) do
       request
       |> Request.changeset(measured(request.person, attrs))
+      |> Offer.validate(request.person)
       |> Booked.validate(request.person)
       |> Audit.write("leave_request.amended", actor, request.person_id)
     end
@@ -277,37 +279,7 @@ defmodule Leaf.Leave do
   month; a type closed and offered again answers for a range the pair of them cover between them.
   """
   @spec requestable(Person.t(), Date.Range.t()) :: [LeaveType.t()]
-  def requestable(person, range) do
-    person
-    |> offered(range)
-    |> Enum.group_by(fn {_span, entitlement} -> entitlement.leave_type_id end)
-    |> Enum.filter(fn {_id, offerings} -> throughout?(offerings, range) end)
-    |> Enum.map(fn {_id, [{_span, entitlement} | _rest]} -> entitlement.leave_type end)
-    |> Enum.sort_by(&{&1.position, &1.name})
-  end
-
-  # Every entitlement the person's policies hold over `range`, each with the stretch of it they were
-  # on that policy for. A stretch they were on no policy for is in neither, so it is a date nothing
-  # is offered on and no type covers the range.
-  defp offered(person, range) do
-    person
-    |> People.leave_policy_segments(range)
-    |> Enum.flat_map(fn {span, policy_id} ->
-      Enum.map(Policies.entitlements(policy_id, span), &{span, &1})
-    end)
-  end
-
-  defp throughout?(offerings, range) do
-    Enum.all?(range, fn date -> Enum.any?(offerings, &offers?(&1, date)) end)
-  end
-
-  defp offers?({span, entitlement}, date) do
-    date in span and not Date.before?(date, entitlement.effective_from) and
-      not closed_by?(entitlement, date)
-  end
-
-  defp closed_by?(%{effective_to: nil}, _date), do: false
-  defp closed_by?(entitlement, date), do: Date.after?(date, entitlement.effective_to)
+  def requestable(person, range), do: Offer.types(person, range)
 
   @doc """
   The days `entries` describe, as days, without filing them.

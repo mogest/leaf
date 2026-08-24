@@ -10,7 +10,6 @@ defmodule Leaf.Leave.WorkingDay do
   `Leaf.People.hours_per_day/2`, so that a caller can tell a day off from a hole in the record.
   """
 
-  alias Leaf.Org
   alias Leaf.People
   alias Leaf.People.Person
   alias Leaf.Policies
@@ -57,10 +56,7 @@ defmodule Leaf.Leave.WorkingDay do
   end
 
   defp observed(person, range) do
-    person
-    |> People.holiday_calendar_segments(range)
-    |> Enum.flat_map(fn {span, calendar_id} -> Org.public_holidays(calendar_id, span) end)
-    |> Enum.map(& &1.date)
+    person |> People.public_holidays(range) |> Enum.map(& &1.date)
   end
 
   # The stretches of `range` over which the person's policy credits public holidays rather than

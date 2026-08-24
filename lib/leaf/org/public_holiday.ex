@@ -3,7 +3,7 @@ defmodule Leaf.Org.PublicHoliday do
 
   use Leaf.Schema
 
-  alias Leaf.Org.HolidayCalendar
+  alias Leaf.Org.Calendar
 
   @type t :: %__MODULE__{}
 
@@ -13,7 +13,7 @@ defmodule Leaf.Org.PublicHoliday do
     field :date, :date
     field :name, :string
 
-    belongs_to :holiday_calendar, HolidayCalendar
+    belongs_to :calendar, Calendar
 
     timestamps()
   end
@@ -22,8 +22,8 @@ defmodule Leaf.Org.PublicHoliday do
   def changeset(holiday, attrs) do
     holiday
     |> cast(attrs, @fields)
-    |> validate_required([:holiday_calendar_id | @fields])
-    |> assoc_constraint(:holiday_calendar)
-    |> unique_constraint([:holiday_calendar_id, :date])
+    |> validate_required([:calendar_id | @fields])
+    |> assoc_constraint(:calendar)
+    |> unique_constraint([:calendar_id, :date])
   end
 end

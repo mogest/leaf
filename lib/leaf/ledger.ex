@@ -192,12 +192,9 @@ defmodule Leaf.Ledger do
     holidays(person, Dates.spanning(Enum.flat_map(ranges, &[&1.first, &1.last])))
   end
 
-  # The count claims to be the period's whole share of the calendar, so a period the person
-  # observes no calendar over part of would be quietly short of one.
+  # The count claims to be the period's whole share of the calendar, so a period the person is on no
+  # calendar over part of would be quietly short of one.
   defp holidays(person, range) do
-    person
-    |> People.holiday_calendar_segments!(range)
-    |> Enum.flat_map(fn {span, calendar_id} -> Org.public_holidays(calendar_id, span) end)
-    |> Enum.map(& &1.date)
+    person |> People.public_holidays!(range) |> Enum.map(& &1.date)
   end
 end

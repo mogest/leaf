@@ -15,10 +15,10 @@ defmodule Tui do
   alias Leaf.Leave.Request
   alias Leaf.Ledger
   alias Leaf.Org
-  alias Leaf.Org.HolidayCalendar
+  alias Leaf.Org.Calendar
   alias Leaf.People
   alias Leaf.People.Person
-  alias Leaf.People.PersonHolidayCalendar
+  alias Leaf.People.PersonCalendar
   alias Leaf.People.PersonPolicyAssignment
   alias Leaf.People.WorkPattern
   alias Leaf.Policies
@@ -148,7 +148,7 @@ defmodule Tui do
       print_pattern_on(state, person)
       print_rows("Work patterns", succession(person, WorkPattern), &describe_pattern/1)
       print_rows("Policies", succession(person, PersonPolicyAssignment), &describe_assignment/1)
-      print_rows("Calendars", succession(person, PersonHolidayCalendar), &describe_assignment/1)
+      print_rows("Calendars", succession(person, PersonCalendar), &describe_assignment/1)
     end
   end
 
@@ -189,8 +189,8 @@ defmodule Tui do
     "from #{assignment.effective_from}  #{policy_name(assignment.leave_policy_id)}"
   end
 
-  defp describe_assignment(%PersonHolidayCalendar{} = assignment) do
-    "from #{assignment.effective_from}  #{calendar_name(assignment.holiday_calendar_id)}"
+  defp describe_assignment(%PersonCalendar{} = assignment) do
+    "from #{assignment.effective_from}  #{calendar_name(assignment.calendar_id)}"
   end
 
   defp create_person(state) do
@@ -244,12 +244,12 @@ defmodule Tui do
 
   defp assign_calendar(state) do
     with %Person{} = person <- choose_person(state.org, "Whose calendar?"),
-         %HolidayCalendar{} = calendar <- choose_calendar(state) do
+         %Calendar{} = calendar <- choose_calendar(state) do
       from = ask_date("Effective from", person.employment_start_date)
 
       report(
         People.create_calendar_assignment(person, state.actor, %{
-          holiday_calendar_id: calendar.id,
+          calendar_id: calendar.id,
           effective_from: from
         })
       )
@@ -665,19 +665,19 @@ defmodule Tui do
   defp fte_note(_entitlement), do: ""
 
   defp list_holidays(state) do
-    with %HolidayCalendar{} = calendar <- choose_calendar(state) do
+    with %Calendar{} = calendar <- choose_calendar(state) do
       range = ask_range(state)
 
       IO.puts("")
 
       calendar.id
-      |> Org.public_holidays(range)
+      |> Org.observed_holidays(range)
       |> Enum.each(&IO.puts("  #{&1.date}  #{&1.name}"))
     end
   end
 
   defp create_holiday(state) do
-    with %HolidayCalendar{} = calendar <- choose_calendar(state) do
+    with %Calendar{} = calendar <- choose_calendar(state) do
       attrs = %{date: ask_date("Date", state.as_at), name: ask("Name")}
 
       report(Org.create_public_holiday(calendar, state.actor, attrs), & &1.name)
@@ -858,7 +858,7 @@ defmodule Tui do
   end
 
   defp calendars(org) do
-    Repo.all(from c in HolidayCalendar, where: c.organisation_id == ^org.id, order_by: c.name)
+    Repo.all(from c in Calendar, where: c.organisation_id == ^org.id, order_by: c.name)
   end
 
   defp requests(org) do
@@ -880,7 +880,7 @@ defmodule Tui do
 
   defp leave_type_name(id), do: Repo.get!(LeaveType, id).name
   defp policy_name(id), do: Repo.get!(LeavePolicy, id).name
-  defp calendar_name(id), do: Repo.get!(HolidayCalendar, id).name
+  defp calendar_name(id), do: Repo.get!(Calendar, id).name
 
   # ── formatting ──────────────────────────────────────────────────────────────
 

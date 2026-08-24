@@ -2,7 +2,7 @@ defmodule Leaf.Seed do
   @moduledoc """
   Builds an example organisation with two New Zealand leave policies and somebody on each.
 
-  Its holiday calendar comes with it. For local development, and as a worked example of how the
+  Its calendars come with it. For local development, and as a worked example of how the
   entitlements in `SCOPE.md` are actually configured. Everything goes in through the contexts, so a
   policy that will not validate fails here rather than reaching the database.
 
@@ -31,7 +31,7 @@ defmodule Leaf.Seed do
     tracked_from: ~D[2024-01-01]
   }
 
-  @calendar %{name: "New Zealand", country_code: "NZ"}
+  @calendar %{name: "New Zealand", country_code: "NZ", time_zone: "Pacific/Auckland"}
 
   # Before anyone's employment starts, so a person's own dates are what bound their entitlement.
   @policy_from ~D[2024-01-01]
@@ -149,6 +149,7 @@ defmodule Leaf.Seed do
       role: :admin,
       employment_start_date: ~D[2024-12-15],
       birth_date: ~D[1990-08-10],
+      calendar: "Wellington",
       policy: "New Zealand employee",
       # 36 hours against a 40 hour week: 0.9 FTE.
       work_pattern: %{
@@ -167,6 +168,7 @@ defmodule Leaf.Seed do
       role: :member,
       employment_start_date: ~D[2025-01-01],
       birth_date: ~D[1985-03-22],
+      calendar: "Auckland",
       policy: "New Zealand contractor",
       # 20 hours: 0.5 FTE.
       work_pattern: %{
@@ -182,8 +184,9 @@ defmodule Leaf.Seed do
   ]
 
   # New Zealand's national public holidays, on the dates they are observed rather than the dates
-  # they fall — a Saturday holiday is taken on the following Monday. Regional anniversary days are
-  # not here; an organisation with staff outside one region would hold a calendar per region.
+  # they fall — a Saturday holiday is taken on the following Monday. Anniversary days are not here:
+  # they belong to a region, and everybody in the country observes this list whichever region that
+  # is.
   @public_holiday_dates [
     {~D[2025-01-01], "New Year's Day"},
     {~D[2025-01-02], "Day after New Year's Day"},
@@ -220,6 +223,27 @@ defmodule Leaf.Seed do
     {~D[2027-12-28], "Boxing Day (observed)"}
   ]
 
+  # A region holds what is local to it and nothing else. Anniversary days fall on the Monday nearest
+  # the date they commemorate, which is why no two years of them look alike.
+  @regions [
+    %{
+      name: "Auckland",
+      holidays: [
+        {~D[2025-01-27], "Auckland Anniversary Day"},
+        {~D[2026-01-26], "Auckland Anniversary Day"},
+        {~D[2027-02-01], "Auckland Anniversary Day"}
+      ]
+    },
+    %{
+      name: "Wellington",
+      holidays: [
+        {~D[2025-01-20], "Wellington Anniversary Day"},
+        {~D[2026-01-19], "Wellington Anniversary Day"},
+        {~D[2027-01-25], "Wellington Anniversary Day"}
+      ]
+    }
+  ]
+
   @doc """
   Builds the whole example, returning what it made by name.
 
@@ -232,10 +256,10 @@ defmodule Leaf.Seed do
         }
   def run do
     organisation = add_organisation()
-    calendar = add_calendar(organisation)
+    calendars = add_calendars(organisation)
     leave_types = add_leave_types(organisation)
     policies = Map.new(@policies, &{&1.name, add_policy(organisation, &1, leave_types)})
-    people = Map.new(@people, &{&1.name, add_person(organisation, policies, calendar, &1)})
+    people = Map.new(@people, &{&1.name, add_person(organisation, policies, calendars, &1)})
 
     %{organisation: organisation, policies: policies, people: people}
   end
@@ -246,14 +270,24 @@ defmodule Leaf.Seed do
     organisation
   end
 
-  defp add_calendar(organisation) do
-    {:ok, calendar} = Org.create_holiday_calendar(organisation, @system, @calendar)
+  defp add_calendars(organisation) do
+    {:ok, country} = Org.create_calendar(organisation, @system, @calendar)
 
-    Enum.each(@public_holiday_dates, fn {date, name} ->
+    add_holidays(country, @public_holiday_dates)
+
+    Map.new(@regions, fn region ->
+      {:ok, calendar} = Org.create_region(country, @system, %{name: region.name})
+
+      add_holidays(calendar, region.holidays)
+
+      {region.name, calendar}
+    end)
+  end
+
+  defp add_holidays(calendar, dates) do
+    Enum.each(dates, fn {date, name} ->
       {:ok, _holiday} = Org.create_public_holiday(calendar, @system, %{date: date, name: name})
     end)
-
-    calendar
   end
 
   defp add_leave_types(organisation) do
@@ -288,11 +322,11 @@ defmodule Leaf.Seed do
     {:ok, _entitlement} = Policies.create_entitlement(policy, leave_type, @system, attrs)
   end
 
-  defp add_person(organisation, policies, calendar, attrs) do
+  defp add_person(organisation, policies, calendars, attrs) do
     started_on = attrs.employment_start_date
+    given = Map.drop(attrs, [:calendar, :policy, :work_pattern])
 
-    {:ok, person} =
-      People.create_person(organisation, @system, Map.drop(attrs, [:policy, :work_pattern]))
+    {:ok, person} = People.create_person(organisation, @system, given)
 
     {:ok, _pattern} =
       People.create_work_pattern(
@@ -309,7 +343,7 @@ defmodule Leaf.Seed do
 
     {:ok, _assignment} =
       People.create_calendar_assignment(person, @system, %{
-        holiday_calendar_id: calendar.id,
+        calendar_id: Map.fetch!(calendars, attrs.calendar).id,
         effective_from: started_on
       })
 

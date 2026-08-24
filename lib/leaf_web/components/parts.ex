@@ -24,7 +24,7 @@ defmodule LeafWeb.Parts do
     {"Organisation", "/settings", "organisation"},
     {"Leave types", "/settings/leave-types", "leave-types"},
     {"Policies", "/settings/policies", "policies"},
-    {"Holiday calendars", "/settings/calendars", "calendars"},
+    {"Calendars", "/settings/calendars", "calendars"},
     {"Audit log", "/settings/audit", "audit"}
   ]
 

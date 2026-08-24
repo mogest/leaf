@@ -183,32 +183,34 @@ defmodule Leaf.PeopleTest do
            ]
   end
 
-  test "so does the holiday calendar a person observes, until an assignment is removed",
-       context do
+  test "so does the calendar a person is on, until an assignment is removed", context do
     %{person: person, organisation: organisation} = context
-    calendar = Fixtures.holiday_calendar(%{organisation_id: organisation.id})
+    calendar = Fixtures.calendar(%{organisation_id: organisation.id})
 
     other =
-      Fixtures.holiday_calendar(%{
+      Fixtures.calendar(%{
         organisation_id: organisation.id,
         name: "Spain",
-        country_code: "ES"
+        country_code: "ES",
+        time_zone: "Europe/Madrid"
       })
 
-    Fixtures.calendar_assignment(%{person_id: person.id, holiday_calendar_id: calendar.id})
+    Fixtures.public_holiday(%{calendar_id: calendar.id, date: ~D[2026-01-02], name: "Day after"})
+    Fixtures.public_holiday(%{calendar_id: other.id, date: ~D[2026-01-06], name: "Reyes"})
+    Fixtures.calendar_assignment(%{person_id: person.id, calendar_id: calendar.id})
 
     moved =
       Fixtures.calendar_assignment(%{
         person_id: person.id,
-        holiday_calendar_id: other.id,
+        calendar_id: other.id,
         effective_from: ~D[2026-01-01]
       })
 
     january = Date.range(~D[2026-01-01], ~D[2026-01-31])
 
-    assert People.holiday_calendar_segments(person, january) == [{january, other.id}]
+    assert Enum.map(People.public_holidays(person, january), & &1.name) == ["Reyes"]
     assert {:ok, _removed} = People.delete_calendar_assignment(moved, nil)
-    assert People.holiday_calendar_segments(person, january) == [{january, calendar.id}]
+    assert Enum.map(People.public_holidays(person, january), & &1.name) == ["Day after"]
   end
 
   test "everyone in an organisation comes back by name", context do
@@ -223,44 +225,92 @@ defmodule Leaf.PeopleTest do
   end
 
   test "the holidays a person observes follow the calendar in force", context do
-    nz = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
+    nz = Fixtures.calendar(%{organisation_id: context.organisation.id})
 
     spain =
-      Fixtures.holiday_calendar(%{
+      Fixtures.calendar(%{
         organisation_id: context.organisation.id,
         name: "Spain",
-        country_code: "ES"
+        country_code: "ES",
+        time_zone: "Europe/Madrid"
       })
 
-    Fixtures.public_holiday(%{holiday_calendar_id: nz.id, date: ~D[2026-06-01], name: "King's"})
+    Fixtures.public_holiday(%{calendar_id: nz.id, date: ~D[2026-06-01], name: "King's"})
 
     Fixtures.public_holiday(%{
-      holiday_calendar_id: spain.id,
+      calendar_id: spain.id,
       date: ~D[2026-08-15],
       name: "Asunción"
     })
 
     Fixtures.public_holiday(%{
-      holiday_calendar_id: spain.id,
+      calendar_id: spain.id,
       date: ~D[2026-12-25],
       name: "Navidad"
     })
 
     Fixtures.calendar_assignment(%{
       person_id: context.person.id,
-      holiday_calendar_id: nz.id,
-      effective_from: ~D[2026-01-01],
-      effective_to: ~D[2026-06-30]
+      calendar_id: nz.id,
+      effective_from: ~D[2026-01-01]
     })
 
     Fixtures.calendar_assignment(%{
       person_id: context.person.id,
-      holiday_calendar_id: spain.id,
+      calendar_id: spain.id,
       effective_from: ~D[2026-07-01]
     })
 
     observed = People.public_holidays(context.person, Date.range(~D[2026-01-01], ~D[2026-08-31]))
 
     assert Enum.map(observed, & &1.name) == ["King's", "Asunción"]
+  end
+
+  test "a stretch on no calendar is a hole in the record where the whole share is counted",
+       context do
+    nz = Fixtures.calendar(%{organisation_id: context.organisation.id})
+
+    Fixtures.calendar_assignment(%{
+      person_id: context.person.id,
+      calendar_id: nz.id,
+      effective_from: ~D[2026-02-01]
+    })
+
+    year = Date.range(~D[2026-01-01], ~D[2026-12-31])
+
+    assert People.public_holidays(context.person, year) == []
+
+    assert_raise RuntimeError, ~r/no calendar in force/, fn ->
+      People.public_holidays!(context.person, year)
+    end
+  end
+
+  test "where somebody is is what says what day it is for them", context do
+    # Twenty-five hours apart, so no instant finds the two of them on the same date.
+    east =
+      Fixtures.calendar(%{
+        organisation_id: context.organisation.id,
+        name: "Kiribati",
+        country_code: "KI",
+        time_zone: "Pacific/Kiritimati"
+      })
+
+    west =
+      Fixtures.calendar(%{
+        organisation_id: context.organisation.id,
+        name: "Niue",
+        country_code: "NU",
+        time_zone: "Pacific/Niue"
+      })
+
+    other = Fixtures.person(%{organisation_id: context.organisation.id, name: "Bo Ngata"})
+
+    assert People.time_zone(context.person) == "Etc/UTC"
+
+    Fixtures.calendar_assignment(%{person_id: context.person.id, calendar_id: east.id})
+    Fixtures.calendar_assignment(%{person_id: other.id, calendar_id: west.id})
+
+    assert People.time_zone(context.person) == "Pacific/Kiritimati"
+    assert People.today(context.person) != People.today(other)
   end
 end

@@ -21,6 +21,13 @@ defmodule LeafWeb.ApprovalsLiveTest do
 
     Fixtures.work_pattern(%{person_id: person.id})
     leave_type = Fixtures.leave_type(%{organisation_id: organisation.id})
+
+    Fixtures.offering(%{
+      person_id: person.id,
+      organisation_id: organisation.id,
+      leave_type_id: leave_type.id
+    })
+
     days = [%{leave_type_id: leave_type.id, date: @date, amount: "8", unit: :hours}]
     {:ok, _request} = Leave.request(person, person, %{days: days, note: "A wedding"})
 

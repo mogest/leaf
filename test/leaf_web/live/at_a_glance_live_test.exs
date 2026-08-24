@@ -24,6 +24,12 @@ defmodule LeafWeb.AtAGlanceLiveTest do
     Fixtures.work_pattern(%{person_id: person.id})
     leave_type = Fixtures.leave_type(%{organisation_id: organisation.id})
 
+    Fixtures.offering(%{
+      person_id: person.id,
+      organisation_id: organisation.id,
+      leave_type_id: leave_type.id
+    })
+
     Fixtures.balance_entry(%{
       person_id: person.id,
       leave_type_id: leave_type.id,

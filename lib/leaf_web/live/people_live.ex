@@ -9,7 +9,7 @@ defmodule LeafWeb.PeopleLive do
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     {:ok, organisation} = Org.fetch_organisation(socket.assigns.current_person.organisation_id)
-    today = Date.utc_today()
+    today = People.today(socket.assigns.current_person)
     people = People.people(organisation.id)
     names = Map.new(people, &{&1.id, &1.name})
 

@@ -131,10 +131,16 @@ defmodule LeafWeb.SettingsLiveTest do
     {:ok, live, _html} = live(context.conn, ~p"/settings/calendars")
 
     live
-    |> form("#new-calendar", holiday_calendar: %{"name" => "New Zealand", "country_code" => "NZ"})
+    |> form("#new-calendar",
+      calendar: %{
+        "name" => "New Zealand",
+        "country_code" => "NZ",
+        "time_zone" => "Pacific/Auckland"
+      }
+    )
     |> render_submit()
 
-    assert [calendar] = Org.holiday_calendars(context.organisation.id)
+    assert [calendar] = Org.calendars(context.organisation.id)
 
     {:ok, live, _html} = live(context.conn, ~p"/settings/calendars/#{calendar}")
 
@@ -150,6 +156,40 @@ defmodule LeafWeb.SettingsLiveTest do
 
     assert html =~ "No holidays on this calendar yet."
     assert Org.public_holidays(calendar.id) == []
+  end
+
+  test "a region holds what is local to it, and observes its country's holidays too", context do
+    country = Fixtures.calendar(%{organisation_id: context.organisation.id})
+    Fixtures.public_holiday(%{calendar_id: country.id, date: ~D[2026-10-26], name: "Labour Day"})
+
+    {:ok, live, _html} = live(context.conn, ~p"/settings/calendars/#{country}")
+
+    live |> form("#new-region", region: %{"name" => "Auckland"}) |> render_submit()
+
+    assert [held, region] = Org.calendars(context.organisation.id)
+    assert held.id == country.id
+    assert region.name == "Auckland"
+    assert region.country_code == country.country_code
+    assert region.time_zone == country.time_zone
+
+    {:ok, live, _html} = live(context.conn, ~p"/settings/calendars/#{region}")
+
+    html =
+      live
+      |> form("#new-holiday", public_holiday: %{"date" => "2026-01-26", "name" => "Anniversary"})
+      |> render_submit()
+
+    assert html =~ "Anniversary"
+    refute html =~ "Labour Day"
+
+    observed = Org.observed_holidays(region.id, Date.range(~D[2026-01-01], ~D[2026-12-31]))
+
+    assert Enum.map(observed, & &1.name) == ["Anniversary", "Labour Day"]
+
+    {:ok, list, _html} = live(context.conn, ~p"/settings/calendars")
+    row = list |> element("tr", "New Zealand — Auckland") |> render()
+
+    assert row =~ ">2<"
   end
 
   test "a policy will not act on another policy's entitlement", context do
@@ -185,12 +225,17 @@ defmodule LeafWeb.SettingsLiveTest do
   end
 
   test "a calendar will not let a holiday off another calendar", context do
-    calendar = Fixtures.holiday_calendar(%{organisation_id: context.organisation.id})
+    calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
 
     other =
-      Fixtures.holiday_calendar(%{organisation_id: context.organisation.id, name: "Australia"})
+      Fixtures.calendar(%{
+        organisation_id: context.organisation.id,
+        name: "Australia",
+        country_code: "AU",
+        time_zone: "Australia/Sydney"
+      })
 
-    holiday = Fixtures.public_holiday(%{holiday_calendar_id: other.id})
+    holiday = Fixtures.public_holiday(%{calendar_id: other.id})
 
     {:ok, live, _html} = live(context.conn, ~p"/settings/calendars/#{calendar}")
 

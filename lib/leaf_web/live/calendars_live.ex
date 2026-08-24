@@ -1,5 +1,10 @@
 defmodule LeafWeb.CalendarsLive do
-  @moduledoc "The public holiday calendars the organisation holds, one per country or region."
+  @moduledoc """
+  The calendars the organisation holds, each country followed by the regions inside it.
+
+  A country is added here; a region is added on its country's own page, which is where the country
+  and the zone it starts from are.
+  """
 
   use LeafWeb, :live_view
 
@@ -11,28 +16,28 @@ defmodule LeafWeb.CalendarsLive do
 
     {:ok,
      socket
-     |> assign(:page_title, "Holiday calendars")
+     |> assign(:page_title, "Calendars")
      |> assign(:organisation, organisation)
-     |> assign(:form, to_form(Org.change_holiday_calendar(organisation, %{})))
+     |> assign(:form, to_form(Org.change_calendar(organisation, %{})))
+     |> assign(:time_zones, Org.time_zones(nil))
      |> listed()}
   end
 
   @impl Phoenix.LiveView
   @role :admin
-  def handle_event("validate", %{"holiday_calendar" => params}, socket) do
-    changeset = Org.change_holiday_calendar(socket.assigns.organisation, params)
+  def handle_event("validate", %{"calendar" => params}, socket) do
+    changeset = Org.change_calendar(socket.assigns.organisation, params)
 
-    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
+    {:noreply,
+     socket
+     |> assign(:form, to_form(changeset, action: :validate))
+     |> assign(:time_zones, Org.time_zones(params["country_code"]))}
   end
 
   @role :admin
-  def handle_event("save", %{"holiday_calendar" => params}, socket) do
+  def handle_event("save", %{"calendar" => params}, socket) do
     created =
-      Org.create_holiday_calendar(
-        socket.assigns.organisation,
-        socket.assigns.current_person,
-        params
-      )
+      Org.create_calendar(socket.assigns.organisation, socket.assigns.current_person, params)
 
     {:noreply, saved(socket, created)}
   end
@@ -42,20 +47,21 @@ defmodule LeafWeb.CalendarsLive do
     ~H"""
     <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
-        <h1>Holiday calendars</h1>
+        <h1>Calendars</h1>
       </header>
 
       <Parts.settings_nav here="calendars" />
 
       <section>
         <header>
-          <h2>Whose holidays are held here</h2>
+          <h2>Where people are, and whose holidays they observe</h2>
         </header>
         <table>
           <thead>
             <tr>
               <th scope="col">Name</th>
               <th scope="col">Country</th>
+              <th scope="col">Time zone</th>
               <th scope="col">Holidays</th>
             </tr>
           </thead>
@@ -63,6 +69,7 @@ defmodule LeafWeb.CalendarsLive do
             <tr :for={calendar <- @calendars}>
               <th scope="row"><.link navigate={calendar.path}>{calendar.name}</.link></th>
               <td>{calendar.country_code}</td>
+              <td>{calendar.time_zone}</td>
               <td>{calendar.holidays}</td>
             </tr>
           </tbody>
@@ -73,10 +80,18 @@ defmodule LeafWeb.CalendarsLive do
       <.form id="new-calendar" for={@form} phx-change="validate" phx-submit="save">
         <section>
           <header>
-            <h2>Add a calendar</h2>
+            <h2>Add a country</h2>
+            <p>its regions go on its own page, once it is here</p>
           </header>
           <.input field={@form[:name]} type="text" label="Name" />
           <.input field={@form[:country_code]} type="text" label="Country code, two letters" />
+          <.input
+            field={@form[:time_zone]}
+            type="select"
+            label="Time zone"
+            prompt="Choose one"
+            options={@time_zones}
+          />
         </section>
 
         <footer>
@@ -88,16 +103,17 @@ defmodule LeafWeb.CalendarsLive do
   end
 
   defp listed(socket) do
-    calendars = Org.holiday_calendars(socket.assigns.organisation.id)
+    calendars = Org.calendars(socket.assigns.organisation.id)
 
     assign(socket, :calendars, Enum.map(calendars, &row/1))
   end
 
   defp row(calendar) do
     %{
-      name: calendar.name,
+      name: Wording.calendar(calendar),
       country_code: String.upcase(calendar.country_code),
-      holidays: counted(Org.public_holidays(calendar.id)),
+      time_zone: calendar.time_zone,
+      holidays: counted(Org.observed_holidays(calendar.id)),
       path: ~p"/settings/calendars/#{calendar}"
     }
   end

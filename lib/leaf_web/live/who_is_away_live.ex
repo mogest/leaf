@@ -14,7 +14,7 @@ defmodule LeafWeb.WhoIsAwayLive do
 
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
-    today = Date.utc_today()
+    today = People.today(socket.assigns.current_person)
     from = from(params["month"], today)
     range = Date.range(from, Date.end_of_month(from))
 

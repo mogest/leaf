@@ -9,11 +9,11 @@ defmodule Leaf.Fixtures do
 
   alias Leaf.Leave.BalanceEntry
   alias Leaf.Leave.Request
-  alias Leaf.Org.HolidayCalendar
+  alias Leaf.Org.Calendar
   alias Leaf.Org.Organisation
   alias Leaf.Org.PublicHoliday
   alias Leaf.People.Person
-  alias Leaf.People.PersonHolidayCalendar
+  alias Leaf.People.PersonCalendar
   alias Leaf.People.PersonPolicyAssignment
   alias Leaf.People.WorkPattern
   alias Leaf.Policies.LeavePolicy
@@ -22,6 +22,14 @@ defmodule Leaf.Fixtures do
   alias Leaf.Repo
 
   @start_date ~D[2024-03-04]
+
+  @recorded_only %{
+    amount_source: :none,
+    grant_amount: nil,
+    grant_basis: nil,
+    grant_period: nil,
+    grant_timing: nil
+  }
 
   @spec organisation(map()) :: Organisation.t()
   def organisation(attrs \\ %{}) do
@@ -94,17 +102,40 @@ defmodule Leaf.Fixtures do
     })
   end
 
-  @spec holiday_calendar(map()) :: HolidayCalendar.t()
-  def holiday_calendar(attrs \\ %{}) do
-    insert(%HolidayCalendar{}, &HolidayCalendar.changeset/2, attrs, %{
+  @doc """
+  A policy offering `leave_type_id`, assigned to `person_id` — what filing leave against it needs.
+
+  It grants nothing, so a balance is whatever the test puts in it and nothing else; pass
+  `amount_source` and the grant fields where the point is what it grants. Returns the entitlement,
+  whose `leave_policy_id` is the policy anything further hangs off — give that instead of the person
+  to offer a second type on a policy they are already on.
+  """
+  @spec offering(map()) :: PolicyEntitlement.t()
+  def offering(%{leave_policy_id: _policy_id} = attrs) do
+    policy_entitlement(Map.merge(@recorded_only, attrs))
+  end
+
+  def offering(attrs) do
+    {person_id, attrs} = Map.pop!(attrs, :person_id)
+    {organisation_id, attrs} = Map.pop!(attrs, :organisation_id)
+    policy = leave_policy(%{organisation_id: organisation_id})
+
+    policy_assignment(%{person_id: person_id, leave_policy_id: policy.id})
+    offering(Map.put(attrs, :leave_policy_id, policy.id))
+  end
+
+  @spec calendar(map()) :: Calendar.t()
+  def calendar(attrs \\ %{}) do
+    insert(%Calendar{}, &Calendar.changeset/2, attrs, %{
       name: "New Zealand",
-      country_code: "NZ"
+      country_code: "NZ",
+      time_zone: "Pacific/Auckland"
     })
   end
 
-  @spec calendar_assignment(map()) :: PersonHolidayCalendar.t()
+  @spec calendar_assignment(map()) :: PersonCalendar.t()
   def calendar_assignment(attrs \\ %{}) do
-    insert(%PersonHolidayCalendar{}, &PersonHolidayCalendar.changeset/2, attrs, %{
+    insert(%PersonCalendar{}, &PersonCalendar.changeset/2, attrs, %{
       effective_from: @start_date
     })
   end

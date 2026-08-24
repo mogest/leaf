@@ -55,7 +55,7 @@ defmodule LeafWeb.YourRequestsLive do
 
   defp listed(socket) do
     person = socket.assigns.current_person
-    today = Date.utc_today()
+    today = People.today(person)
     manager = manager(person)
 
     assign(

@@ -2,7 +2,6 @@ defmodule Leaf.SeedTest do
   use Leaf.DataCase, async: true
 
   alias Leaf.Ledger
-  alias Leaf.Org
   alias Leaf.People
   alias Leaf.Policies
   alias Leaf.Seed
@@ -42,8 +41,8 @@ defmodule Leaf.SeedTest do
     assert {:ok, pattern} = People.fetch_work_pattern_on(person, person.employment_start_date)
     assert Decimal.equal?(People.fte(pattern, organisation.full_time_week_hours), "0.9")
 
-    assert [{_span, calendar_id}] = People.holiday_calendar_segments(person, year)
-    assert length(Org.public_holidays(calendar_id, year)) == 11
+    # The eleven national holidays, and the anniversary day of the region they are in.
+    assert length(People.public_holidays(person, year)) == 12
   end
 
   test "quarterly leave grants the person's share of it at the start of the quarter" do
@@ -57,7 +56,7 @@ defmodule Leaf.SeedTest do
 
     assert Decimal.equal?(
              balance(people["Ari Kelburn"], "Public holiday allowance", ~D[2025-01-01]),
-             "44.00"
+             "48.00"
            )
   end
 end

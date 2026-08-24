@@ -167,11 +167,11 @@ main > header {
   }
 }
 
-/* A page reached from another one says where it came from first, so the two read as one trail. */
+/* A page reached from another one says where it came from first, so they read as one trail. */
 main > header:has(> a:first-child) {
   gap: 0;
 
-  & > h1::before {
+  & > :is(h1, a:not(:first-child))::before {
     content: "\203a";
     margin-inline: var(--step-3);
     font-family: var(--font-text);

@@ -21,7 +21,8 @@ defmodule LeafWeb.BalanceEntryLive do
   @impl Phoenix.LiveView
   def mount(%{"person_id" => id}, _session, socket) do
     {:ok, person} = People.fetch_person(id)
-    opening = %{"kind" => "opening_balance", "date" => to_string(Date.utc_today())}
+    today = People.today(socket.assigns.current_person)
+    opening = %{"kind" => "opening_balance", "date" => to_string(today)}
 
     {:ok,
      socket

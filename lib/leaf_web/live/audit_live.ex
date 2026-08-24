@@ -107,8 +107,10 @@ defmodule LeafWeb.AuditLive do
   end
 
   defp shown(socket, entries) do
+    zone = People.time_zone(socket.assigns.current_person)
+
     socket
-    |> assign(:entries, Enum.map(entries, &row/1))
+    |> assign(:entries, Enum.map(entries, &row(&1, zone)))
     |> assign(:counted, counted(entries))
   end
 
@@ -116,9 +118,9 @@ defmodule LeafWeb.AuditLive do
   defp counted([_one]), do: "one entry"
   defp counted(entries), do: "the #{length(entries)} most recent"
 
-  defp row(entry) do
+  defp row(entry, zone) do
     %{
-      at: Wording.moment(entry.inserted_at),
+      at: Wording.moment(entry.inserted_at, zone),
       action: said(entry.action),
       actor: Wording.actor(entry.actor),
       subject: entry.subject_person && entry.subject_person.name,

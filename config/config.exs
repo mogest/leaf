@@ -11,6 +11,9 @@ config :leaf,
   ecto_repos: [Leaf.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true]
 
+# Every calendar carries a time zone, and dates are read in the zone of whoever is reading (§4.11).
+config :elixir, :time_zone_database, Tz.TimeZoneDatabase
+
 # Configure the endpoint
 config :leaf, LeafWeb.Endpoint,
   url: [host: "localhost"],
