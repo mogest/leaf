@@ -19,6 +19,20 @@ defmodule Leaf.OrgTest do
     assert errors_on(changeset).year_start_month == ["is invalid"]
   end
 
+  test "an organisation cannot work more hours than a week or a day holds" do
+    attrs = %{
+      name: "Fernbank Collective",
+      full_time_week_hours: "200",
+      standard_day_hours: "1200000000",
+      year_start_month: 4,
+      tracked_from: ~D[2024-01-01]
+    }
+
+    assert {:error, changeset} = Org.create_organisation(nil, attrs)
+    assert errors_on(changeset).full_time_week_hours == ["must be less than or equal to 168"]
+    assert errors_on(changeset).standard_day_hours == ["must be less than or equal to 24"]
+  end
+
   test "moving the date tracking started is recorded like any other change" do
     organisation = Fixtures.organisation()
     admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})

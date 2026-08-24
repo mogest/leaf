@@ -27,6 +27,18 @@ defmodule Leaf.Leave.BalanceEntryTest do
     assert changeset(attrs).valid?
   end
 
+  test "a figure the column cannot hold is refused rather than raising, either way up" do
+    entered = fn amount -> %{kind: :adjustment, amount: amount, reason: "Mistyped import"} end
+
+    assert errors_on(changeset(entered.("1200000000"))).amount == [
+             "must be less than or equal to 99999999.99"
+           ]
+
+    assert errors_on(changeset(entered.("-1200000000"))).amount == [
+             "must be greater than or equal to -99999999.99"
+           ]
+  end
+
   test "nothing derived can be entered by hand" do
     assert errors_on(changeset(%{kind: :accrual})).kind == ["is invalid"]
   end

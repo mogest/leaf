@@ -46,6 +46,16 @@ Every write follows this. One that doesn't is a bug, not a variation.
 - **Delete only where there is no other undo.** Archive (`archived_at`) or close (`effective_to`)
   anything whose past still has to make sense.
 
+## The database
+
+- **Validation is the application's, not the database's. No `CHECK` constraints — ever.** A rule
+  about what a value may be belongs in the changeset, where it can name the field and be read.
+  Do not propose one, and do not offer one as the thorough version of a changeset validation.
+- The database holds only integrity the application genuinely cannot express: foreign keys, unique
+  indexes, exclusion constraints.
+- A column's storage range is not a domain rule, but exceeding it raises rather than erroring, so
+  `Leaf.Changeset.validate_storable/2` bounds it where the domain has no ceiling of its own.
+
 ## Comments
 
 - Comment only when the *why* can't be carried by the code, and only where it's critical.

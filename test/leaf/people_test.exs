@@ -44,11 +44,11 @@ defmodule Leaf.PeopleTest do
     assert id == part_time.id
   end
 
-  test "a work pattern cannot work negative hours", %{person: person} do
+  test "a work pattern cannot work negative hours, or more than a day holds", %{person: person} do
     attrs = %{
       effective_from: ~D[2026-01-01],
       monday_hours: "-1",
-      tuesday_hours: "8",
+      tuesday_hours: "25",
       wednesday_hours: "8",
       thursday_hours: "8",
       friday_hours: "8",
@@ -58,6 +58,7 @@ defmodule Leaf.PeopleTest do
 
     assert {:error, changeset} = People.create_work_pattern(person, nil, attrs)
     assert errors_on(changeset).monday_hours == ["must be greater than or equal to 0"]
+    assert errors_on(changeset).tuesday_hours == ["must be less than or equal to 24"]
   end
 
   test "a work pattern is corrected in place, and cannot be moved to somebody else", context do
