@@ -302,7 +302,7 @@ defmodule Leaf.LedgerTest do
     assert Decimal.equal?(after_lapse.balance, "40.00")
   end
 
-  test "leave approved for later is spent already, and lapses nothing that has not lapsed",
+  test "leave approved for later is spent already, out of the lots still live when it is taken",
        context do
     person = context.person
     full_time(person)
@@ -331,7 +331,13 @@ defmodule Leaf.LedgerTest do
              {:taken, ~D[2024-08-01], Decimal.new("-8.00"), nil}
            ]
 
-    assert lots(statement) == [{Decimal.new("2.00"), ~D[2024-06-30]}, {Decimal.new("40.00"), nil}]
+    # Read in May, the June top-up has not lapsed and so is still held, but it cannot pay for
+    # August: the whole 10 hours is what is about to lapse, and the never-lapsing lot is what goes.
+    assert lots(statement) == [
+             {Decimal.new("10.00"), ~D[2024-06-30]},
+             {Decimal.new("32.00"), nil}
+           ]
+
     assert Decimal.equal?(statement.balance, "42.00")
   end
 
