@@ -386,6 +386,20 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     refute html =~ "Annual leave left"
   end
 
+  test "a request that is no longer open to change is not there to edit", context do
+    {:ok, live, _html} = live(context.conn, ~p"/leave/new")
+    live |> form("form", request: asking(context, %{})) |> render_submit()
+    [request] = Leave.requests(context.person)
+    {:ok, _cancelled} = Leave.cancel(request, context.person)
+
+    for id <- [request.id, Ecto.UUID.generate(), "banana"] do
+      assert {:error, {:live_redirect, %{to: "/leave", flash: flash}}} =
+               live(context.conn, ~p"/leave/#{id}/amend")
+
+      assert flash["error"] == "That request is not yours to change."
+    end
+  end
+
   test "amending replaces the days a pending request asks for", context do
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
     live |> form("form", request: asking(context, %{})) |> render_submit()

@@ -51,9 +51,8 @@ defmodule Leaf.Leave do
   @doc "The request, with its person and days, or `:error` where no such request exists."
   @spec fetch_request(Ecto.UUID.t()) :: {:ok, Request.t()} | :error
   def fetch_request(id) do
-    case Repo.get(Request, id) do
-      nil -> :error
-      request -> {:ok, Repo.preload(request, [:days, :person])}
+    with {:ok, request} <- Repo.fetch(Request, id) do
+      {:ok, Repo.preload(request, [:days, :person])}
     end
   end
 

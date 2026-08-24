@@ -58,6 +58,12 @@ defmodule LeafWeb.AtAGlanceLiveTest do
     assert build_conn() |> get(~p"/") |> redirected_to() == "/sign-in"
   end
 
+  test "a month that is not a month reads as this one", context do
+    {:ok, _live, html} = live(context.conn, ~p"/?from[x]=1")
+
+    assert html =~ "At a glance"
+  end
+
   test "the balance says what is held and what becomes of it", context do
     {:ok, _taken} = context |> file(@taken) |> Leave.approve(context.manager)
 

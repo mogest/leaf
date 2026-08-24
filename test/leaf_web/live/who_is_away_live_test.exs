@@ -46,6 +46,12 @@ defmodule LeafWeb.WhoIsAwayLiveTest do
     assert html =~ ~s(data-working="no")
   end
 
+  test "a month that is not a month reads as this one", context do
+    {:ok, _live, html} = live(context.conn, ~p"/away?month[x]=1")
+
+    assert html =~ "Who&#39;s away"
+  end
+
   test "leave nobody has decided on reaches only whoever the record is open to", context do
     colleague =
       Fixtures.person(%{organisation_id: context.organisation.id, name: "Tova Brandt"})

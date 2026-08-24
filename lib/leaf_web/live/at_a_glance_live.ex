@@ -63,14 +63,14 @@ defmodule LeafWeb.AtAGlanceLive do
     """
   end
 
-  defp from(nil, today), do: Date.beginning_of_month(today)
-
-  defp from(named, today) do
+  defp from(named, today) when is_binary(named) do
     case Date.from_iso8601("#{named}-01") do
       {:ok, date} -> date
       {:error, _reason} -> Date.beginning_of_month(today)
     end
   end
+
+  defp from(_named, today), do: Date.beginning_of_month(today)
 
   defp closes(from), do: from |> Date.shift(month: @months - 1) |> Date.end_of_month()
 

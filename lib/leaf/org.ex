@@ -69,7 +69,7 @@ defmodule Leaf.Org do
 
   @doc "The organisation, or `:error` where no such organisation exists."
   @spec fetch_organisation(Ecto.UUID.t()) :: {:ok, Organisation.t()} | :error
-  def fetch_organisation(id), do: fetched(Repo.get(Organisation, id))
+  def fetch_organisation(id), do: Repo.fetch(Organisation, id)
 
   @doc """
   Every calendar the organisation holds, each with the country it is in, by name.
@@ -99,19 +99,16 @@ defmodule Leaf.Org do
   @doc "The calendar, with the country and regions around it, or `:error` where there is none."
   @spec fetch_calendar(Ecto.UUID.t()) :: {:ok, Calendar.t()} | :error
   def fetch_calendar(id) do
-    fetched(
-      Repo.one(
-        from calendar in Calendar,
-          where: calendar.id == ^id,
-          preload: [:parent, regions: ^from(region in Calendar, order_by: region.name)]
-      )
-    )
+    with {:ok, calendar} <- Repo.fetch(Calendar, id) do
+      {:ok,
+       Repo.preload(calendar, [:parent, regions: from(region in Calendar, order_by: region.name)])}
+    end
   end
 
   @doc "One of the calendar's public holidays, or `:error` where it is not on it."
   @spec fetch_public_holiday(Calendar.t(), Ecto.UUID.t()) :: {:ok, PublicHoliday.t()} | :error
   def fetch_public_holiday(calendar, id) do
-    fetched(Repo.get_by(PublicHoliday, id: id, calendar_id: calendar.id))
+    Repo.fetch(PublicHoliday, id, calendar_id: calendar.id)
   end
 
   @doc "Creates a country's calendar."
@@ -222,7 +219,4 @@ defmodule Leaf.Org do
       time_zone: country.time_zone
     }
   end
-
-  defp fetched(nil), do: :error
-  defp fetched(record), do: {:ok, record}
 end
