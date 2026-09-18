@@ -8,6 +8,7 @@ defmodule LeafWeb.OrganisationLive do
 
   use LeafWeb, :live_view
 
+  alias Leaf.Changeset
   alias Leaf.Org
 
   @months [
@@ -34,13 +35,13 @@ defmodule LeafWeb.OrganisationLive do
      |> assign(:page_title, "Settings")
      |> assign(:organisation, organisation)
      |> assign(:months, @months)
-     |> assign(:form, to_form(Org.change_organisation(organisation, %{})))}
+     |> assign(:form, to_form(Changeset.change(organisation, %{})))}
   end
 
   @impl Phoenix.LiveView
   @role :admin
   def handle_event("validate", %{"organisation" => params}, socket) do
-    changeset = Org.change_organisation(socket.assigns.organisation, params)
+    changeset = Changeset.change(socket.assigns.organisation, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
@@ -106,7 +107,7 @@ defmodule LeafWeb.OrganisationLive do
   defp saved(socket, {:ok, organisation}) do
     socket
     |> assign(:organisation, organisation)
-    |> assign(:form, to_form(Org.change_organisation(organisation, %{})))
+    |> assign(:form, to_form(Changeset.change(organisation, %{})))
     |> put_flash(:info, "Saved.")
   end
 

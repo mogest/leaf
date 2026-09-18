@@ -9,6 +9,7 @@ defmodule LeafWeb.PolicyLive do
 
   use LeafWeb, :live_view
 
+  alias Leaf.Changeset
   alias Leaf.Policies
 
   @impl Phoenix.LiveView
@@ -19,14 +20,14 @@ defmodule LeafWeb.PolicyLive do
      socket
      |> assign(:page_title, policy.name)
      |> assign(:policy, policy)
-     |> assign(:form, to_form(Policies.change_leave_policy(policy, %{})))
+     |> assign(:form, to_form(Changeset.change(policy, %{})))
      |> listed()}
   end
 
   @impl Phoenix.LiveView
   @role :admin
   def handle_event("validate", %{"leave_policy" => params}, socket) do
-    changeset = Policies.change_leave_policy(socket.assigns.policy, params)
+    changeset = Changeset.change(socket.assigns.policy, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
@@ -206,7 +207,7 @@ defmodule LeafWeb.PolicyLive do
   defp saved(socket, {:ok, policy}) do
     socket
     |> assign(:policy, policy)
-    |> assign(:form, to_form(Policies.change_leave_policy(policy, %{})))
+    |> assign(:form, to_form(Changeset.change(policy, %{})))
     |> put_flash(:info, "Saved.")
   end
 

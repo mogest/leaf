@@ -33,23 +33,17 @@ defmodule Leaf.Policies do
     |> Audit.write("leave_type.created", actor)
   end
 
-  @doc "The changeset a leave type's form binds to."
-  @spec change_leave_type(Organisation.t() | LeaveType.t(), map()) :: Ecto.Changeset.t()
+  @doc "The changeset a new leave type's form binds to."
+  @spec change_leave_type(Organisation.t(), map()) :: Ecto.Changeset.t()
   def change_leave_type(%Organisation{} = organisation, attrs) do
     LeaveType.changeset(%LeaveType{organisation_id: organisation.id}, attrs)
   end
 
-  def change_leave_type(%LeaveType{} = leave_type, attrs),
-    do: LeaveType.changeset(leave_type, attrs)
-
-  @doc "The changeset a leave policy's form binds to."
-  @spec change_leave_policy(Organisation.t() | LeavePolicy.t(), map()) :: Ecto.Changeset.t()
+  @doc "The changeset a new leave policy's form binds to."
+  @spec change_leave_policy(Organisation.t(), map()) :: Ecto.Changeset.t()
   def change_leave_policy(%Organisation{} = organisation, attrs) do
     LeavePolicy.changeset(%LeavePolicy{organisation_id: organisation.id}, attrs)
   end
-
-  def change_leave_policy(%LeavePolicy{} = policy, attrs),
-    do: LeavePolicy.changeset(policy, attrs)
 
   @doc "The changeset a new entitlement's form binds to."
   @spec change_entitlement(LeavePolicy.t(), LeaveType.t() | nil, map()) :: Ecto.Changeset.t()
@@ -59,10 +53,6 @@ defmodule Leaf.Policies do
       attrs
     )
   end
-
-  @doc "The changeset an existing entitlement's form binds to."
-  @spec change_entitlement(PolicyEntitlement.t(), map()) :: Ecto.Changeset.t()
-  def change_entitlement(entitlement, attrs), do: PolicyEntitlement.changeset(entitlement, attrs)
 
   @doc "Amends a leave type, which is also how one is archived."
   @spec update_leave_type(LeaveType.t(), Person.t() | nil, map()) :: Audit.written(LeaveType.t())

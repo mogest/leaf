@@ -9,6 +9,7 @@ defmodule LeafWeb.EntitlementLive do
 
   use LeafWeb, :live_view
 
+  alias Leaf.Changeset
   alias Leaf.Org
   alias Leaf.Policies
 
@@ -202,7 +203,7 @@ defmodule LeafWeb.EntitlementLive do
     Policies.change_entitlement(assigns.policy, chosen(assigns, params), params)
   end
 
-  defp change(assigns, params), do: Policies.change_entitlement(assigns.entitlement, params)
+  defp change(assigns, params), do: Changeset.change(assigns.entitlement, params)
 
   defp chosen(assigns, params), do: assigns.types[params["leave_type_id"]]
 
