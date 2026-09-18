@@ -61,8 +61,8 @@ defmodule LeafWeb.Router do
       live "/people/:person_id/edit", PersonFormLive, :edit
       live "/people/:person_id/work-patterns/new", WorkPatternLive, :new
       live "/people/:person_id/work-patterns/:id", WorkPatternLive, :edit
-      live "/people/:person_id/policy-assignments/new", PolicyAssignmentLive
-      live "/people/:person_id/calendar-assignments/new", CalendarAssignmentLive
+      live "/people/:person_id/policy-assignments/new", AssignmentLive, :policy
+      live "/people/:person_id/calendar-assignments/new", AssignmentLive, :calendar
       live "/people/:person_id/balance-entries/new", BalanceEntryLive
 
       live "/settings", OrganisationLive
