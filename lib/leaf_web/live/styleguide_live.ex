@@ -73,6 +73,34 @@ defmodule LeafWeb.StyleguideLive do
   # development, so it is not one verified routes can be asked about.
   @here "/dev/styleguide"
 
+  # Three accounts are enough to show every line a balance can have.
+  @balances [
+    %{
+      name: "Annual leave",
+      amount: "267.78",
+      unit: "hours",
+      awaiting: nil,
+      expiry: nil,
+      path: @here
+    },
+    %{
+      name: "Sick leave",
+      amount: "33",
+      unit: "days",
+      awaiting: "9 days awaiting approval",
+      expiry: "13 days expire on 14 December",
+      path: @here
+    },
+    %{
+      name: "Birthday leave",
+      amount: "1",
+      unit: "day",
+      awaiting: nil,
+      expiry: "Expires 24 August",
+      path: @here
+    }
+  ]
+
   # A month is enough to show every state a day can be in.
   @weeks [
     [nil, nil, nil, nil, nil, {1, :off}, {2, :off}],
@@ -99,6 +127,7 @@ defmodule LeafWeb.StyleguideLive do
      |> assign(:swatches, @swatches)
      |> assign(:standings, @standings)
      |> assign(:requests, @requests)
+     |> assign(:balances, @balances)
      |> assign(:units, [{"hours", "hours"}, {"days", "days"}])
      |> assign(:form, to_form(%{}, as: :specimen))
      |> assign(:months, [month()])
@@ -248,22 +277,7 @@ defmodule LeafWeb.StyleguideLive do
         <header>
           <h2>Balances</h2>
         </header>
-        <section class="balance-sheet">
-          <header>
-            <h2>Balances</h2>
-            <p>as at today</p>
-          </header>
-          <dl>
-            <dt>Annual leave</dt>
-            <dd>267.78 <small>hours</small></dd>
-            <dt>Sick leave</dt>
-            <dd>33 <small>days</small></dd>
-            <dd>13 days expire on 14 December</dd>
-            <dt>Birthday leave</dt>
-            <dd>1 <small>day</small></dd>
-            <dd>Expires Monday 24 August</dd>
-          </dl>
-        </section>
+        <Parts.balance_sheet balances={@balances} title="Balances" />
       </section>
 
       <section>
