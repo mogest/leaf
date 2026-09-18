@@ -173,6 +173,10 @@ defmodule LeafWeb.EntitlementLive do
 
   defp opened(socket, policy, {:ok, entitlement}) do
     {:ok, organisation} = Org.fetch_organisation(policy.organisation_id)
+    offered = Policies.leave_types_offered(policy.organisation_id)
+
+    # The picker offers only what is still offered, but the amount label names the unit of the type
+    # this entitlement is already on, which may be one that has since been withdrawn.
     types = Policies.leave_types(policy.organisation_id)
 
     socket =
@@ -181,7 +185,7 @@ defmodule LeafWeb.EntitlementLive do
       |> assign(:title, title(socket.assigns.live_action))
       |> assign(:policy, policy)
       |> assign(:entitlement, entitlement)
-      |> assign(:leave_types, offered(types))
+      |> assign(:leave_types, Enum.map(offered, &{Wording.leave_type(&1), &1.id}))
       |> assign(:types, Map.new(types, &{&1.id, &1}))
       |> assign(:choices, choices())
 
@@ -222,12 +226,6 @@ defmodule LeafWeb.EntitlementLive do
   end
 
   defp opening(_entitlement, _organisation), do: %{}
-
-  defp offered(types) do
-    types
-    |> Enum.filter(&is_nil(&1.archived_at))
-    |> Enum.map(&{Wording.leave_type(&1), &1.id})
-  end
 
   # The amount is in the leave type's own unit, and is a full-time figure only where it is
   # pro-rated, so the label says so once both are chosen.

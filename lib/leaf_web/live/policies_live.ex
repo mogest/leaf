@@ -104,8 +104,8 @@ defmodule LeafWeb.PoliciesLive do
       name: policy.name,
       path: ~p"/settings/policies/#{policy}",
       entitlements: counted(Policies.entitlements(policy.id)),
-      standing: standing(policy),
-      tone: tone(policy)
+      standing: Wording.standing(policy),
+      tone: Wording.tone(policy)
     }
   end
 
@@ -116,12 +116,6 @@ defmodule LeafWeb.PoliciesLive do
   defp named(0), do: "nothing yet"
   defp named(1), do: "one leave type"
   defp named(count), do: "#{count} leave types"
-
-  defp standing(%{archived_at: nil}), do: "in use"
-  defp standing(policy), do: "withdrawn #{Wording.date(DateTime.to_date(policy.archived_at))}"
-
-  defp tone(%{archived_at: nil}), do: nil
-  defp tone(_policy), do: "past"
 
   defp saved(socket, {:ok, policy}) do
     push_navigate(socket, to: ~p"/settings/policies/#{policy}")

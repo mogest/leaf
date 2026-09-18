@@ -54,7 +54,7 @@ defmodule Leaf.Policies do
     )
   end
 
-  @doc "Amends a leave type, which is also how one is archived."
+  @doc "Amends a leave type."
   @spec update_leave_type(LeaveType.t(), Person.t() | nil, map()) :: Audit.written(LeaveType.t())
   def update_leave_type(leave_type, actor, attrs) do
     leave_type |> LeaveType.changeset(attrs) |> Audit.write("leave_type.updated", actor)
@@ -69,11 +69,40 @@ defmodule Leaf.Policies do
     |> Audit.write("leave_policy.created", actor)
   end
 
-  @doc "Amends a leave policy, which is also how one is archived."
+  @doc "Amends a leave policy."
   @spec update_leave_policy(LeavePolicy.t(), Person.t() | nil, map()) ::
           Audit.written(LeavePolicy.t())
   def update_leave_policy(policy, actor, attrs) do
     policy |> LeavePolicy.changeset(attrs) |> Audit.write("leave_policy.updated", actor)
+  end
+
+  @doc """
+  Stops offering a leave type or a leave policy.
+
+  Withdrawing is archiving, not deleting: nothing new is set up against it, and everything already
+  drawing on it goes on as it was.
+  """
+  @spec withdraw(LeaveType.t(), Person.t() | nil) :: Audit.written(LeaveType.t())
+  @spec withdraw(LeavePolicy.t(), Person.t() | nil) :: Audit.written(LeavePolicy.t())
+  def withdraw(record, actor) do
+    archived(record, actor, DateTime.truncate(DateTime.utc_now(), :second), "withdrawn")
+  end
+
+  @doc "Offers a withdrawn leave type or leave policy again."
+  @spec reoffer(LeaveType.t(), Person.t() | nil) :: Audit.written(LeaveType.t())
+  @spec reoffer(LeavePolicy.t(), Person.t() | nil) :: Audit.written(LeavePolicy.t())
+  def reoffer(record, actor), do: archived(record, actor, nil, "reoffered")
+
+  defp archived(%LeaveType{} = leave_type, actor, at, action) do
+    leave_type
+    |> LeaveType.changeset(%{archived_at: at})
+    |> Audit.write("leave_type.#{action}", actor)
+  end
+
+  defp archived(%LeavePolicy{} = policy, actor, at, action) do
+    policy
+    |> LeavePolicy.changeset(%{archived_at: at})
+    |> Audit.write("leave_policy.#{action}", actor)
   end
 
   @doc "Creates one of a policy's entitlements, for one leave type."
@@ -140,24 +169,38 @@ defmodule Leaf.Policies do
     end)
   end
 
-  @doc "Every leave type the organisation offers, archived ones included, in its own order then by name."
+  @doc "Every leave type the organisation offers, withdrawn ones included, in its own order then by name."
   @spec leave_types(Ecto.UUID.t()) :: [LeaveType.t()]
-  def leave_types(organisation_id) do
+  def leave_types(organisation_id), do: Repo.all(all_leave_types(organisation_id))
+
+  @doc "The leave types still offered, which are the ones new configuration may be set up against."
+  @spec leave_types_offered(Ecto.UUID.t()) :: [LeaveType.t()]
+  def leave_types_offered(organisation_id) do
+    Repo.all(from type in all_leave_types(organisation_id), where: is_nil(type.archived_at))
+  end
+
+  @doc "Every leave policy the organisation offers, withdrawn ones included, by name."
+  @spec leave_policies(Ecto.UUID.t()) :: [LeavePolicy.t()]
+  def leave_policies(organisation_id), do: Repo.all(all_leave_policies(organisation_id))
+
+  @doc "The leave policies still offered, which are the ones somebody may be put on."
+  @spec leave_policies_offered(Ecto.UUID.t()) :: [LeavePolicy.t()]
+  def leave_policies_offered(organisation_id) do
     Repo.all(
-      from type in LeaveType,
-        where: type.organisation_id == ^organisation_id,
-        order_by: [type.position, type.name]
+      from policy in all_leave_policies(organisation_id), where: is_nil(policy.archived_at)
     )
   end
 
-  @doc "Every leave policy the organisation offers, archived ones included, by name."
-  @spec leave_policies(Ecto.UUID.t()) :: [LeavePolicy.t()]
-  def leave_policies(organisation_id) do
-    Repo.all(
-      from policy in LeavePolicy,
-        where: policy.organisation_id == ^organisation_id,
-        order_by: policy.name
-    )
+  defp all_leave_types(organisation_id) do
+    from type in LeaveType,
+      where: type.organisation_id == ^organisation_id,
+      order_by: [type.position, type.name]
+  end
+
+  defp all_leave_policies(organisation_id) do
+    from policy in LeavePolicy,
+      where: policy.organisation_id == ^organisation_id,
+      order_by: policy.name
   end
 
   @doc "The leave type, or `:error` where no such type exists."

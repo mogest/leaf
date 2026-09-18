@@ -42,11 +42,7 @@ defmodule LeafWeb.PolicyLive do
 
   @role :admin
   def handle_event("archive", _params, socket) do
-    policy = socket.assigns.policy
-    attrs = %{archived_at: archived_at(policy)}
-
-    {:noreply,
-     saved(socket, Policies.update_leave_policy(policy, socket.assigns.current_person, attrs))}
+    {:noreply, saved(socket, offer(socket.assigns.policy, socket.assigns.current_person))}
   end
 
   @role :admin
@@ -201,8 +197,8 @@ defmodule LeafWeb.PolicyLive do
   defp action(%{archived_at: nil}), do: "Withdraw"
   defp action(_policy), do: "Use again"
 
-  defp archived_at(%{archived_at: nil}), do: DateTime.truncate(DateTime.utc_now(), :second)
-  defp archived_at(_policy), do: nil
+  defp offer(%{archived_at: nil} = policy, actor), do: Policies.withdraw(policy, actor)
+  defp offer(policy, actor), do: Policies.reoffer(policy, actor)
 
   defp saved(socket, {:ok, policy}) do
     socket
