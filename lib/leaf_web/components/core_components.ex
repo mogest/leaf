@@ -1,6 +1,6 @@
 defmodule LeafWeb.CoreComponents do
   @moduledoc """
-  Core UI components: flashes, buttons, inputs, tables and lists.
+  Core UI components: flashes and form inputs, with JS show/hide and error translation helpers.
 
   The markup here is deliberately unstyled — no classes. Presentation comes from the
   semantic design system in the stylesheet, which selects on the elements themselves.
@@ -48,34 +48,6 @@ defmodule LeafWeb.CoreComponents do
       <button type="button" aria-label="close">Close</button>
     </div>
     """
-  end
-
-  @doc """
-  Renders a button with navigation support.
-
-  ## Examples
-
-      <.button>Send!</.button>
-      <.button phx-click="go">Send!</.button>
-      <.button navigate={~p"/"}>Home</.button>
-  """
-  attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
-  slot :inner_block, required: true
-
-  def button(%{rest: rest} = assigns) do
-    if rest[:href] || rest[:navigate] || rest[:patch] do
-      ~H"""
-      <.link {@rest}>
-        {render_slot(@inner_block)}
-      </.link>
-      """
-    else
-      ~H"""
-      <button {@rest}>
-        {render_slot(@inner_block)}
-      </button>
-      """
-    end
   end
 
   @doc """
@@ -243,105 +215,6 @@ defmodule LeafWeb.CoreComponents do
     """
   end
 
-  @doc """
-  Renders a header with title.
-  """
-  slot :inner_block, required: true
-  slot :subtitle
-  slot :actions
-
-  def header(assigns) do
-    ~H"""
-    <header>
-      <div>
-        <h1>{render_slot(@inner_block)}</h1>
-        <p :if={@subtitle != []}>{render_slot(@subtitle)}</p>
-      </div>
-      <div>{render_slot(@actions)}</div>
-    </header>
-    """
-  end
-
-  @doc """
-  Renders a table.
-
-  ## Examples
-
-      <.table id="users" rows={@users}>
-        <:col :let={user} label="id">{user.id}</:col>
-        <:col :let={user} label="username">{user.username}</:col>
-      </.table>
-  """
-  attr :id, :string, required: true
-  attr :rows, :list, required: true
-  attr :row_id, :any, default: nil, doc: "the function for generating the row id"
-  attr :row_click, :any, default: nil, doc: "the function for handling phx-click on each row"
-
-  attr :row_item, :any,
-    default: &Function.identity/1,
-    doc: "the function for mapping each row before calling the :col and :action slots"
-
-  slot :col, required: true do
-    attr :label, :string
-  end
-
-  slot :action, doc: "the slot for showing user actions in the last table column"
-
-  def table(assigns) do
-    assigns =
-      with %{rows: %Phoenix.LiveView.LiveStream{}} <- assigns do
-        assign(assigns, row_id: assigns.row_id || fn {id, _item} -> id end)
-      end
-
-    ~H"""
-    <table>
-      <thead>
-        <tr>
-          <th :for={col <- @col}>{col[:label]}</th>
-          <th :if={@action != []}>Actions</th>
-        </tr>
-      </thead>
-      <tbody id={@id} phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}>
-        <tr :for={row <- @rows} id={@row_id && @row_id.(row)}>
-          <td :for={col <- @col} phx-click={@row_click && @row_click.(row)}>
-            {render_slot(col, @row_item.(row))}
-          </td>
-          <td :if={@action != []}>
-            <%= for action <- @action do %>
-              {render_slot(action, @row_item.(row))}
-            <% end %>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    """
-  end
-
-  @doc """
-  Renders a data list.
-
-  ## Examples
-
-      <.list>
-        <:item title="Title">{@post.title}</:item>
-        <:item title="Views">{@post.views}</:item>
-      </.list>
-  """
-  slot :item, required: true do
-    attr :title, :string, required: true
-  end
-
-  def list(assigns) do
-    ~H"""
-    <dl>
-      <div :for={item <- @item}>
-        <dt>{item.title}</dt>
-        <dd>{render_slot(item)}</dd>
-      </div>
-    </dl>
-    """
-  end
-
   ## JS Commands
 
   def show(js \\ %JS{}, selector) do
@@ -359,12 +232,5 @@ defmodule LeafWeb.CoreComponents do
     Enum.reduce(opts, msg, fn {key, value}, acc ->
       String.replace(acc, "%{#{key}}", fn _ -> to_string(value) end)
     end)
-  end
-
-  @doc """
-  Translates the errors for a field from a keyword list of errors.
-  """
-  def translate_errors(errors, field) when is_list(errors) do
-    for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
   end
 end
