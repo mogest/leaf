@@ -87,6 +87,15 @@ defmodule Leaf.People do
   def fetch_manager(%{manager_id: nil}), do: :error
   def fetch_manager(person), do: fetch_person(person.manager_id)
 
+  @doc "The name of the person's manager, or `nil` where they have none."
+  @spec manager_name(Person.t()) :: String.t() | nil
+  def manager_name(person) do
+    case fetch_manager(person) do
+      {:ok, manager} -> manager.name
+      :error -> nil
+    end
+  end
+
   @doc "Puts a person on a work pattern from a date, superseding whatever they were on."
   @spec create_work_pattern(Person.t(), Person.t() | nil, map()) :: Audit.written(WorkPattern.t())
   def create_work_pattern(person, actor, attrs) do

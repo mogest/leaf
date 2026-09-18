@@ -249,7 +249,7 @@ defmodule LeafWeb.BalancesLive do
       name: leave_type.name,
       as_at: Wording.date(as_at),
       held: figure(statement, leave_type),
-      awaiting: asked(awaiting[leave_type.id], leave_type.unit),
+      awaiting: Wording.asked(awaiting[leave_type.id], leave_type.unit),
       lots: lots(statement, leave_type),
       movements: movements(statement, leave_type)
     }
@@ -257,9 +257,6 @@ defmodule LeafWeb.BalancesLive do
 
   defp figure(nil, leave_type), do: Wording.figure(Decimal.new(0), leave_type.unit)
   defp figure(statement, leave_type), do: Wording.figure(statement.balance, leave_type.unit)
-
-  defp asked(nil, _unit), do: nil
-  defp asked(amount, unit), do: "#{Wording.figure(amount, unit)} awaiting approval"
 
   defp lots(nil, _leave_type), do: []
   defp lots(statement, leave_type), do: Enum.map(statement.lots, &lot(&1, leave_type))

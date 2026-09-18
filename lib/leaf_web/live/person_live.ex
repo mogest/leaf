@@ -239,9 +239,9 @@ defmodule LeafWeb.PersonLive do
     |> assign(:admin?, socket.assigns.current_person.role == :admin)
     |> assign(:reasons?, reasons?(socket.assigns.current_person, person))
     |> assign(:role, role(person))
-    |> assign(:employment, employment(person))
+    |> assign(:employment, Wording.employment(person))
     |> assign(:born, Wording.date(person.birth_date) || "not on record")
-    |> assign(:manager, manager(person))
+    |> assign(:manager, People.manager_name(person) || "nobody, so an administrator decides")
     |> assign(:balances, balances(person, today))
     |> assign(:nothing_held, nothing_held(person, today))
     |> assign(
@@ -262,21 +262,6 @@ defmodule LeafWeb.PersonLive do
 
   defp role(%{role: :admin}), do: "Administrator"
   defp role(_person), do: "Member"
-
-  defp employment(%{employment_end_date: nil} = person) do
-    "from #{Wording.date(person.employment_start_date)}"
-  end
-
-  defp employment(person) do
-    "#{Wording.date(person.employment_start_date)} – #{Wording.date(person.employment_end_date)}"
-  end
-
-  defp manager(person) do
-    case People.fetch_manager(person) do
-      {:ok, manager} -> manager.name
-      :error -> "nobody, so an administrator decides"
-    end
-  end
 
   defp balances(person, today) do
     case Ledger.ready?(person, today) do
