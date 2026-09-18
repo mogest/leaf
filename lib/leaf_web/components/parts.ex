@@ -39,18 +39,18 @@ defmodule LeafWeb.Parts do
   attr :here, :string, required: true, doc: "which of them is being looked at"
 
   def settings_nav(assigns) do
-    assigns = assign(assigns, :entries, @settings)
-
     ~H"""
     <nav class="tabs">
       <ul>
-        <li :for={{label, path, name} <- @entries}>
+        <li :for={{label, path, name} <- settings()}>
           <.link navigate={path} aria-current={name == @here && "page"}>{label}</.link>
         </li>
       </ul>
     </nav>
     """
   end
+
+  defp settings, do: @settings
 
   @doc """
   What somebody holds, a leave type at a time, as at today.
