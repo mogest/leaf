@@ -497,4 +497,82 @@ defmodule Leaf.LeaveTest do
       assert offered(context.person, ~D[2024-03-01], ~D[2024-03-06]) == []
     end
   end
+
+  describe "change_order/2" do
+    defp asking(context, attrs) do
+      Leave.change_order(
+        context.person,
+        Map.merge(
+          %{
+            "leave_type_id" => context.leave_type.id,
+            "from" => to_string(@thursday),
+            "to" => "",
+            "note" => ""
+          },
+          attrs
+        )
+      )
+    end
+
+    defp said(changeset), do: Enum.map(changeset.errors, fn {_field, {said, _opts}} -> said end)
+
+    test "a last day left blank asks for the first day on its own, as a whole day", context do
+      changeset = asking(context, %{})
+
+      assert said(changeset) == []
+      assert Ecto.Changeset.apply_changes(changeset).note == nil
+      assert [%{unit: :days, date: @thursday} = day] = Leave.days_for(context.person, changeset)
+      assert day.leave_type_id == context.leave_type.id
+      assert Decimal.equal?(day.amount, 1)
+    end
+
+    test "a stretch draws on the days in it the person works and nothing else", context do
+      changeset = asking(context, %{"to" => to_string(@saturday)})
+      days = Leave.days_for(context.person, changeset)
+
+      assert Enum.map(days, & &1.date) == [@thursday, @friday]
+      assert Enum.all?(days, &(&1.unit == :days))
+    end
+
+    test "an amount is hours off the one day it is asked of", context do
+      changeset = asking(context, %{"amount" => "4.5"})
+
+      assert [%{unit: :hours, amount: amount}] = Leave.days_for(context.person, changeset)
+      assert Decimal.equal?(amount, "4.50")
+    end
+
+    test "hours are refused of a stretch, and of anything that is not a figure", context do
+      assert said(asking(context, %{"to" => to_string(@friday), "amount" => "4"})) ==
+               ["Hours off can only be asked of a single day."]
+
+      assert said(asking(context, %{"amount" => "half"})) ==
+               ["The hours off have to be a number."]
+
+      assert said(asking(context, %{"amount" => "0"})) ==
+               ["The hours off have to be more than nothing."]
+    end
+
+    test "a last day before the first is refused, and draws on nothing", context do
+      changeset = asking(context, %{"from" => to_string(@friday), "to" => to_string(@thursday)})
+
+      assert said(changeset) == ["The last day comes before the first."]
+      assert Leave.days_for(context.person, changeset) == []
+    end
+
+    test "a leave type nobody offered over the span is refused", context do
+      {:ok, _closed} =
+        Policies.update_entitlement(context.entitlement, nil, %{effective_to: @thursday})
+
+      changeset = asking(context, %{"from" => to_string(@friday)})
+
+      assert said(changeset) == ["That leave type was not offered then."]
+      assert Leave.days_for(context.person, changeset) == []
+    end
+
+    test "an order nobody has filled in refuses nothing and draws on nothing", context do
+      assert said(asking(context, %{"from" => "", "to" => ""})) == []
+      assert Leave.days_for(context.person, asking(context, %{"from" => ""})) == []
+      assert Leave.days_for(context.person, Leave.change_order(context.person, %{})) == []
+    end
+  end
 end

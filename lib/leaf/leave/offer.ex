@@ -41,6 +41,31 @@ defmodule Leaf.Leave.Offer do
   end
 
   @doc """
+  Errors on an order asking for a leave type nobody offered the person over its span.
+
+  The same question `types/2` answers, asked of the one type chosen: a type chosen and then dated
+  outside what it was offered over is no longer on the list to choose from, so it is said rather
+  than left to a select that has quietly stopped showing a choice. A type nobody has chosen and a
+  stretch nobody has dated are nothing to refuse.
+  """
+  @spec validate_order(Changeset.t(), Person.t()) :: Changeset.t()
+  def validate_order(%{valid?: false} = changeset, _person), do: changeset
+
+  def validate_order(changeset, person) do
+    chosen(changeset, get_field(changeset, :leave_type_id), get_field(changeset, :span), person)
+  end
+
+  defp chosen(changeset, nil, _span, _person), do: changeset
+  defp chosen(changeset, _id, nil, _person), do: changeset
+
+  defp chosen(changeset, id, span, person) do
+    case Enum.any?(types(person, span), &(&1.id == id)) do
+      true -> changeset
+      false -> add_error(changeset, :leave_type_id, "That leave type was not offered then.")
+    end
+  end
+
+  @doc """
   Errors on a request holding a day of a type nobody offered the person on its date.
 
   A form asks first and offers only what it may, so this is the same question asked of what was

@@ -28,12 +28,15 @@ defmodule Leaf.Leave do
   alias Leaf.Leave.Diary
   alias Leaf.Leave.Month
   alias Leaf.Leave.Offer
+  alias Leaf.Leave.Order
   alias Leaf.Leave.Request
   alias Leaf.Leave.WorkingDay
   alias Leaf.People
   alias Leaf.People.Person
   alias Leaf.Policies.LeaveType
   alias Leaf.Repo
+
+  @whole Decimal.new(1)
 
   @typedoc """
   One line of a request: an amount of one leave type on one date, in whichever unit was asked for.
@@ -289,6 +292,47 @@ defmodule Leaf.Leave do
   """
   @spec requestable(Person.t(), Date.Range.t()) :: [LeaveType.t()]
   def requestable(person, range), do: Offer.types(person, range)
+
+  @doc """
+  The changeset what a request asks for binds to: a leave type, a stretch of dates, an amount.
+
+  Every rule §5.2 states about what somebody may ask for is here rather than in whatever is asking,
+  so a form and §5.8's interface refuse the same things in the same words. `days_for/2` says which
+  days an order comes to.
+  """
+  @spec change_order(Person.t(), map()) :: Ecto.Changeset.t()
+  def change_order(person, attrs) do
+    %Order{} |> Order.changeset(attrs) |> Offer.validate_order(person)
+  end
+
+  @doc """
+  The days the order in `changeset` draws on, or none where it is not yet something to file.
+
+  A request covers the days in the range the person actually works and nothing else, which is what
+  turns a stretch of dates into days. An order with anything wrong with it, or with nothing filled
+  in yet, draws on nothing: there is nothing to file and no balance to project.
+  """
+  @spec days_for(Person.t(), Ecto.Changeset.t()) :: [entry()]
+  def days_for(person, changeset) do
+    drawn(person, Ecto.Changeset.apply_changes(changeset), changeset.valid?)
+  end
+
+  defp drawn(_person, _order, false), do: []
+  defp drawn(_person, %{leave_type_id: nil}, true), do: []
+  defp drawn(_person, %{span: nil}, true), do: []
+
+  defp drawn(person, order, true) do
+    Enum.map(working_days(person, order.span), &entry(&1, order))
+  end
+
+  defp entry({date, _hours}, order) do
+    %{leave_type_id: order.leave_type_id, date: date, amount: asked(order), unit: order.unit}
+  end
+
+  # A blank amount asks for the whole of each day, which is one day of whatever the leave type
+  # counts in, and stays a whole day if the person's hours change before the date.
+  defp asked(%{unit: :days}), do: @whole
+  defp asked(%{amount: amount}), do: amount
 
   @doc """
   The days `entries` describe, as days, without filing them.
