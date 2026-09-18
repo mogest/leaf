@@ -386,6 +386,18 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     refute html =~ "Annual leave left"
   end
 
+  test "a request with no days to file says so rather than coming back silent", context do
+    {:ok, live, _html} = live(context.conn, ~p"/leave/new")
+
+    html =
+      live
+      |> form("form", request: asking(context, %{"leave_type_id" => "", "to" => ""}))
+      |> render_submit()
+
+    assert html =~ "That could not be filed. Check what it asks for and try again."
+    assert Leave.requests(context.person) == []
+  end
+
   test "a request that is no longer open to change is not there to edit", context do
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
     live |> form("form", request: asking(context, %{})) |> render_submit()

@@ -45,7 +45,7 @@ defmodule LeafWeb.RequestLeaveLive do
   @role :member
   def handle_event("save", %{"request" => params}, socket) do
     socket = filled(socket, params)
-    attrs = %{days: socket.assigns.entries, note: blank(params["note"])}
+    attrs = %{days: socket.assigns.entries, note: socket.assigns.order.note}
 
     {:noreply, saved(socket, file(socket, attrs))}
   end
@@ -212,19 +212,15 @@ defmodule LeafWeb.RequestLeaveLive do
   # Which types can be asked for turns on the dates being asked about, so a stretch that is over
   # offers what was offered then: leave is filed after the entitlement that covered it has closed as
   # readily as before. A form nobody has put dates in yet asks about today.
-  defp choices(socket, params) do
-    offered = Leave.requestable(socket.assigns.person, asked_about(socket, params))
+  defp choices(socket, order) do
+    today = socket.assigns.today
+    offered = Leave.requestable(socket.assigns.person, order.span || Date.range(today, today))
 
-    socket
-    |> assign(:offered, offered)
-    |> assign(:leave_types, Enum.map(offered, &{offering(&1, socket.assigns.held[&1.id]), &1.id}))
-  end
-
-  defp asked_about(socket, params) do
-    case range(params["from"], params["to"]) do
-      {:ok, range} -> range
-      _blank_or_wrong -> Date.range(socket.assigns.today, socket.assigns.today)
-    end
+    assign(
+      socket,
+      :leave_types,
+      Enum.map(offered, &{offering(&1, socket.assigns.held[&1.id]), &1.id})
+    )
   end
 
   # A type is offered with what is left in it, so that choosing one is not a guess.
@@ -282,9 +278,9 @@ defmodule LeafWeb.RequestLeaveLive do
   defp paired(params, moved) do
     other = other(moved)
 
-    case {blank(params[moved]), blank(params[other])} do
-      {nil, _kept} -> params
-      {entered, nil} -> Map.put(params, other, entered)
+    case {params[moved], params[other]} do
+      {entered, _kept} when entered in [nil, ""] -> params
+      {entered, kept} when kept in [nil, ""] -> Map.put(params, other, entered)
       {entered, kept} -> Map.put(params, other, ordered(moved, entered, kept))
     end
   end
@@ -296,28 +292,37 @@ defmodule LeafWeb.RequestLeaveLive do
   defp ordered("to", entered, kept), do: min(entered, kept)
 
   defp filled(socket, params) do
-    socket = choices(socket, params)
-    {entries, problems} = asked(socket, params)
+    changeset = Leave.change_order(socket.assigns.person, params)
+    order = Ecto.Changeset.apply_changes(changeset)
+    days = Leave.days_for(socket.assigns.person, changeset)
+    problems = problems(socket, changeset, order, days)
+    entries = filable(days, problems)
 
     socket
-    |> assign(:form, to_form(params, as: :request))
+    |> choices(order)
+    |> assign(:form, to_form(changeset, as: :request))
+    |> assign(:order, order)
     |> assign(:entries, entries)
     |> assign(:problems, problems)
-    |> assign(:portion, portion(socket, params))
-    |> assign(:filing, filing(socket, params, entries))
+    |> assign(:portion, portion(socket, order))
+    |> assign(:filing, filing(socket, order, entries))
     |> assign(:balance, moving(projection(socket, entries)))
     |> assign(:replacing, replacing(socket.assigns.replaced, entries))
   end
 
+  # Nothing is filed while anything is wrong with what was asked for: what a refusal leaves is a
+  # form to fix rather than days to send, and a balance nobody has to be shown.
+  defp filable(_days, [_problem | _rest]), do: []
+  defp filable(days, []), do: days
+
   # Part of a day can only be asked of one day, so the field is there for one date and gone for a
   # stretch. It turns on the dates alone and not on what has been typed into it, so that a half
   # finished number cannot take the field out from under whoever is typing it.
-  defp portion(socket, params) do
-    case range(params["from"], params["to"]) do
-      {:ok, %{first: date, last: date}} -> whole_day(socket.assigns.person, date)
-      _stretch_or_neither -> nil
-    end
+  defp portion(socket, %{span: %Date.Range{first: date, last: date}}) do
+    whole_day(socket.assigns.person, date)
   end
+
+  defp portion(_socket, _order), do: nil
 
   # The whole day the field would replace is named in it, so that nothing has to be worked out to
   # fill it in and no fraction has to be trusted.
@@ -338,22 +343,15 @@ defmodule LeafWeb.RequestLeaveLive do
   # What will be filed, a row for every date the stretch covers rather than for every date it
   # draws on: a count of working days shorter than the stretch asked for is otherwise a mistake
   # nobody can see the reason for. What decides there is a table is the stretch and not what it
-  # comes to, so asking for a week that holds one working day still shows the week.
-  defp filing(_socket, _params, []), do: nil
+  # comes to, so asking for a week that holds one working day still shows the week. One date has no
+  # rows worth reading — it is the field above and the hours beside it.
+  defp filing(_socket, _order, []), do: nil
+  defp filing(_socket, %{span: %Date.Range{first: date, last: date}}, _entries), do: nil
 
-  defp filing(socket, params, entries) do
-    {:ok, span} = range(params["from"], params["to"])
+  defp filing(socket, order, entries) do
+    worked = Map.new(Leave.working_days(socket.assigns.person, order.span))
 
-    spanned(socket, span, entries)
-  end
-
-  # One date has no rows worth reading — it is the field above and the hours beside it.
-  defp spanned(_socket, %Date.Range{first: date, last: date}, _entries), do: nil
-
-  defp spanned(socket, span, entries) do
-    worked = Map.new(Leave.working_days(socket.assigns.person, span))
-
-    %{days: Enum.map(span, &day(&1, worked[&1])), total: total(entries)}
+    %{days: Enum.map(order.span, &day(&1, worked[&1])), total: total(entries)}
   end
 
   # A day off is the hours in it, which is what a whole day of somebody's own is worth and not what
@@ -372,104 +370,38 @@ defmodule LeafWeb.RequestLeaveLive do
     |> Wording.figure(hd(entries).unit)
   end
 
-  # What is asked for, and whatever about the instruction stops it being answerable. Nothing
-  # chosen is not a problem to report, it is a form nobody has filled in yet.
-  defp asked(socket, params) do
-    with {:ok, leave_type} <- chosen(socket, params["leave_type_id"]),
-         {:ok, range} <- range(params["from"], params["to"]),
-         {:ok, days} <- workable(Leave.working_days(socket.assigns.person, range), range),
-         {:ok, amount, unit} <- asked_for(params["amount"], days),
-         entries = Enum.map(days, &entry(&1, leave_type, amount, unit)),
-         :ok <- free(socket, entries) do
-      {entries, []}
-    else
-      :none -> {[], []}
-      {:error, problems} -> {[], List.wrap(problems)}
+  # Whatever about the instruction stops it being answerable, one thing at a time. What the order
+  # itself refuses it says in its own words; a refusal that names a date is said here, because
+  # reading a date out is the page's business.
+  defp problems(socket, changeset, order, days) do
+    case Enum.map(changeset.errors, fn {_field, error} -> translate_error(error) end) do
+      [] -> refusals(socket, order, days)
+      said -> said
     end
   end
 
-  # A type chosen and then dated outside what it was offered over is no longer in the list to choose
-  # from, so it is said rather than left to a select that has quietly stopped showing a choice.
-  defp chosen(_socket, blank) when blank in [nil, ""], do: :none
-
-  defp chosen(socket, id) do
-    case offered(socket, id) do
-      nil -> {:error, "That leave type was not offered then."}
-      leave_type -> {:ok, leave_type}
-    end
-  end
-
-  defp offered(socket, id), do: Enum.find(socket.assigns.offered, &(&1.id == id))
+  # Nothing chosen is not a problem to report, it is a form nobody has filled in yet.
+  defp refusals(_socket, %{leave_type_id: nil}, _days), do: []
+  defp refusals(_socket, order, []), do: unworked(order)
+  defp refusals(socket, _order, days), do: clashing(socket, days)
 
   # One date names itself, the way the hours in a day do. A stretch cannot without listing a
   # weekend back at somebody who can see it is a weekend.
-  defp workable([], %Date.Range{first: date, last: date}) do
-    {:error, "You do not work on #{Wording.weekday(date)}."}
+  defp unworked(%{span: nil}), do: []
+
+  defp unworked(%{span: %Date.Range{first: date, last: date}}) do
+    ["You do not work on #{Wording.weekday(date)}."]
   end
 
-  defp workable([], _range), do: {:error, "You do not work on any of those days."}
-  defp workable(days, _range), do: {:ok, days}
-
-  defp entry({date, _hours}, leave_type, amount, unit) do
-    %{leave_type_id: leave_type.id, date: date, amount: amount, unit: unit}
-  end
-
-  # A blank end is the end that was entered: one date is a day off, not half of a stretch, and
-  # somebody still in the first field has not left the last one out.
-  defp range(from, to) do
-    with {:ok, first} <- on(blank(from) || to, "first day"),
-         {:ok, last} <- on(blank(to) || from, "last day") do
-      bounded(first, last)
-    end
-  end
-
-  defp bounded(first, last) do
-    case Date.after?(first, last) do
-      true -> {:error, "The last day comes before the first."}
-      false -> {:ok, Date.range(first, last)}
-    end
-  end
-
-  # A date nobody has entered yet is not a refusal to report, it is a field they have not reached.
-  defp on(blank, _what) when blank in [nil, ""], do: :none
-
-  defp on(entered, what) do
-    case Date.from_iso8601(entered) do
-      {:ok, date} -> {:ok, date}
-      {:error, _reason} -> {:error, "Give a #{what}."}
-    end
-  end
-
-  # A blank asks for the whole of each day, which is a day whatever the leave type counts in. Hours
-  # are a thing about one day: a stretch has no one day to take them out of.
-  defp asked_for(blank, _days) when blank in [nil, ""], do: {:ok, Decimal.new(1), :days}
-
-  defp asked_for(_entered, [_first, _second | _rest]) do
-    {:error, "Hours off can only be asked of a single day."}
-  end
-
-  defp asked_for(entered, _day) do
-    case Decimal.parse(String.trim(entered)) do
-      {amount, ""} -> positive(amount)
-      _unparsed -> {:error, "The hours off have to be a number."}
-    end
-  end
-
-  defp positive(amount) do
-    case Decimal.positive?(amount) do
-      true -> {:ok, amount, :hours}
-      false -> {:error, "The hours off have to be more than nothing."}
-    end
-  end
+  defp unworked(_order), do: ["You do not work on any of those days."]
 
   # A day off is at most what is left of the day: the hours worked on it, less the leave already
   # filed into it. Every date that will not fit is named, because fixing the first would otherwise
   # only turn up the next.
-  defp free(socket, entries) do
-    case Leave.clashes(socket.assigns.person, Leave.proposed(entries), socket.assigns.request) do
-      [] -> :ok
-      clashes -> {:error, Enum.map(clashes, &spoken_for/1)}
-    end
+  defp clashing(socket, days) do
+    socket.assigns.person
+    |> Leave.clashes(Leave.proposed(days), socket.assigns.request)
+    |> Enum.map(&spoken_for/1)
   end
 
   defp spoken_for({date, free}) do
@@ -519,31 +451,18 @@ defmodule LeafWeb.RequestLeaveLive do
     put_flash(socket, :error, "That is not yours to change.")
   end
 
-  defp saved(socket, {:error, changeset}) do
-    assign(socket, :problems, refused(changeset))
+  # Every refusal the write path can give about the days, this page has already said in its own
+  # words, so one coming back means they changed underneath it between the reading and the write:
+  # reading them again is what says so. A refusal the reading does not turn up — days nobody filled
+  # in, or anything the write path learns to refuse later — still leaves something said, because a
+  # page that comes back unchanged and silent reads as a button that does nothing.
+  defp saved(socket, {:error, _changeset}) do
+    socket |> filled(socket.assigns.form.params) |> unexplained()
   end
 
-  # A refusal from the write path is about a day rather than about a field somebody filled in, so
-  # it is said alongside the days rather than under an input nobody typed into.
-  defp refused(changeset) do
-    changeset |> Ecto.Changeset.traverse_errors(&translate_error/1) |> flatten()
+  defp unexplained(%{assigns: %{problems: []}} = socket) do
+    assign(socket, :problems, ["That could not be filed. Check what it asks for and try again."])
   end
 
-  defp flatten(errors) when is_map(errors) do
-    Enum.flat_map(errors, fn {field, messages} -> flatten(field, messages) end)
-  end
-
-  defp flatten(field, [message | _rest] = messages) when is_binary(message) do
-    Enum.map(messages, &"#{plainly(field)} #{&1}")
-  end
-
-  defp flatten(_field, nested) when is_list(nested), do: Enum.flat_map(nested, &flatten/1)
-  defp flatten(_field, nested), do: flatten(nested)
-
-  defp plainly(field) do
-    field |> Atom.to_string() |> String.replace("_", " ") |> String.capitalize()
-  end
-
-  defp blank(note) when note in [nil, ""], do: nil
-  defp blank(note), do: note
+  defp unexplained(socket), do: socket
 end

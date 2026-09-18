@@ -43,13 +43,17 @@ defmodule Leaf.Changeset do
   @doc """
   Errors on `later` when it holds a date earlier than `earlier`.
 
-  Absent dates pass.
+  Absent dates pass. `:message` in `opts` replaces what is said, for a field whose refusal is read
+  somewhere other than under it.
   """
-  @spec validate_date_order(Ecto.Changeset.t(), atom(), atom()) :: Ecto.Changeset.t()
-  def validate_date_order(changeset, earlier, later) do
+  @spec validate_date_order(Ecto.Changeset.t(), atom(), atom(), keyword()) :: Ecto.Changeset.t()
+  def validate_date_order(changeset, earlier, later, opts \\ []) do
     case {get_field(changeset, earlier), get_field(changeset, later)} do
-      {%Date{} = from, %Date{} = to} -> ordered(changeset, earlier, later, Date.compare(from, to))
-      _ -> changeset
+      {%Date{} = from, %Date{} = to} ->
+        ordered(changeset, earlier, later, Date.compare(from, to), opts)
+
+      _absent ->
+        changeset
     end
   end
 
@@ -68,10 +72,11 @@ defmodule Leaf.Changeset do
   defp limits(:decimal), do: @decimal_limits
   defp limits(:integer), do: @integer_limits
 
-  defp ordered(changeset, earlier, later, :gt),
-    do: add_error(changeset, later, "must not be before #{earlier}")
+  defp ordered(changeset, earlier, later, :gt, opts) do
+    add_error(changeset, later, Keyword.get(opts, :message, "must not be before #{earlier}"))
+  end
 
-  defp ordered(changeset, _earlier, _later, _order), do: changeset
+  defp ordered(changeset, _earlier, _later, _order, _opts), do: changeset
 
   defp absent(changeset, _field, nil), do: changeset
   defp absent(changeset, field, _value), do: add_error(changeset, field, "must be blank")
