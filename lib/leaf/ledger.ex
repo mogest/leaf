@@ -194,12 +194,14 @@ defmodule Leaf.Ledger do
     units = Map.new(leave_types, &{&1.id, &1.unit})
 
     case Enum.reject(taken, &(&1.unit == Map.fetch!(units, &1.leave_type_id))) do
-      [] -> %{}
-      converting -> person |> Leave.hours_per_day!(dates_spanned(converting)) |> Map.new()
+      [] ->
+        %{}
+
+      converting ->
+        span = Dates.spanning(Enum.map(converting, & &1.date))
+        person |> Leave.hours_per_day!(span) |> Map.new()
     end
   end
-
-  defp dates_spanned(days), do: days |> Enum.map(& &1.date) |> Dates.spanning()
 
   # A public holiday allowance is counted over the range its grant is measured over, which for a
   # block grant is a whole period and so may run past the date being asked about, so the calendar

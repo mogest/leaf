@@ -6,6 +6,8 @@ defmodule Leaf.People.Timeline do
   from its `effective_from` until the next row supersedes it, and carries no end date of its own.
   """
 
+  alias Leaf.Dates
+
   @typedoc "Any effective-dated row in a succession."
   @type row :: %{:effective_from => Date.t(), optional(atom()) => term()}
 
@@ -45,7 +47,7 @@ defmodule Leaf.People.Timeline do
 
   defp clip(row, successor, range) do
     from = latest(row.effective_from, range.first)
-    to = earliest(superseded_on(successor), range.last)
+    to = Dates.earliest(superseded_on(successor), range.last)
 
     case Date.compare(from, to) do
       :gt -> []
@@ -55,9 +57,6 @@ defmodule Leaf.People.Timeline do
 
   defp superseded_on(nil), do: nil
   defp superseded_on(successor), do: Date.add(successor.effective_from, -1)
-
-  defp earliest(nil, date), do: date
-  defp earliest(a, b), do: Enum.min([a, b], Date)
 
   defp latest(a, b), do: Enum.max([a, b], Date)
 end

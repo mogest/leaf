@@ -24,6 +24,7 @@ defmodule Leaf.Ledger.Span do
   is granted no birthday leave and nothing says so.
   """
 
+  alias Leaf.Dates
   alias Leaf.Ledger.GrantCycle
   alias Leaf.Org.Organisation
   alias Leaf.People
@@ -76,7 +77,7 @@ defmodule Leaf.Ledger.Span do
   def tracked_range(person, organisation, as_at) do
     bounded(
       Enum.max([organisation.tracked_from, person.employment_start_date], Date),
-      earliest(as_at, person.employment_end_date)
+      Dates.earliest(as_at, person.employment_end_date)
     )
   end
 
@@ -156,7 +157,7 @@ defmodule Leaf.Ledger.Span do
   end
 
   defp intersect(range, from, to) do
-    bounded(Enum.max([range.first, from], Date), earliest(range.last, to))
+    bounded(Enum.max([range.first, from], Date), Dates.earliest(range.last, to))
   end
 
   defp bounded(first, last) do
@@ -165,7 +166,4 @@ defmodule Leaf.Ledger.Span do
       _ -> {:ok, Date.range(first, last)}
     end
   end
-
-  defp earliest(date, nil), do: date
-  defp earliest(a, b), do: Enum.min([a, b], Date)
 end
