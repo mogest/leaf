@@ -9,6 +9,7 @@ defmodule Leaf.Ledger.Grant do
   error per span.
   """
 
+  alias Leaf.Dates
   alias Leaf.Ledger.Movement
   alias Leaf.Ledger.Span
   alias Leaf.Org.Organisation
@@ -54,7 +55,7 @@ defmodule Leaf.Ledger.Grant do
   # they leave part-way through is measured only as far as they are there for. A fixed amount is a
   # block whatever the period holds, and §4.7 deliberately does not pro-rate a partial one.
   defp block(%{entitlement: %{amount_source: :public_holidays}} = span) do
-    Date.range(span.period.first, earliest(span.period.last, span.employed_to))
+    Date.range(span.period.first, Dates.earliest(span.period.last, span.employed_to))
   end
 
   defp block(span), do: span.period
@@ -138,7 +139,7 @@ defmodule Leaf.Ledger.Grant do
   end
 
   defp expires_on(entitlement, period, granted_on) do
-    earliest(lapses_on(entitlement, period, granted_on), entitlement.effective_to)
+    Dates.earliest(lapses_on(entitlement, period, granted_on), entitlement.effective_to)
   end
 
   defp lapses_on(%{expiry_rule: :grant_period_end}, period, _granted_on), do: period.last
@@ -154,8 +155,4 @@ defmodule Leaf.Ledger.Grant do
   defp within?(date, range) do
     not (Date.before?(date, range.first) or Date.after?(date, range.last))
   end
-
-  defp earliest(nil, date), do: date
-  defp earliest(date, nil), do: date
-  defp earliest(a, b), do: Enum.min([a, b], Date)
 end

@@ -464,12 +464,11 @@ defmodule Leaf.Leave do
   # what a day is worth follows from the pattern in force when it comes round, not when it is
   # asked for. A date with no pattern behind it has none to give, and the day refuses itself.
   defp measured(person, %{days: [_first | _rest] = entries} = attrs) do
-    hours = person |> WorkingDay.hours_per_day(spanned(entries)) |> Map.new()
+    span = Dates.spanning(Enum.map(entries, & &1.date))
+    hours = person |> WorkingDay.hours_per_day(span) |> Map.new()
 
     %{attrs | days: Enum.map(entries, &Map.put(&1, :hours_in_day, hours[&1.date]))}
   end
 
   defp measured(_person, attrs), do: attrs
-
-  defp spanned(entries), do: entries |> Enum.map(& &1.date) |> Dates.spanning()
 end
