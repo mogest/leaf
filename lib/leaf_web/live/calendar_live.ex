@@ -11,6 +11,7 @@ defmodule LeafWeb.CalendarLive do
 
   use LeafWeb, :live_view
 
+  alias Leaf.Changeset
   alias Leaf.Org
   alias Leaf.Org.Calendar
 
@@ -24,7 +25,7 @@ defmodule LeafWeb.CalendarLive do
      |> assign(:calendar, calendar)
      |> assign(:country, calendar.parent)
      |> assign(:regions, calendar.regions)
-     |> assign(:form, to_form(Org.change_calendar(calendar, %{})))
+     |> assign(:form, to_form(Changeset.change(calendar, %{})))
      |> assign(:time_zones, Org.time_zones(calendar.country_code))
      |> blank()
      |> listed()}
@@ -33,7 +34,7 @@ defmodule LeafWeb.CalendarLive do
   @impl Phoenix.LiveView
   @role :admin
   def handle_event("validate-calendar", %{"calendar" => params}, socket) do
-    changeset = Org.change_calendar(socket.assigns.calendar, params)
+    changeset = Changeset.change(socket.assigns.calendar, params)
     country_code = params["country_code"] || socket.assigns.calendar.country_code
 
     {:noreply,
@@ -256,7 +257,7 @@ defmodule LeafWeb.CalendarLive do
   defp renamed(socket, {:ok, calendar}) do
     socket
     |> assign(:calendar, calendar)
-    |> assign(:form, to_form(Org.change_calendar(calendar, %{})))
+    |> assign(:form, to_form(Changeset.change(calendar, %{})))
     |> put_flash(:info, "Saved.")
   end
 

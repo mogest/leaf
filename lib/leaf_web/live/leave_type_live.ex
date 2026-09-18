@@ -12,6 +12,7 @@ defmodule LeafWeb.LeaveTypeLive do
 
   use LeafWeb, :live_view
 
+  alias Leaf.Changeset
   alias Leaf.Policies
 
   @units [{"hours", "hours"}, {"days", "days"}]
@@ -25,13 +26,13 @@ defmodule LeafWeb.LeaveTypeLive do
      |> assign(:page_title, leave_type.name)
      |> assign(:leave_type, leave_type)
      |> assign(:units, @units)
-     |> assign(:form, to_form(Policies.change_leave_type(leave_type, %{})))}
+     |> assign(:form, to_form(Changeset.change(leave_type, %{})))}
   end
 
   @impl Phoenix.LiveView
   @role :admin
   def handle_event("validate", %{"leave_type" => params}, socket) do
-    changeset = Policies.change_leave_type(socket.assigns.leave_type, params)
+    changeset = Changeset.change(socket.assigns.leave_type, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end

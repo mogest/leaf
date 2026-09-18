@@ -8,6 +8,7 @@ defmodule LeafWeb.WorkPatternLive do
 
   use LeafWeb, :live_view
 
+  alias Leaf.Changeset
   alias Leaf.People
 
   @weekdays [
@@ -30,7 +31,7 @@ defmodule LeafWeb.WorkPatternLive do
   @impl Phoenix.LiveView
   @role :admin
   def handle_event("validate", %{"work_pattern" => params}, socket) do
-    changeset = People.change_work_pattern(socket.assigns.subject, params)
+    changeset = change(socket.assigns.pattern, socket.assigns.person, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
@@ -76,12 +77,8 @@ defmodule LeafWeb.WorkPatternLive do
     |> assign(:title, title(socket.assigns.live_action))
     |> assign(:person, person)
     |> assign(:pattern, pattern)
-    |> assign(:subject, pattern || person)
     |> assign(:weekdays, @weekdays)
-    |> assign(
-      :form,
-      to_form(People.change_work_pattern(pattern || person, opening(pattern, person)))
-    )
+    |> assign(:form, to_form(change(pattern, person, opening(pattern, person))))
   end
 
   defp opened(socket, person, :error) do
@@ -96,6 +93,9 @@ defmodule LeafWeb.WorkPatternLive do
   # A first pattern almost always starts the day the person did, so that is what is offered.
   defp opening(nil, person), do: %{"effective_from" => to_string(person.employment_start_date)}
   defp opening(_pattern, _person), do: %{}
+
+  defp change(nil, person, params), do: People.change_work_pattern(person, params)
+  defp change(pattern, _person, params), do: Changeset.change(pattern, params)
 
   defp write(%{pattern: nil} = assigns, params) do
     People.create_work_pattern(assigns.person, assigns.current_person, params)

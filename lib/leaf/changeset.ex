@@ -1,7 +1,7 @@
 defmodule Leaf.Changeset do
-  @moduledoc "Changeset validators shared across schemas."
+  @moduledoc "Changeset building and validation shared across schemas."
 
-  import Ecto.Changeset
+  import Ecto.Changeset, except: [change: 2]
 
   # Every decimal column here is numeric(10, 2) and every integer column a four-byte one.
   @decimal_limits [
@@ -9,6 +9,14 @@ defmodule Leaf.Changeset do
     less_than_or_equal_to: Decimal.new("99999999.99")
   ]
   @integer_limits [greater_than_or_equal_to: -2_147_483_648, less_than_or_equal_to: 2_147_483_647]
+
+  @doc """
+  The changeset an existing record's form binds to.
+
+  A blank row comes from its context instead, the only place that knows what it hangs off.
+  """
+  @spec change(struct(), map()) :: Ecto.Changeset.t()
+  def change(%mod{} = record, attrs), do: mod.changeset(record, attrs)
 
   @doc """
   Puts `field` in the form its column will hold it in, and bounds it by `opts` or by the column.

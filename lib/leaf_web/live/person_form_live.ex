@@ -8,6 +8,7 @@ defmodule LeafWeb.PersonFormLive do
 
   use LeafWeb, :live_view
 
+  alias Leaf.Changeset
   alias Leaf.Org
   alias Leaf.People
 
@@ -23,17 +24,17 @@ defmodule LeafWeb.PersonFormLive do
      |> assign(:page_title, title(socket.assigns.live_action))
      |> assign(:title, title(socket.assigns.live_action))
      |> assign(:person, person)
-     |> assign(:subject, person || organisation)
+     |> assign(:organisation, organisation)
      |> assign(:back, back(person))
      |> assign(:roles, @roles)
      |> assign(:managers, managers(organisation, person))
-     |> assign(:form, to_form(People.change_person(person || organisation, %{})))}
+     |> assign(:form, to_form(change(person, organisation, %{})))}
   end
 
   @impl Phoenix.LiveView
   @role :admin
   def handle_event("validate", %{"person" => params}, socket) do
-    changeset = People.change_person(socket.assigns.subject, params)
+    changeset = change(socket.assigns.person, socket.assigns.organisation, params)
 
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
@@ -109,8 +110,11 @@ defmodule LeafWeb.PersonFormLive do
     |> Enum.map(&{&1.name, &1.id})
   end
 
+  defp change(nil, organisation, params), do: People.change_person(organisation, params)
+  defp change(person, _organisation, params), do: Changeset.change(person, params)
+
   defp write(%{person: nil} = assigns, params) do
-    People.create_person(assigns.subject, assigns.current_person, params)
+    People.create_person(assigns.organisation, assigns.current_person, params)
   end
 
   defp write(assigns, params) do

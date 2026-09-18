@@ -43,46 +43,28 @@ defmodule Leaf.People do
     |> Audit.write("person.created", actor)
   end
 
-  @doc """
-  The changeset a person's form binds to: a new one for the organisation, or an existing one.
-
-  Every context here offers the same pair, so a form never reaches for a schema itself.
-  """
-  @spec change_person(Organisation.t() | Person.t(), map()) :: Ecto.Changeset.t()
+  @doc "The changeset a new person's form binds to."
+  @spec change_person(Organisation.t(), map()) :: Ecto.Changeset.t()
   def change_person(%Organisation{} = organisation, attrs) do
     Person.changeset(%Person{organisation_id: organisation.id}, attrs)
   end
 
-  def change_person(%Person{} = person, attrs), do: Person.changeset(person, attrs)
-
-  @doc "The changeset a work pattern's form binds to."
-  @spec change_work_pattern(Person.t() | WorkPattern.t(), map()) :: Ecto.Changeset.t()
+  @doc "The changeset a new work pattern's form binds to."
+  @spec change_work_pattern(Person.t(), map()) :: Ecto.Changeset.t()
   def change_work_pattern(%Person{} = person, attrs) do
     WorkPattern.changeset(%WorkPattern{person_id: person.id}, attrs)
   end
 
-  def change_work_pattern(%WorkPattern{} = pattern, attrs),
-    do: WorkPattern.changeset(pattern, attrs)
-
-  @doc "The changeset a policy assignment's form binds to."
-  @spec change_policy_assignment(Person.t() | PersonPolicyAssignment.t(), map()) ::
-          Ecto.Changeset.t()
+  @doc "The changeset a new policy assignment's form binds to."
+  @spec change_policy_assignment(Person.t(), map()) :: Ecto.Changeset.t()
   def change_policy_assignment(%Person{} = person, attrs) do
     PersonPolicyAssignment.changeset(%PersonPolicyAssignment{person_id: person.id}, attrs)
   end
 
-  def change_policy_assignment(%PersonPolicyAssignment{} = assignment, attrs) do
-    PersonPolicyAssignment.changeset(assignment, attrs)
-  end
-
-  @doc "The changeset a calendar assignment's form binds to."
-  @spec change_calendar_assignment(Person.t() | PersonCalendar.t(), map()) :: Ecto.Changeset.t()
+  @doc "The changeset a new calendar assignment's form binds to."
+  @spec change_calendar_assignment(Person.t(), map()) :: Ecto.Changeset.t()
   def change_calendar_assignment(%Person{} = person, attrs) do
     PersonCalendar.changeset(%PersonCalendar{person_id: person.id}, attrs)
-  end
-
-  def change_calendar_assignment(%PersonCalendar{} = assignment, attrs) do
-    PersonCalendar.changeset(assignment, attrs)
   end
 
   @doc """

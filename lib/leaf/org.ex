@@ -27,31 +27,21 @@ defmodule Leaf.Org do
     %Organisation{} |> Organisation.changeset(attrs) |> Audit.write("organisation.created", actor)
   end
 
-  @doc "The changeset an organisation's form binds to."
-  @spec change_organisation(Organisation.t(), map()) :: Ecto.Changeset.t()
-  def change_organisation(organisation, attrs), do: Organisation.changeset(organisation, attrs)
-
-  @doc "The changeset a country's form binds to: a new one, or one the organisation holds."
-  @spec change_calendar(Organisation.t() | Calendar.t(), map()) :: Ecto.Changeset.t()
+  @doc "The changeset a new country's form binds to."
+  @spec change_calendar(Organisation.t(), map()) :: Ecto.Changeset.t()
   def change_calendar(%Organisation{} = organisation, attrs) do
     Calendar.changeset(%Calendar{organisation_id: organisation.id}, attrs)
   end
-
-  def change_calendar(%Calendar{} = calendar, attrs), do: Calendar.changeset(calendar, attrs)
 
   @doc "The changeset a new region's form binds to, opening on its country's country and zone."
   @spec change_region(Calendar.t(), map()) :: Ecto.Changeset.t()
   def change_region(%Calendar{} = country, attrs),
     do: Calendar.changeset(region_of(country), attrs)
 
-  @doc "The changeset a public holiday's form binds to."
-  @spec change_public_holiday(Calendar.t() | PublicHoliday.t(), map()) :: Ecto.Changeset.t()
+  @doc "The changeset a new public holiday's form binds to."
+  @spec change_public_holiday(Calendar.t(), map()) :: Ecto.Changeset.t()
   def change_public_holiday(%Calendar{} = calendar, attrs) do
     PublicHoliday.changeset(%PublicHoliday{calendar_id: calendar.id}, attrs)
-  end
-
-  def change_public_holiday(%PublicHoliday{} = holiday, attrs) do
-    PublicHoliday.changeset(holiday, attrs)
   end
 
   @doc "Amends an organisation."
