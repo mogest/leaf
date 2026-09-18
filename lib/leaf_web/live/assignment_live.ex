@@ -94,8 +94,7 @@ defmodule LeafWeb.AssignmentLive do
 
   defp options(:policy, person) do
     person.organisation_id
-    |> Policies.leave_policies()
-    |> Enum.filter(&is_nil(&1.archived_at))
+    |> Policies.leave_policies_offered()
     |> Enum.map(&{&1.name, &1.id})
   end
 

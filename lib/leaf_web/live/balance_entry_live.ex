@@ -88,8 +88,7 @@ defmodule LeafWeb.BalanceEntryLive do
 
   defp leave_types(person) do
     person.organisation_id
-    |> Policies.leave_types()
-    |> Enum.filter(&is_nil(&1.archived_at))
+    |> Policies.leave_types_offered()
     |> Enum.map(&{Wording.leave_type(&1), &1.id})
   end
 

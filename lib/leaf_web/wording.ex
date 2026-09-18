@@ -13,6 +13,7 @@ defmodule LeafWeb.Wording do
   alias Leaf.Ledger.Lot
   alias Leaf.Ledger.Statement
   alias Leaf.People.Person
+  alias Leaf.Policies.LeavePolicy
   alias Leaf.Policies.LeaveType
 
   @typedoc "A request as a page shows it."
@@ -230,6 +231,16 @@ defmodule LeafWeb.Wording do
   @doc "The name a leave type is chosen by, and what it counts in."
   @spec leave_type(LeaveType.t()) :: String.t()
   def leave_type(leave_type), do: "#{leave_type.name} (in #{leave_type.unit})"
+
+  @doc "Whether a leave type or a policy is still offered, and when it stopped being."
+  @spec standing(LeavePolicy.t() | LeaveType.t()) :: String.t()
+  def standing(%{archived_at: nil}), do: "offered"
+  def standing(record), do: "withdrawn #{date(DateTime.to_date(record.archived_at))}"
+
+  @doc "The tone a withdrawn leave type or policy is read in, and none while it is still offered."
+  @spec tone(LeavePolicy.t() | LeaveType.t()) :: String.t() | nil
+  def tone(%{archived_at: nil}), do: nil
+  def tone(_record), do: "past"
 
   @doc "Somebody's initials, for standing in for their face."
   @spec initials(String.t()) :: String.t()

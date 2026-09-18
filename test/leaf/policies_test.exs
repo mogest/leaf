@@ -20,6 +20,8 @@ defmodule Leaf.PoliciesTest do
     %{organisation: organisation, policy: policy, annual: annual, quarterly: quarterly}
   end
 
+  defp actions, do: Repo.all(Entry) |> Enum.map(& &1.action) |> Enum.sort()
+
   defp quarterly_entitlement(policy, leave_type, attrs) do
     Fixtures.policy_entitlement(
       Map.merge(
@@ -147,19 +149,38 @@ defmodule Leaf.PoliciesTest do
     assert [%{action: "policy_entitlement.deleted"}] = Repo.all(Entry)
   end
 
-  test "a leave type stops being offered by being archived, so what it granted still reads",
-       context do
-    %{organisation: organisation, quarterly: quarterly} = context
+  test "a withdrawn leave type stays on the record, so what it granted still reads", context do
+    %{organisation: organisation, annual: annual, quarterly: quarterly} = context
     admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
-    archived_at = DateTime.truncate(DateTime.utc_now(), :second)
 
-    assert {:ok, archived} =
-             Policies.update_leave_type(quarterly, admin, %{archived_at: archived_at})
+    assert {:ok, withdrawn} = Policies.withdraw(quarterly, admin)
+    assert withdrawn.archived_at
+    assert Enum.map(Policies.leave_types(organisation.id), & &1.id) == [annual.id, quarterly.id]
+    assert Enum.map(Policies.leave_types_offered(organisation.id), & &1.id) == [annual.id]
 
-    assert archived.archived_at == archived_at
+    assert {:ok, reoffered} = Policies.reoffer(withdrawn, admin)
+    assert reoffered.archived_at == nil
 
-    assert Enum.map(Policies.leave_types(organisation.id), & &1.id) ==
-             [context.annual.id, quarterly.id]
+    assert Enum.map(Policies.leave_types_offered(organisation.id), & &1.id) ==
+             [annual.id, quarterly.id]
+
+    assert actions() == ["leave_type.reoffered", "leave_type.withdrawn"]
+  end
+
+  test "a withdrawn policy stays on the record, so whoever is on it stays granted", context do
+    %{organisation: organisation, policy: policy} = context
+    admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+
+    assert {:ok, withdrawn} = Policies.withdraw(policy, admin)
+    assert withdrawn.archived_at
+    assert Enum.map(Policies.leave_policies(organisation.id), & &1.id) == [policy.id]
+    assert Policies.leave_policies_offered(organisation.id) == []
+
+    assert {:ok, reoffered} = Policies.reoffer(withdrawn, admin)
+    assert reoffered.archived_at == nil
+    assert Enum.map(Policies.leave_policies_offered(organisation.id), & &1.id) == [policy.id]
+
+    assert actions() == ["leave_policy.reoffered", "leave_policy.withdrawn"]
   end
 
   test "another policy's entitlements stay out of it", context do

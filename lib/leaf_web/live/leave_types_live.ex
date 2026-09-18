@@ -127,18 +127,10 @@ defmodule LeafWeb.LeaveTypesLive do
       unit: to_string(leave_type.unit),
       position: leave_type.position,
       path: ~p"/settings/leave-types/#{leave_type}",
-      standing: standing(leave_type),
-      tone: tone(leave_type)
+      standing: Wording.standing(leave_type),
+      tone: Wording.tone(leave_type)
     }
   end
-
-  defp standing(%{archived_at: nil}), do: "offered"
-
-  defp standing(leave_type),
-    do: "not offered since #{Wording.date(DateTime.to_date(leave_type.archived_at))}"
-
-  defp tone(%{archived_at: nil}), do: nil
-  defp tone(_leave_type), do: "past"
 
   defp saved(socket, {:ok, leave_type}) do
     socket |> put_flash(:info, "#{leave_type.name} is offered.") |> listed() |> blank()

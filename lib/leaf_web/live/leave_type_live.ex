@@ -47,11 +47,7 @@ defmodule LeafWeb.LeaveTypeLive do
 
   @role :admin
   def handle_event("archive", _params, socket) do
-    leave_type = socket.assigns.leave_type
-    attrs = %{archived_at: archived_at(leave_type)}
-
-    {:noreply,
-     written(socket, Policies.update_leave_type(leave_type, socket.assigns.current_person, attrs))}
+    {:noreply, written(socket, offer(socket.assigns.leave_type, socket.assigns.current_person))}
   end
 
   @impl Phoenix.LiveView
@@ -102,8 +98,8 @@ defmodule LeafWeb.LeaveTypeLive do
   defp action(%{archived_at: nil}), do: "Stop offering it in new configuration"
   defp action(_leave_type), do: "Offer it again"
 
-  defp archived_at(%{archived_at: nil}), do: DateTime.truncate(DateTime.utc_now(), :second)
-  defp archived_at(_leave_type), do: nil
+  defp offer(%{archived_at: nil} = leave_type, actor), do: Policies.withdraw(leave_type, actor)
+  defp offer(leave_type, actor), do: Policies.reoffer(leave_type, actor)
 
   defp written(socket, {:ok, leave_type}) do
     socket |> assign(:leave_type, leave_type) |> put_flash(:info, "Saved.")
