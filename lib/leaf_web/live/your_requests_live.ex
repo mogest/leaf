@@ -56,7 +56,7 @@ defmodule LeafWeb.YourRequestsLive do
   defp listed(socket) do
     person = socket.assigns.current_person
     today = People.today(person)
-    manager = manager(person)
+    manager = People.manager_name(person)
 
     assign(
       socket,
@@ -69,13 +69,6 @@ defmodule LeafWeb.YourRequestsLive do
     request
     |> Wording.filed(today, manager)
     |> Map.put(:revisable?, Leave.revisable?(request, person))
-  end
-
-  defp manager(person) do
-    case People.fetch_manager(person) do
-      {:ok, manager} -> manager.name
-      :error -> nil
-    end
   end
 
   defp cancelled(socket, {:ok, _request}),

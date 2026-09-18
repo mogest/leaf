@@ -61,19 +61,11 @@ defmodule LeafWeb.PeopleLive do
       path: ~p"/people/#{person}",
       email: person.email,
       admin?: person.role == :admin,
-      employment: employment(person),
+      employment: Wording.employment(person),
       hours: hours(person, organisation, today),
       manager: names[person.manager_id],
       tone: tone(person, today)
     }
-  end
-
-  defp employment(%{employment_end_date: nil} = person) do
-    "from #{Wording.date(person.employment_start_date)}"
-  end
-
-  defp employment(person) do
-    "#{Wording.date(person.employment_start_date)} – #{Wording.date(person.employment_end_date)}"
   end
 
   defp hours(person, organisation, today) do

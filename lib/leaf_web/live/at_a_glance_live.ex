@@ -23,7 +23,7 @@ defmodule LeafWeb.AtAGlanceLive do
     today = People.today(person)
     from = from(params["from"], today)
     {shown, rest} = person |> Leave.requests_undecided_first() |> Enum.split(@shown)
-    manager = manager(person)
+    manager = People.manager_name(person)
 
     {:ok,
      socket
@@ -78,13 +78,6 @@ defmodule LeafWeb.AtAGlanceLive do
     named = from |> Date.shift(month: months) |> Calendar.strftime("%Y-%m")
 
     ~p"/?from=#{named}"
-  end
-
-  defp manager(person) do
-    case People.fetch_manager(person) do
-      {:ok, manager} -> manager.name
-      :error -> nil
-    end
   end
 
   # A balance is worked out from the whole of somebody's record, so half a record has none to show.

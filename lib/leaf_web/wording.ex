@@ -228,6 +228,11 @@ defmodule LeafWeb.Wording do
   @spec unit(Decimal.t(), Day.unit()) :: String.t()
   def unit(amount, unit), do: named(unit, Decimal.equal?(Decimal.abs(amount), 1))
 
+  @doc "An amount waiting on an answer, and nothing at all where none is."
+  @spec asked(Decimal.t() | nil, Day.unit()) :: String.t() | nil
+  def asked(nil, _unit), do: nil
+  def asked(amount, unit), do: "#{figure(amount, unit)} awaiting approval"
+
   @doc "The name a leave type is chosen by, and what it counts in."
   @spec leave_type(LeaveType.t()) :: String.t()
   def leave_type(leave_type), do: "#{leave_type.name} (in #{leave_type.unit})"
@@ -242,6 +247,16 @@ defmodule LeafWeb.Wording do
   def tone(%{archived_at: nil}), do: nil
   def tone(_record), do: "past"
 
+  @doc "Somebody's employment as the stretch it covers, open-ended while they are still employed."
+  @spec employment(Person.t()) :: String.t()
+  def employment(%{employment_end_date: nil} = person) do
+    "from #{date(person.employment_start_date)}"
+  end
+
+  def employment(person) do
+    "#{date(person.employment_start_date)} – #{date(person.employment_end_date)}"
+  end
+
   @doc "Somebody's initials, for standing in for their face."
   @spec initials(String.t()) :: String.t()
   def initials(name) do
@@ -252,9 +267,6 @@ defmodule LeafWeb.Wording do
   @spec actor(Person.t() | nil) :: String.t()
   def actor(nil), do: "the system"
   def actor(person), do: person.name
-
-  defp asked(nil, _unit), do: nil
-  defp asked(amount, unit), do: "#{figure(amount, unit)} awaiting approval"
 
   # What is going to happen to the balance, and nothing at all where nothing is. The soonest lot
   # to lapse is the one worth saying; one that is the whole balance says so without the figure.
