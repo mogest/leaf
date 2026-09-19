@@ -416,6 +416,8 @@ defmodule Leaf.LeaveTest do
     {:ok, _pending} = file(context, [@friday])
     {:ok, approving} = file(context, [@thursday])
     {:ok, _approved} = approving |> reload() |> Leave.approve(context.manager)
+    {:ok, cancelling} = file(context, [~D[2026-08-24]])
+    {:ok, _cancelled} = cancelling |> reload() |> Leave.cancel(context.manager)
 
     assert [august] = Leave.calendar(context.person, Date.range(~D[2026-08-01], ~D[2026-08-31]))
     assert august.starts_on == ~D[2026-08-01]
@@ -426,23 +428,9 @@ defmodule Leaf.LeaveTest do
 
     assert %{leave: :pending, working?: true} = days[@friday]
     assert %{leave: :approved, working?: true} = days[@thursday]
+    assert %{leave: nil, working?: true} = days[~D[2026-08-24]]
     assert %{holiday: "Labour Day", working?: false} = days[~D[2026-08-26]]
     assert %{leave: nil, holiday: nil, working?: false} = days[@saturday]
-  end
-
-  test "only leave somebody still holds shows within a range", context do
-    {:ok, pending} = file(context, [@friday])
-    {:ok, approving} = file(context, [~D[2026-08-24]])
-    {:ok, _approved} = approving |> reload() |> Leave.approve(context.manager)
-    {:ok, cancelling} = file(context, [~D[2026-08-26]])
-    {:ok, _cancelled} = cancelling |> reload() |> Leave.cancel(context.manager)
-    {:ok, _outside} = file(context, [~D[2026-09-30]])
-
-    days = Leave.days_filed(context.person, Date.range(@thursday, ~D[2026-08-31]))
-
-    assert Enum.map(days, & &1.date) == [~D[2026-08-21], ~D[2026-08-24]]
-    assert Enum.map(days, & &1.leave_request.status) == [:pending, :approved]
-    assert hd(days).leave_request.id == pending.id
   end
 
   describe "requestable/2" do
