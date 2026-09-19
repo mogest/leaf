@@ -11,47 +11,23 @@ defmodule LeafWeb.AtAGlanceLiveTest do
   @refused ~D[2030-10-21]
 
   setup %{conn: conn} do
-    organisation = Fixtures.organisation()
-    manager = Fixtures.person(%{organisation_id: organisation.id, name: "Ines Vasquez"})
-
-    person =
-      Fixtures.person(%{
-        organisation_id: organisation.id,
-        name: "Rae Halloran",
-        manager_id: manager.id
-      })
-
-    Fixtures.work_pattern(%{person_id: person.id})
-    leave_type = Fixtures.leave_type(%{organisation_id: organisation.id})
-
-    Fixtures.offering(%{
-      person_id: person.id,
-      organisation_id: organisation.id,
-      leave_type_id: leave_type.id
-    })
+    workplace = Fixtures.workplace()
 
     Fixtures.balance_entry(%{
-      person_id: person.id,
-      leave_type_id: leave_type.id,
+      person_id: workplace.person.id,
+      leave_type_id: workplace.leave_type.id,
       amount: "100",
       expires_on: ~D[2030-12-31]
     })
 
-    context = %{person: person, manager: manager, leave_type: leave_type}
-
-    Map.put(context, :conn, sign_in(conn, person))
+    Map.put(workplace, :conn, sign_in(conn, workplace.person))
   end
 
   defp file(context, dates) do
-    days =
-      Enum.map(dates, fn date ->
-        %{leave_type_id: context.leave_type.id, date: date, amount: "8", unit: :hours}
-      end)
-
-    {:ok, request} = Leave.request(context.person, context.person, %{days: days})
-    {:ok, reloaded} = Leave.fetch_request(request.id)
-
-    reloaded
+    Fixtures.pending_request(context.person, %{
+      leave_type_id: context.leave_type.id,
+      dates: dates
+    })
   end
 
   test "somebody the session does not name is sent to pick a name" do

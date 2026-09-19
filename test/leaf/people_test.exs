@@ -4,7 +4,6 @@ defmodule Leaf.PeopleTest do
   alias Leaf.Audit.Entry
   alias Leaf.Fixtures
   alias Leaf.People
-  alias Leaf.People.Person
 
   setup do
     organisation = Fixtures.organisation()
@@ -144,13 +143,13 @@ defmodule Leaf.PeopleTest do
   end
 
   test "a person cannot report to themselves", %{person: person} do
-    changeset = Person.changeset(person, %{manager_id: person.id})
-
+    assert {:error, changeset} = People.update_person(person, nil, %{manager_id: person.id})
     assert errors_on(changeset).manager_id == ["cannot be the person themselves"]
 
     manager = Fixtures.person(%{organisation_id: person.organisation_id})
 
-    assert Person.changeset(person, %{manager_id: manager.id}).valid?
+    assert {:ok, reporting} = People.update_person(person, nil, %{manager_id: manager.id})
+    assert reporting.manager_id == manager.id
   end
 
   test "the policy a person is on comes back as the id in force over each span", %{

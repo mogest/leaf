@@ -4,9 +4,11 @@ defmodule Leaf.Fixtures do
 
   The contexts are the way in for real code; these skip them because a fixture wants no actor and
   no audit entry. What a record belongs to is no longer castable, so any `_id` given here is set
-  on the struct, exactly as the contexts set it.
+  on the struct, exactly as the contexts set it. `pending_request/2` is the one exception, and
+  says why.
   """
 
+  alias Leaf.Leave
   alias Leaf.Leave.BalanceEntry
   alias Leaf.Leave.Request
   alias Leaf.Org.Calendar
@@ -123,6 +125,38 @@ defmodule Leaf.Fixtures do
     offering(Map.put(attrs, :leave_policy_id, policy.id))
   end
 
+  @doc """
+  An organisation with somebody in it who reports to a manager and may ask for one leave type.
+
+  It is what a page about leave needs before there is any: a person with a work pattern, on a
+  policy offering the type, and somebody to decide what they ask for. The policy grants nothing,
+  so a balance is whatever the test puts in it.
+  """
+  @spec workplace() :: %{
+          organisation: Organisation.t(),
+          manager: Person.t(),
+          person: Person.t(),
+          leave_type: LeaveType.t()
+        }
+  def workplace do
+    organisation = organisation()
+    manager = person(%{organisation_id: organisation.id, name: "Ines Vasquez"})
+
+    person =
+      person(%{organisation_id: organisation.id, name: "Rae Halloran", manager_id: manager.id})
+
+    work_pattern(%{person_id: person.id})
+    leave_type = leave_type(%{organisation_id: organisation.id})
+
+    offering(%{
+      person_id: person.id,
+      organisation_id: organisation.id,
+      leave_type_id: leave_type.id
+    })
+
+    %{organisation: organisation, manager: manager, person: person, leave_type: leave_type}
+  end
+
   @spec calendar(map()) :: Calendar.t()
   def calendar(attrs \\ %{}) do
     insert(%Calendar{}, &Calendar.changeset/2, attrs, %{
@@ -161,6 +195,25 @@ defmodule Leaf.Fixtures do
     |> struct!(identity)
     |> Request.changeset(%{days: Enum.map(attrs.days, &worked/1)})
     |> Repo.insert!()
+  end
+
+  @doc """
+  A request the person filed for themselves, a whole day of `leave_type_id` on each of `dates`.
+
+  Filing goes through `Leaf.Leave` rather than the repo, because what a day comes to is measured
+  against the work pattern and the type has to be one the person's policy offers over those dates.
+  """
+  @spec pending_request(Person.t(), map()) :: Request.t()
+  def pending_request(person, attrs) do
+    days =
+      Enum.map(attrs.dates, fn date ->
+        %{leave_type_id: attrs.leave_type_id, date: date, amount: "8", unit: :hours}
+      end)
+
+    {:ok, request} = Leave.request(person, person, %{days: days, note: attrs[:note]})
+    {:ok, filed} = Leave.fetch_request(request.id)
+
+    filed
   end
 
   @spec balance_entry(map()) :: BalanceEntry.t()
