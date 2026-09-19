@@ -43,7 +43,7 @@ defmodule LeafWeb.OrganisationLive do
   def handle_event("validate", %{"organisation" => params}, socket) do
     changeset = Changeset.change(socket.assigns.organisation, params)
 
-    {:noreply, validated(socket, changeset)}
+    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
   @role :admin
@@ -111,5 +111,7 @@ defmodule LeafWeb.OrganisationLive do
     |> put_flash(:info, "Saved.")
   end
 
-  defp saved(socket, {:error, changeset}), do: validated(socket, changeset)
+  defp saved(socket, {:error, changeset}) do
+    assign(socket, :form, to_form(changeset, action: :validate))
+  end
 end
