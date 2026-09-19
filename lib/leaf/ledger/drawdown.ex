@@ -44,7 +44,7 @@ defmodule Leaf.Ledger.Drawdown do
 
     state = Enum.reduce(ahead, held, &apply_movements(&2, Map.get(by_date, &1, [])))
 
-    {Enum.reverse(state.movements), Lot.soonest_first(state.lots)}
+    {Enum.reverse(state.movements), state.lots}
   end
 
   # Every date something happens on, split at `as_at`. A lapse or a cap due after it has not

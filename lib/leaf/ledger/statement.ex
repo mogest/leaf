@@ -5,6 +5,9 @@ defmodule Leaf.Ledger.Statement do
   `movements` and `lots` carry exact figures. `balance` is the sum of the movements rounded to two
   places, being the figure that gets shown, so an account always adds up to what it says it does.
 
+  `lots` are in the order leave draws on them — soonest to lapse first, never-lapsing last — so
+  whoever reads the one about to lapse reads the first, rather than sorting them again.
+
   `as_at` is the date it accrued to, which a projection moves on to the end of the leave it is
   asked about, so the figure can say which date it speaks for rather than leaving that to whoever
   shows it.
@@ -32,7 +35,7 @@ defmodule Leaf.Ledger.Statement do
       leave_type: leave_type,
       as_at: as_at,
       movements: movements,
-      lots: lots,
+      lots: Lot.soonest_first(lots),
       balance: movements |> Movement.total() |> Decimal.round(2)
     }
   end
