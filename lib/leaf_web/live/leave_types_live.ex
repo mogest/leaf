@@ -34,7 +34,7 @@ defmodule LeafWeb.LeaveTypesLive do
   def handle_event("validate", %{"leave_type" => params}, socket) do
     changeset = Policies.change_leave_type(socket.assigns.organisation, params)
 
-    {:noreply, validated(socket, changeset)}
+    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
   @role :admin
@@ -136,5 +136,7 @@ defmodule LeafWeb.LeaveTypesLive do
     socket |> put_flash(:info, "#{leave_type.name} is offered.") |> listed() |> blank()
   end
 
-  defp saved(socket, {:error, changeset}), do: validated(socket, changeset)
+  defp saved(socket, {:error, changeset}) do
+    assign(socket, :form, to_form(changeset, action: :validate))
+  end
 end

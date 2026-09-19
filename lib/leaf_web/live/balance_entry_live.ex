@@ -38,7 +38,7 @@ defmodule LeafWeb.BalanceEntryLive do
   def handle_event("validate", %{"balance_entry" => params}, socket) do
     changeset = Leave.change_balance_entry(socket.assigns.person, params)
 
-    {:noreply, validated(socket, changeset)}
+    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
   @role :admin
@@ -102,5 +102,7 @@ defmodule LeafWeb.BalanceEntryLive do
     put_flash(socket, :error, "Only an administrator may record a balance.")
   end
 
-  defp saved(socket, {:error, changeset}), do: validated(socket, changeset)
+  defp saved(socket, {:error, changeset}) do
+    assign(socket, :form, to_form(changeset, action: :validate))
+  end
 end

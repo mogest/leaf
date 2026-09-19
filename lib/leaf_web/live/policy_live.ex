@@ -29,7 +29,7 @@ defmodule LeafWeb.PolicyLive do
   def handle_event("validate", %{"leave_policy" => params}, socket) do
     changeset = Changeset.change(socket.assigns.policy, params)
 
-    {:noreply, validated(socket, changeset)}
+    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
   @role :admin
@@ -207,7 +207,9 @@ defmodule LeafWeb.PolicyLive do
     |> put_flash(:info, "Saved.")
   end
 
-  defp saved(socket, {:error, changeset}), do: validated(socket, changeset)
+  defp saved(socket, {:error, changeset}) do
+    assign(socket, :form, to_form(changeset, action: :validate))
+  end
 
   defp remove(socket, :error) do
     put_flash(socket, :error, "That entitlement is not on this policy.")

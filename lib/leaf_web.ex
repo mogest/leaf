@@ -45,8 +45,6 @@ defmodule LeafWeb do
       use Phoenix.LiveView
       use LeafWeb.AuthorizedEvents
 
-      import LeafWeb.Form
-
       unquote(html_helpers())
     end
   end
