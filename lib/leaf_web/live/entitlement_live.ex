@@ -12,6 +12,7 @@ defmodule LeafWeb.EntitlementLive do
   alias Leaf.Changeset
   alias Leaf.Org
   alias Leaf.Policies
+  alias Phoenix.HTML.Form
 
   @sources [
     {"A fixed amount", "fixed"},
@@ -235,7 +236,7 @@ defmodule LeafWeb.EntitlementLive do
   defp counted_in(type), do: " in #{type.unit}"
 
   defp at_full_time(pro_rated) do
-    case Phoenix.HTML.Form.normalize_value("checkbox", pro_rated) do
+    case Form.normalize_value("checkbox", pro_rated) do
       true -> ", at 1.0 FTE"
       false -> ""
     end

@@ -7,6 +7,8 @@ defmodule LeafWeb.CoreComponents do
   """
   use Phoenix.Component
 
+  alias Phoenix.HTML.Form
+  alias Phoenix.HTML.FormField
   alias Phoenix.LiveView.JS
 
   @doc """
@@ -100,7 +102,7 @@ defmodule LeafWeb.CoreComponents do
     values: ~w(checkbox color date datetime-local email file month number password
                search select tel text textarea time url week hidden)
 
-  attr :field, Phoenix.HTML.FormField,
+  attr :field, FormField,
     doc: "a form field struct retrieved from the form, for example: @form[:email]"
 
   attr :errors, :list, default: []
@@ -113,7 +115,7 @@ defmodule LeafWeb.CoreComponents do
     include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
                 multiple pattern placeholder readonly required rows size step)
 
-  def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
+  def input(%{field: %FormField{} = field} = assigns) do
     errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
 
     assigns
@@ -132,9 +134,7 @@ defmodule LeafWeb.CoreComponents do
 
   def input(%{type: "checkbox"} = assigns) do
     assigns =
-      assign_new(assigns, :checked, fn ->
-        Phoenix.HTML.Form.normalize_value("checkbox", assigns[:value])
-      end)
+      assign_new(assigns, :checked, fn -> Form.normalize_value("checkbox", assigns[:value]) end)
 
     ~H"""
     <div>
@@ -169,7 +169,7 @@ defmodule LeafWeb.CoreComponents do
         <span :if={@label}>{@label}</span>
         <select id={@id} name={@name} multiple={@multiple} {@rest}>
           <option :if={@prompt} value="">{@prompt}</option>
-          {Phoenix.HTML.Form.options_for_select(@options, @value)}
+          {Form.options_for_select(@options, @value)}
         </select>
       </label>
       <.error :for={msg <- @errors}>{msg}</.error>
@@ -182,7 +182,7 @@ defmodule LeafWeb.CoreComponents do
     <div>
       <label for={@id}>
         <span :if={@label}>{@label}</span>
-        <textarea id={@id} name={@name} {@rest}>{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
+        <textarea id={@id} name={@name} {@rest}>{Form.normalize_value("textarea", @value)}</textarea>
       </label>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
@@ -199,7 +199,7 @@ defmodule LeafWeb.CoreComponents do
           type={@type}
           name={@name}
           id={@id}
-          value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+          value={Form.normalize_value(@type, @value)}
           {@rest}
         />
       </label>
