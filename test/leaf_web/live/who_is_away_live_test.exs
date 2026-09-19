@@ -30,8 +30,7 @@ defmodule LeafWeb.WhoIsAwayLiveTest do
       leave_type_id: leave_type.id
     })
 
-    days = [%{leave_type_id: leave_type.id, date: @date, amount: "8", unit: :hours}]
-    {:ok, request} = Leave.request(person, person, %{days: days})
+    request = Fixtures.pending_request(person, %{leave_type_id: leave_type.id, dates: [@date]})
 
     %{conn: sign_in(conn, person), organisation: organisation, person: person, request: request}
   end
