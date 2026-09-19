@@ -19,7 +19,7 @@ config :leaf, LeafWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: LeafWeb.ErrorHTML, json: LeafWeb.ErrorJSON],
+    formats: [html: LeafWeb.ErrorHTML],
     layout: false
   ],
   pubsub_server: Leaf.PubSub,
