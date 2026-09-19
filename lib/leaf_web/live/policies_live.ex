@@ -28,7 +28,7 @@ defmodule LeafWeb.PoliciesLive do
   def handle_event("validate", %{"leave_policy" => params}, socket) do
     changeset = Policies.change_leave_policy(socket.assigns.organisation, params)
 
-    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
+    {:noreply, validated(socket, changeset)}
   end
 
   @role :admin
@@ -121,7 +121,5 @@ defmodule LeafWeb.PoliciesLive do
     push_navigate(socket, to: ~p"/settings/policies/#{policy}")
   end
 
-  defp saved(socket, {:error, changeset}) do
-    assign(socket, :form, to_form(changeset, action: :validate))
-  end
+  defp saved(socket, {:error, changeset}), do: validated(socket, changeset)
 end
