@@ -70,10 +70,10 @@ defmodule LeafWeb do
       import LeafWeb.CoreComponents
 
       # Common modules used in templates
-      alias Phoenix.LiveView.JS
       alias LeafWeb.Layouts
       alias LeafWeb.Parts
       alias LeafWeb.Wording
+      alias Phoenix.LiveView.JS
 
       # Routes generation with the ~p sigil
       unquote(verified_routes())
