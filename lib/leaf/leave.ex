@@ -258,7 +258,11 @@ defmodule Leaf.Leave do
   end
 
   @doc """
-  The pending requests `approver` is the one to decide, the leave furthest ahead first.
+  The pending requests `approver` is the one to decide, the leave starting soonest first.
+
+  §5.3 is a queue of what needs attention, so the request closest to being overtaken comes first,
+  and leave already under way or filed after the fact — which is late, not distant — sits above it
+  all. Two starting the same day are ordered by when they were filed.
 
   An administrator decides for the whole organisation, which is §5.3's fallback for a person whose
   manager is not there to do it; anybody else decides for the people who report to them.
@@ -272,7 +276,7 @@ defmodule Leaf.Leave do
         where: request.status == :pending,
         where: ^overseen(approver),
         group_by: request.id,
-        order_by: [desc: min(day.date)],
+        order_by: [asc: min(day.date), asc: request.inserted_at],
         preload: [:person, days: :leave_type]
     )
   end

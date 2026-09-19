@@ -4,6 +4,7 @@ defmodule Leaf.LeaveTest do
   alias Leaf.Audit.Entry
   alias Leaf.Fixtures
   alias Leaf.Leave
+  alias Leaf.Leave.Request
   alias Leaf.Policies
 
   @thursday ~D[2026-08-20]
@@ -431,6 +432,35 @@ defmodule Leaf.LeaveTest do
     assert %{leave: nil, working?: true} = days[~D[2026-08-24]]
     assert %{holiday: "Labour Day", working?: false} = days[~D[2026-08-26]]
     assert %{leave: nil, holiday: nil, working?: false} = days[@saturday]
+  end
+
+  describe "awaiting/1" do
+    defp pending(context, date, filed_at) do
+      request =
+        Fixtures.leave_request(%{
+          person_id: context.person.id,
+          status: :pending,
+          days: [entry(context.leave_type, date)]
+        })
+
+      Repo.update_all(from(r in Request, where: r.id == ^request.id),
+        set: [inserted_at: filed_at]
+      )
+
+      request.id
+    end
+
+    test "the queue starts with the soonest leave, and with the earlier filing of two", context do
+      soon = ~D[2026-09-25]
+
+      ahead = pending(context, @ahead, ~U[2026-09-01 09:00:00Z])
+      started = pending(context, @thursday, ~U[2026-09-02 09:00:00Z])
+      late_filing = pending(context, soon, ~U[2026-09-04 09:00:00Z])
+      early_filing = pending(context, soon, ~U[2026-09-03 09:00:00Z])
+
+      assert Enum.map(Leave.awaiting(context.manager), & &1.id) ==
+               [started, early_filing, late_filing, ahead]
+    end
   end
 
   describe "requestable/2" do
