@@ -10,7 +10,6 @@ defmodule LeafWeb.Wording do
 
   alias Leaf.Leave.Day
   alias Leaf.Leave.Request
-  alias Leaf.Ledger.Lot
   alias Leaf.Ledger.Statement
   alias Leaf.People.Person
   alias Leaf.Policies.LeavePolicy
@@ -134,14 +133,6 @@ defmodule LeafWeb.Wording do
     span(first, last)
   end
 
-  @doc "The span a request's days cover, short enough for a column of them: Mon 2 – Fri 6 Mar."
-  @spec brief_dates(Request.t()) :: String.t()
-  def brief_dates(request) do
-    {first, last} = covered(request)
-
-    brief_span(first, last)
-  end
-
   @doc """
   What a request comes to.
 
@@ -170,16 +161,8 @@ defmodule LeafWeb.Wording do
   quietly saying the region alone.
   """
   @spec calendar(Leaf.Org.Calendar.t()) :: String.t()
-  def calendar(%{parent: %Leaf.Org.Calendar{name: country}} = calendar) do
-    "#{country} — #{calendar.name}"
-  end
-
+  def calendar(%{parent: %{name: country}} = calendar), do: "#{country} — #{calendar.name}"
   def calendar(%{parent: nil} = calendar), do: calendar.name
-
-  @doc "A stretch of dates, as one date or as two: Monday 2 – Friday 6 March."
-  @spec span(Date.t(), Date.t()) :: String.t()
-  def span(date, date), do: weekday(date)
-  def span(first, last), do: stretch(first, last, "%A %-d", &weekday/1)
 
   @doc "A date with the day of the week it falls on: Saturday 22 August."
   @spec weekday(Date.t()) :: String.t()
@@ -224,10 +207,6 @@ defmodule LeafWeb.Wording do
     amount |> Decimal.round(2) |> Decimal.normalize() |> Decimal.to_string(:normal)
   end
 
-  @doc "A unit named for the amount it counts."
-  @spec unit(Decimal.t(), Day.unit()) :: String.t()
-  def unit(amount, unit), do: named(unit, Decimal.equal?(Decimal.abs(amount), 1))
-
   @doc "An amount waiting on an answer, and nothing at all where none is."
   @spec asked(Decimal.t() | nil, Day.unit()) :: String.t() | nil
   def asked(nil, _unit), do: nil
@@ -271,7 +250,7 @@ defmodule LeafWeb.Wording do
   # What is going to happen to the balance, and nothing at all where nothing is. The soonest lot
   # to lapse is the one worth saying; one that is the whole balance says so without the figure.
   defp expiry(statement) do
-    case statement.lots |> Lot.soonest_first() |> List.first() do
+    case List.first(statement.lots) do
       %{expires_on: nil} -> nil
       nil -> nil
       lot -> lapsing(lot, statement)
@@ -293,6 +272,15 @@ defmodule LeafWeb.Wording do
       false -> "expire"
     end
   end
+
+  defp brief_dates(request) do
+    {first, last} = covered(request)
+
+    brief_span(first, last)
+  end
+
+  defp span(date, date), do: weekday(date)
+  defp span(first, last), do: stretch(first, last, "%A %-d", &weekday/1)
 
   defp brief_span(date, date), do: brief(date)
   defp brief_span(first, last), do: stretch(first, last, "%a %-d", &brief/1)
@@ -319,6 +307,8 @@ defmodule LeafWeb.Wording do
 
     "#{Enum.join(leading, ", ")} and #{last}"
   end
+
+  defp unit(amount, unit), do: named(unit, Decimal.equal?(Decimal.abs(amount), 1))
 
   defp named(:hours, true), do: "hour"
   defp named(:hours, false), do: "hours"

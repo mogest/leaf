@@ -234,7 +234,7 @@ defmodule Leaf.Leave do
   off the same dates, so anything showing months needs nothing else to draw them.
   """
   @spec calendar(Person.t(), Date.Range.t()) :: [Month.t()]
-  def calendar(person, range), do: Month.over(person, range, days_filed(person, range))
+  def calendar(person, range), do: Month.over(person, range, Booked.days(person, range))
 
   @doc """
   Each of `people` and their own dates across `range`, as `viewer` may see them.
@@ -249,7 +249,7 @@ defmodule Leaf.Leave do
   end
 
   defp seen(person, viewer, range) do
-    days = days_filed(person, range)
+    days = Booked.days(person, range)
 
     case People.oversees?(viewer, person) do
       true -> days
@@ -357,19 +357,10 @@ defmodule Leaf.Leave do
   end
 
   @doc """
-  Every day of leave a person still holds within `range`, oldest first, with its request.
-
-  Approved and pending only. A declined day was never leave and a cancelled one has stopped being
-  it, so neither belongs on a calendar; a pending one does, because the person is counting on it.
-  """
-  @spec days_filed(Person.t(), Date.Range.t()) :: [Day.t()]
-  def days_filed(person, range), do: Booked.days(person, range)
-
-  @doc """
   Whether the person holds any leave of that type within `range`.
 
-  Approved and pending both, by the same rule as `days_filed/2`: a day nobody has decided yet is
-  one the person is counting on, and it draws on the same balance.
+  Approved and pending both: a day nobody has decided yet is one the person is counting on, and it
+  draws on the same balance.
   """
   @spec taken?(Person.t(), Ecto.UUID.t(), Date.Range.t()) :: boolean()
   def taken?(person, leave_type_id, range), do: Booked.any?(person, leave_type_id, range)
