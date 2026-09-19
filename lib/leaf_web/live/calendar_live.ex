@@ -39,7 +39,7 @@ defmodule LeafWeb.CalendarLive do
 
     {:noreply,
      socket
-     |> assign(:form, to_form(changeset, action: :validate))
+     |> validated(changeset)
      |> assign(:time_zones, Org.time_zones(country_code))}
   end
 
@@ -68,7 +68,7 @@ defmodule LeafWeb.CalendarLive do
   def handle_event("validate-holiday", %{"public_holiday" => params}, socket) do
     changeset = Org.change_public_holiday(socket.assigns.calendar, params)
 
-    {:noreply, assign(socket, :holiday_form, to_form(changeset, action: :validate))}
+    {:noreply, validated(socket, changeset, :holiday_form)}
   end
 
   @role :admin
@@ -261,9 +261,7 @@ defmodule LeafWeb.CalendarLive do
     |> put_flash(:info, "Saved.")
   end
 
-  defp renamed(socket, {:error, changeset}) do
-    assign(socket, :form, to_form(changeset, action: :validate))
-  end
+  defp renamed(socket, {:error, changeset}), do: validated(socket, changeset)
 
   defp added_region(socket, {:ok, region}) do
     socket
@@ -279,9 +277,7 @@ defmodule LeafWeb.CalendarLive do
     socket |> put_flash(:info, "#{holiday.name} is on the calendar.") |> blank() |> listed()
   end
 
-  defp added(socket, {:error, changeset}) do
-    assign(socket, :holiday_form, to_form(changeset, action: :validate))
-  end
+  defp added(socket, {:error, changeset}), do: validated(socket, changeset, :holiday_form)
 
   defp remove(socket, :error) do
     put_flash(socket, :error, "That holiday is not on this calendar.")

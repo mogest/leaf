@@ -34,7 +34,7 @@ defmodule LeafWeb.LeaveTypeLive do
   def handle_event("validate", %{"leave_type" => params}, socket) do
     changeset = Changeset.change(socket.assigns.leave_type, params)
 
-    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
+    {:noreply, validated(socket, changeset)}
   end
 
   @role :admin
@@ -114,7 +114,5 @@ defmodule LeafWeb.LeaveTypeLive do
     |> push_navigate(to: ~p"/settings/leave-types")
   end
 
-  defp saved(socket, {:error, changeset}) do
-    assign(socket, :form, to_form(changeset, action: :validate))
-  end
+  defp saved(socket, {:error, changeset}), do: validated(socket, changeset)
 end

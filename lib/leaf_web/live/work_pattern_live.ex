@@ -33,7 +33,7 @@ defmodule LeafWeb.WorkPatternLive do
   def handle_event("validate", %{"work_pattern" => params}, socket) do
     changeset = change(socket.assigns.pattern, socket.assigns.person, params)
 
-    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
+    {:noreply, validated(socket, changeset)}
   end
 
   @role :admin
@@ -111,7 +111,5 @@ defmodule LeafWeb.WorkPatternLive do
     |> push_navigate(to: ~p"/people/#{socket.assigns.person}")
   end
 
-  defp saved(socket, {:error, changeset}) do
-    assign(socket, :form, to_form(changeset, action: :validate))
-  end
+  defp saved(socket, {:error, changeset}), do: validated(socket, changeset)
 end

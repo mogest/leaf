@@ -36,7 +36,7 @@ defmodule LeafWeb.PersonFormLive do
   def handle_event("validate", %{"person" => params}, socket) do
     changeset = change(socket.assigns.person, socket.assigns.organisation, params)
 
-    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
+    {:noreply, validated(socket, changeset)}
   end
 
   @role :admin
@@ -127,7 +127,5 @@ defmodule LeafWeb.PersonFormLive do
     |> push_navigate(to: ~p"/people/#{person}")
   end
 
-  defp saved(socket, {:error, changeset}) do
-    assign(socket, :form, to_form(changeset, action: :validate))
-  end
+  defp saved(socket, {:error, changeset}), do: validated(socket, changeset)
 end

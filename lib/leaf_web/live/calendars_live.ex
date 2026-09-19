@@ -30,7 +30,7 @@ defmodule LeafWeb.CalendarsLive do
 
     {:noreply,
      socket
-     |> assign(:form, to_form(changeset, action: :validate))
+     |> validated(changeset)
      |> assign(:time_zones, Org.time_zones(params["country_code"]))}
   end
 
@@ -126,7 +126,5 @@ defmodule LeafWeb.CalendarsLive do
     push_navigate(socket, to: ~p"/settings/calendars/#{calendar}")
   end
 
-  defp saved(socket, {:error, changeset}) do
-    assign(socket, :form, to_form(changeset, action: :validate))
-  end
+  defp saved(socket, {:error, changeset}), do: validated(socket, changeset)
 end

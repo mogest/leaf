@@ -53,7 +53,7 @@ defmodule LeafWeb.EntitlementLive do
   def handle_event("validate", %{"policy_entitlement" => params}, socket) do
     changeset = change(socket.assigns, params)
 
-    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
+    {:noreply, validated(socket, changeset)}
   end
 
   @role :admin
@@ -267,7 +267,5 @@ defmodule LeafWeb.EntitlementLive do
     |> push_navigate(to: ~p"/settings/policies/#{socket.assigns.policy}")
   end
 
-  defp saved(socket, {:error, changeset}) do
-    assign(socket, :form, to_form(changeset, action: :validate))
-  end
+  defp saved(socket, {:error, changeset}), do: validated(socket, changeset)
 end
