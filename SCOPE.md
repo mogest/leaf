@@ -287,8 +287,11 @@ configurable delegate in v1.
 - Cancellation returns the balance and is recorded in the log.
 
 ### 5.5 Calendars
-- Team/organisation calendar showing who is away, when, what type, and status
-  (pending/approved).
+- Team/organisation calendar showing who is away and when. **Approved leave only, and without the
+  leave type.** Somebody who has asked for leave has not been given it, and an org-wide calendar
+  is the broadest visibility there is, so naming the type there is the thing §5.9 rules out.
+- A public holiday is drawn as a public holiday and not as leave, so a day nobody worked is not
+  read as a day somebody spent.
 - Public holidays shown per person's calendar.
 - Individual view of own leave and balances, and of how each balance was arrived at — what was
   granted or accrued, what was taken, and what lapsed.
