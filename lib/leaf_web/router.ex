@@ -33,10 +33,6 @@ defmodule LeafWeb.Router do
     plug :require_person
   end
 
-  pipeline :api do
-    plug :accepts, ["json"]
-  end
-
   scope "/", LeafWeb do
     get "/healthz", HealthController, :show
     get "/healthz/ready", HealthController, :ready

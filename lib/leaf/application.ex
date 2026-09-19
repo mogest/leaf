@@ -8,7 +8,6 @@ defmodule Leaf.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      LeafWeb.Telemetry,
       Leaf.Repo,
       {DNSCluster, query: Application.get_env(:leaf, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Leaf.PubSub},

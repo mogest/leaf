@@ -1,7 +1,7 @@
 defmodule LeafWeb do
   @moduledoc """
   The entrypoint for defining your web interface, such
-  as controllers, components, channels, and so on.
+  as controllers, components, and so on.
 
   This can be used in your application as:
 
@@ -30,15 +30,9 @@ defmodule LeafWeb do
     end
   end
 
-  def channel do
-    quote do
-      use Phoenix.Channel
-    end
-  end
-
   def controller do
     quote do
-      use Phoenix.Controller, formats: [:html, :json]
+      use Phoenix.Controller, formats: [:html]
 
       import Plug.Conn
 
@@ -50,14 +44,6 @@ defmodule LeafWeb do
     quote do
       use Phoenix.LiveView
       use LeafWeb.AuthorizedEvents
-
-      unquote(html_helpers())
-    end
-  end
-
-  def live_component do
-    quote do
-      use Phoenix.LiveComponent
 
       unquote(html_helpers())
     end
