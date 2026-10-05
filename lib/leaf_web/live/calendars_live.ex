@@ -62,7 +62,6 @@ defmodule LeafWeb.CalendarsLive do
               <th scope="col">Name</th>
               <th scope="col">Country</th>
               <th scope="col">Time zone</th>
-              <th scope="col">Holidays</th>
             </tr>
           </thead>
           <tbody>
@@ -70,7 +69,6 @@ defmodule LeafWeb.CalendarsLive do
               <th scope="row"><.link navigate={calendar.path}>{calendar.name}</.link></th>
               <td>{calendar.country_code}</td>
               <td>{calendar.time_zone}</td>
-              <td>{calendar.holidays}</td>
             </tr>
           </tbody>
         </table>
@@ -113,14 +111,9 @@ defmodule LeafWeb.CalendarsLive do
       name: Wording.calendar(calendar),
       country_code: String.upcase(calendar.country_code),
       time_zone: calendar.time_zone,
-      holidays: counted(Org.observed_holidays(calendar.id)),
       path: ~p"/settings/calendars/#{calendar}"
     }
   end
-
-  defp counted([]), do: "none yet"
-  defp counted([_one]), do: "one"
-  defp counted(holidays), do: "#{length(holidays)}"
 
   defp saved(socket, {:ok, calendar}) do
     push_navigate(socket, to: ~p"/settings/calendars/#{calendar}")

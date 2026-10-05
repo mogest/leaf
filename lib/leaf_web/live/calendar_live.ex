@@ -82,7 +82,6 @@ defmodule LeafWeb.CalendarLive do
       <section>
         <header>
           <h2>Public holidays</h2>
-          <p>{@counted}</p>
         </header>
         <p :if={@country}>
           Only what is local to {@calendar.name} goes here — everybody on it
@@ -181,9 +180,7 @@ defmodule LeafWeb.CalendarLive do
   defp listed(socket) do
     holidays = Org.public_holidays(socket.assigns.calendar.id)
 
-    socket
-    |> assign(:holidays, Enum.map(holidays, &row/1))
-    |> assign(:counted, counted(holidays))
+    assign(socket, :holidays, Enum.map(holidays, &row/1))
   end
 
   defp blank(socket) do
@@ -196,16 +193,6 @@ defmodule LeafWeb.CalendarLive do
 
   defp row(holiday) do
     %{id: holiday.id, date: Wording.date(holiday.date), name: holiday.name}
-  end
-
-  defp counted([]), do: "none yet"
-  defp counted([_one]), do: "one"
-  defp counted(holidays), do: "#{length(holidays)}, #{spanning(holidays)}"
-
-  defp spanning(holidays) do
-    dates = Enum.map(holidays, & &1.date)
-
-    "#{Enum.min(dates, Date).year} to #{Enum.max(dates, Date).year}"
   end
 
   defp renamed(socket, {:ok, calendar}) do

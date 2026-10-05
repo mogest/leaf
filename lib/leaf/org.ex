@@ -173,32 +173,24 @@ defmodule Leaf.Org do
   end
 
   @doc """
-  Every public holiday somebody on a calendar observes, in date order.
+  Every public holiday somebody on a calendar observes within `range`, in date order.
 
   A region observes its country's holidays as well as its own, and cannot decline one of them.
   """
-  @spec observed_holidays(Ecto.UUID.t()) :: [PublicHoliday.t()]
-  def observed_holidays(calendar_id), do: Repo.all(observed(calendar_id))
-
-  @doc "The same, within `range`."
   @spec observed_holidays(Ecto.UUID.t(), Date.Range.t()) :: [PublicHoliday.t()]
   def observed_holidays(calendar_id, range) do
+    # A region that enters a day its country already keeps is still one day off, and an allowance
+    # that counted it twice would be worth two. So a date is observed once, under the nearer of the
+    # two names for it.
     Repo.all(
-      from holiday in observed(calendar_id),
-        where: holiday.date >= ^range.first and holiday.date <= ^range.last
+      from holiday in PublicHoliday,
+        join: calendar in Calendar,
+        on: calendar.id == ^calendar_id,
+        where: holiday.calendar_id in [calendar.id, calendar.parent_id],
+        where: holiday.date >= ^range.first and holiday.date <= ^range.last,
+        distinct: holiday.date,
+        order_by: [asc: holiday.date, desc: holiday.calendar_id == ^calendar_id]
     )
-  end
-
-  # A region that enters a day its country already keeps is still one day off, and an allowance that
-  # counted it twice would be worth two. So a date is observed once, under the nearer of the two
-  # names for it.
-  defp observed(calendar_id) do
-    from holiday in PublicHoliday,
-      join: calendar in Calendar,
-      on: calendar.id == ^calendar_id,
-      where: holiday.calendar_id in [calendar.id, calendar.parent_id],
-      distinct: holiday.date,
-      order_by: [asc: holiday.date, desc: holiday.calendar_id == ^calendar_id]
   end
 
   defp region_of(%Calendar{parent_id: nil} = country) do
