@@ -98,6 +98,7 @@ li > button[popovertarget] {
   color: var(--sheet);
   font-size: var(--size-base);
   font-weight: 600;
+  white-space: nowrap;
 
   &:hover {
     background: var(--green-ink);
@@ -252,6 +253,7 @@ li > button[popovertarget] {
 
   & > div {
     display: flex;
+    flex-wrap: wrap;
     gap: 1.125rem;
   }
 
@@ -385,5 +387,41 @@ li > button[popovertarget] {
     padding-block-start: var(--step-3);
     font-size: var(--size-base);
     color: var(--ink-soft);
+  }
+
+  /* On a phone a request is its dates and where it got to, with what it is and who has had it under
+     them. */
+  @media (width < 48rem) {
+    & th {
+      flex-grow: 1;
+    }
+
+    & td {
+      order: 2;
+      font-size: var(--size-sm);
+      color: var(--ink-soft);
+    }
+
+    & td:nth-child(3)::before {
+      content: "\00b7";
+      display: inline-block;
+      margin-inline: var(--step-2);
+    }
+
+    & td:nth-child(4),
+    & td:nth-child(6) {
+      order: 0;
+      inline-size: auto;
+      margin-inline-start: var(--step-2);
+    }
+
+    /* A row with nothing to do to it keeps the menu's room, so the standings line up. */
+    & td:nth-child(6) {
+      min-inline-size: 1.5rem;
+    }
+
+    & td:nth-child(5) {
+      flex-basis: 100%;
+    }
   }
 }

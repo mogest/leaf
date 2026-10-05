@@ -75,8 +75,7 @@ defmodule LeafWeb.BalancesLive do
       <div :if={@account}>
         <section class="balance-sheet">
           <header>
-            <h2>{@account.name}</h2>
-            <p>as at {@account.as_at}</p>
+            <h2>{@account.name} <small>as at {@account.as_at}</small></h2>
           </header>
           <dl>
             <dt>Held</dt>

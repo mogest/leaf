@@ -55,7 +55,9 @@ defmodule LeafWeb.LeaveTypeLive do
     ~H"""
     <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
-        <.link navigate={~p"/settings/leave-types"}>Leave types</.link>
+        <nav>
+          <.link navigate={~p"/settings/leave-types"}>Leave types</.link>
+        </nav>
         <h1>{@leave_type.name}</h1>
       </header>
 

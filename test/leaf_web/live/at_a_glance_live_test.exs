@@ -95,7 +95,7 @@ defmodule LeafWeb.AtAGlanceLiveTest do
     assert html =~ "with Ines Vasquez since "
 
     assert html =~ "Declined"
-    assert html =~ "Ines Vasquez said Three of you are away"
+    assert html =~ "Ines Vasquez said “Three of you are away"
   end
 
   test "a request waiting on an answer is shown ahead of decided ones", context do

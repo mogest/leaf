@@ -147,6 +147,22 @@ defmodule LeafWeb.PeopleLiveTest do
     assert html =~ "On no policy, so nothing is granted."
   end
 
+  test "an administrator can cancel somebody's leave from their page", context do
+    days = [
+      %{leave_type_id: context.leave_type.id, date: ~D[2030-03-04], amount: "8", unit: :hours}
+    ]
+
+    request =
+      Fixtures.leave_request(%{person_id: context.person.id, status: :pending, days: days})
+
+    {:ok, live, _html} = live(context.conn, ~p"/people/#{context.person}")
+
+    html = live |> element("button", "Cancel") |> render_click()
+
+    assert html =~ "The request is cancelled."
+    assert {:ok, %{status: :cancelled}} = Leave.fetch_request(request.id)
+  end
+
   test "a week worked unevenly is said run by run, the days off left out", context do
     other = Fixtures.person(%{organisation_id: context.organisation.id, name: "Ines Vasquez"})
 

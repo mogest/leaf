@@ -5,8 +5,8 @@ defmodule LeafWeb.PersonLive do
 
   Everything effective-dated here can be put right after the fact (§4.4), so each succession is
   shown as its own list, a row opening onto its edit where it has one and removed from its menu.
-  Only an administrator sees those; a manager reading their report's page sees the record and
-  nothing to change on it, nor why a balance was ever put right by hand.
+  Only an administrator sees those; a manager reading their report's page sees the record, with
+  nothing to change on it but the report's leave, nor why a balance was ever put right by hand.
   """
 
   use LeafWeb, :live_view
@@ -54,11 +54,19 @@ defmodule LeafWeb.PersonLive do
     {:noreply, remove(socket, assignment, &People.delete_calendar_assignment/2)}
   end
 
+  @role :member
+  def handle_event("cancel-request", %{"id" => id}, socket) do
+    {:noreply, socket |> Parts.cancel_request(id) |> loaded()}
+  end
+
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} page="people" viewer={@viewer}>
       <header>
+        <nav :if={@admin?}>
+          <.link navigate={~p"/people"}>People</.link>
+        </nav>
         <h1>{@person.name}</h1>
         <.link :if={@admin?} class="button" navigate={~p"/people/#{@person}/edit"}>Edit</.link>
       </header>
@@ -206,7 +214,7 @@ defmodule LeafWeb.PersonLive do
           <p :if={@entries == []}>Nothing has been entered by hand.</p>
         </section>
 
-        <Parts.requests requests={@requests} title="Requests">
+        <Parts.requests requests={@requests} title="Requests" cancel>
           <:empty>They have not asked for any leave.</:empty>
         </Parts.requests>
       </div>
@@ -259,7 +267,11 @@ defmodule LeafWeb.PersonLive do
     |> assign(:policies, Enum.map(People.policy_assignments(person), &policy/1))
     |> assign(:calendars, Enum.map(People.calendar_assignments(person), &calendar/1))
     |> assign(:entries, entries(person, leave_types))
-    |> assign(:requests, Enum.map(Leave.requests(person), &Wording.filed(&1, today)))
+    |> assign(:requests, Enum.map(Leave.requests(person), &filed(&1, actor(socket), today)))
+  end
+
+  defp filed(request, viewer, today) do
+    request |> Wording.filed(today) |> Map.put(:cancellable?, Leave.revisable?(request, viewer))
   end
 
   defp actor(socket), do: socket.assigns.current_person
