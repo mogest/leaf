@@ -4,9 +4,9 @@ defmodule LeafWeb.PersonLive do
   they hold.
 
   Everything effective-dated here can be put right after the fact (§4.4), so each succession is
-  shown as its own list with the row it is made of editable and removable. Only an administrator
-  sees those; a manager reading their report's page sees the record and nothing to change on it,
-  nor why a balance was ever put right by hand.
+  shown as its own list, a row opening onto its edit where it has one and removed from its menu.
+  Only an administrator sees those; a manager reading their report's page sees the record and
+  nothing to change on it, nor why a balance was ever put right by hand.
   """
 
   use LeafWeb, :live_view
@@ -91,11 +91,11 @@ defmodule LeafWeb.PersonLive do
           </header>
           <ol :if={@patterns != []}>
             <li :for={pattern <- @patterns}>
-              <span>{pattern.from}</span>
+              <.link :if={@admin?} navigate={pattern.path}>{pattern.from}</.link>
+              <span :if={!@admin?}>{pattern.from}</span>
               <span>{pattern.days}</span>
               <span>{pattern.weekly}</span>
-              <div :if={@admin?}>
-                <.link navigate={pattern.path}>Edit</.link>
+              <Parts.row_menu :if={@admin?} id={"work-pattern-#{pattern.id}"} label={pattern.from}>
                 <button
                   type="button"
                   phx-click="remove-work-pattern"
@@ -104,7 +104,7 @@ defmodule LeafWeb.PersonLive do
                 >
                   Remove
                 </button>
-              </div>
+              </Parts.row_menu>
             </li>
           </ol>
           <p :if={@patterns == []}>No work pattern on record, so no balance can be worked out.</p>
@@ -121,7 +121,11 @@ defmodule LeafWeb.PersonLive do
             <li :for={assignment <- @policies}>
               <span>{assignment.from}</span>
               <.link navigate={assignment.path}>{assignment.name}</.link>
-              <div :if={@admin?}>
+              <Parts.row_menu
+                :if={@admin?}
+                id={"policy-assignment-#{assignment.id}"}
+                label={assignment.name}
+              >
                 <button
                   type="button"
                   phx-click="remove-policy-assignment"
@@ -130,7 +134,7 @@ defmodule LeafWeb.PersonLive do
                 >
                   Remove
                 </button>
-              </div>
+              </Parts.row_menu>
             </li>
           </ol>
           <p :if={@policies == []}>On no policy, so nothing is granted.</p>
@@ -151,7 +155,11 @@ defmodule LeafWeb.PersonLive do
             <li :for={assignment <- @calendars}>
               <span>{assignment.from}</span>
               <.link navigate={assignment.path}>{assignment.name}</.link>
-              <div :if={@admin?}>
+              <Parts.row_menu
+                :if={@admin?}
+                id={"calendar-assignment-#{assignment.id}"}
+                label={assignment.name}
+              >
                 <button
                   type="button"
                   phx-click="remove-calendar-assignment"
@@ -160,7 +168,7 @@ defmodule LeafWeb.PersonLive do
                 >
                   Remove
                 </button>
-              </div>
+              </Parts.row_menu>
             </li>
           </ol>
           <p :if={@calendars == []}>On no calendar, so no public holidays and no time zone.</p>

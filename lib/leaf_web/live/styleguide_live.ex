@@ -251,16 +251,26 @@ defmodule LeafWeb.StyleguideLive do
           </thead>
           <tbody>
             <tr>
-              <th scope="row">Annual leave</th>
+              <th scope="row"><a href={@here}>Annual leave</a></th>
               <td>hours</td>
               <td>offered</td>
-              <td><button type="button">Withdraw</button></td>
+              <td>
+                <Parts.row_menu id="specimen-annual" label="Annual leave">
+                  <button type="button">Withdraw</button>
+                  <button type="button" data-confirm="Remove annual leave?">Remove</button>
+                </Parts.row_menu>
+              </td>
             </tr>
             <tr data-tone="past">
-              <th scope="row">Quarterly leave</th>
+              <th scope="row"><a href={@here}>Quarterly leave</a></th>
               <td>hours</td>
               <td>withdrawn 1 January 2026</td>
-              <td><button type="button">Offer again</button></td>
+              <td>
+                <Parts.row_menu id="specimen-quarterly" label="Quarterly leave">
+                  <button type="button">Offer again</button>
+                  <button type="button" data-confirm="Remove quarterly leave?">Remove</button>
+                </Parts.row_menu>
+              </td>
             </tr>
           </tbody>
         </table>

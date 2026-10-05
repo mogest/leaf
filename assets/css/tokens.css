@@ -56,6 +56,7 @@
   --radius: 0.5rem;
   --radius-panel: 0.875rem;
   --pill: 100vmax;
+  --lift: 0 6px 16px oklch(0.27 0.028 155 / 0.1);
 
   --measure: 72rem;
   --rail: 13.75rem;

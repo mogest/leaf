@@ -116,28 +116,6 @@ body > div[data-phx-main] {
       position: fixed;
       inset: auto auto calc(var(--step-5) + var(--rail-row) + var(--step-2)) 0.875rem;
       inline-size: calc(var(--rail) - 1.75rem);
-      margin: 0;
-      padding: var(--step-1);
-      border: 1px solid var(--edge);
-      border-radius: var(--radius);
-      background: var(--sheet);
-      box-shadow: 0 6px 16px oklch(0.27 0.028 155 / 0.1);
-
-      & a {
-        display: flex;
-        align-items: center;
-        block-size: 2rem;
-        padding-inline: var(--step-3);
-        border-radius: var(--radius);
-        font-size: var(--size-base);
-        color: var(--ink-quiet);
-
-        &:hover {
-          background: var(--ground);
-          color: var(--ink);
-          text-decoration: none;
-        }
-      }
     }
   }
 }
@@ -195,20 +173,13 @@ main section > ol > li {
   padding-block: 0.625rem;
   border-block-end: 1px solid var(--rule);
 
-  & > span:first-child {
+  & > :first-child {
     min-inline-size: 11rem;
   }
 
   & > span:not(:first-child) {
     color: var(--ink-soft);
     font-variant-numeric: tabular-nums;
-  }
-
-  & > div {
-    margin-inline-start: auto;
-    display: flex;
-    align-items: baseline;
-    gap: 0.875rem;
   }
 }
 
@@ -704,16 +675,18 @@ main.approvals > ol > li {
   }
 }
 
-/* On a list of records, a row that names one and offers nothing else to do is itself the way in
-   to it, so the name's link covers the whole line. */
-:is(main.people, main.settings) tbody tr:has(th a):not(:has(button)) {
+/* On a list of records, a row that names one is itself the way in to it, so the name's link covers
+   the whole line. Anything else to be done to it stands above the link, in the row's menu. */
+:is(main.people, main.settings, main.your-requests, main.styleguide)
+  :is(tbody tr:has(th a), section > ol > li:has(> a:first-child)) {
   position: relative;
 
   &:hover {
     background: var(--panel);
   }
 
-  & th a {
+  & th a,
+  & > a:first-child {
     &:hover {
       text-decoration: none;
     }
@@ -743,33 +716,17 @@ main.people {
 
 /* What an administrator configures: an entitlement takes more than one line to say. */
 main.settings section > ol > li {
+  & > a:first-child {
+    font-weight: 500;
+  }
+
+  & > span {
+    font-size: var(--size-base);
+  }
+
   & > p {
     flex-basis: 100%;
     font-size: var(--size-base);
     color: var(--ink-soft);
-  }
-
-  & > p:first-child {
-    display: flex;
-    gap: 0.875rem;
-    font-size: var(--size-md);
-    color: var(--ink);
-
-    & > span:first-child {
-      min-inline-size: 11rem;
-      font-weight: 500;
-    }
-
-    & > span + span {
-      color: var(--ink-soft);
-      font-size: var(--size-base);
-    }
-  }
-
-  & > div {
-    display: flex;
-    align-items: center;
-    gap: var(--step-3);
-    font-size: var(--size-base);
   }
 }
