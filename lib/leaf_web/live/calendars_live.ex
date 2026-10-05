@@ -108,11 +108,14 @@ defmodule LeafWeb.CalendarsLive do
   defp row(calendar) do
     %{
       name: Wording.calendar(calendar),
-      country_code: String.upcase(calendar.country_code),
+      country_code: country_code(calendar.country_code),
       time_zone: calendar.time_zone,
       path: ~p"/settings/calendars/#{calendar}"
     }
   end
+
+  defp country_code(nil), do: nil
+  defp country_code(code), do: String.upcase(code)
 
   defp saved(socket, {:ok, calendar}) do
     push_navigate(socket, to: ~p"/settings/calendars/#{calendar}")

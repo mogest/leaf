@@ -176,8 +176,11 @@ defmodule LeafWeb.SettingsLiveTest do
     assert [held, region] = Org.calendars(context.organisation.id)
     assert held.id == country.id
     assert region.name == "Auckland"
-    assert region.country_code == country.country_code
+    assert region.country_code == nil
     assert region.time_zone == country.time_zone
+
+    assert {:ok, %{country_code: nil}} =
+             Org.update_calendar(region, nil, %{"country_code" => "AU"})
 
     assert_raise MatchError, fn ->
       live(context.conn, ~p"/settings/calendars/#{region}/regions/new")
