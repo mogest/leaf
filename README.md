@@ -4,7 +4,9 @@ Open source leave management for organisations with staff and contractors across
 countries. One place where people request leave, managers approve it, and balances accrue —
 producing a log and reports that administrators feed into whatever payroll system they use.
 
-Elixir / Phoenix / LiveView / Postgres. Early: the domain is built, the web interface is not.
+Elixir / Phoenix / LiveView / Postgres. The web interface covers requesting, amending and approving
+leave, balances, who is away, and administering people, policies, leave types, calendars and the
+audit log. There is no authentication yet: signing in is picking a person from a list.
 
 `SCOPE.md` is the functional specification and the place to start.
 
