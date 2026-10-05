@@ -68,14 +68,9 @@ defmodule LeafWeb.PolicyLive do
         </header>
         <ol :if={@entitlements != []}>
           <li :for={entitlement <- @entitlements}>
-            <p>
-              <span>{entitlement.leave_type}</span>
-              <span>{entitlement.window}</span>
-            </p>
-            <p>{entitlement.grant}</p>
-            <p>{entitlement.expiry}</p>
-            <div>
-              <.link navigate={entitlement.path}>Edit</.link>
+            <.link navigate={entitlement.path}>{entitlement.leave_type}</.link>
+            <span>{entitlement.window}</span>
+            <Parts.row_menu id={"entitlement-#{entitlement.id}"} label={entitlement.leave_type}>
               <button
                 type="button"
                 phx-click="remove"
@@ -84,7 +79,9 @@ defmodule LeafWeb.PolicyLive do
               >
                 Remove
               </button>
-            </div>
+            </Parts.row_menu>
+            <p>{entitlement.grant}</p>
+            <p>{entitlement.expiry}</p>
           </li>
         </ol>
         <p :if={@entitlements == []}>This policy grants nothing yet.</p>

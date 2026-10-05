@@ -21,14 +21,14 @@ defmodule LeafWeb.YourRequestsLiveTest do
   end
 
   test "every request is listed, with what can still be done to a pending one", context do
-    file(context)
+    request = file(context)
 
-    {:ok, _live, html} = live(context.conn, ~p"/leave")
+    {:ok, live, html} = live(context.conn, ~p"/leave")
 
     assert html =~ "Mon 4 Mar"
     assert html =~ "8 hours"
     assert html =~ "Pending"
-    assert html =~ ">Edit<"
+    assert has_element?(live, ~s(th a[href="/leave/#{request.id}/amend"]))
   end
 
   test "cancelling a request returns what it drew", context do
@@ -59,9 +59,10 @@ defmodule LeafWeb.YourRequestsLiveTest do
   test "an approved request is not the person's to change", context do
     {:ok, _approved} = context |> file() |> Leave.approve(context.manager)
 
-    {:ok, _live, html} = live(context.conn, ~p"/leave")
+    {:ok, live, html} = live(context.conn, ~p"/leave")
 
     assert html =~ "Approved"
-    refute html =~ ">Edit<"
+    refute has_element?(live, "th a")
+    refute has_element?(live, "td button")
   end
 end

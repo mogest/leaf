@@ -2,8 +2,8 @@ defmodule LeafWeb.YourRequestsLive do
   @moduledoc """
   Everything you have ever asked for, and what can still be done about each of it.
 
-  Which of them you may still change is `Leaf.Leave`'s to say, not this page's: it asks, and shows
-  the buttons for the answer it gets.
+  Which of them you may still change is `Leaf.Leave`'s to say, not this page's: it asks, and a row
+  it says yes to opens onto its amendment, with cancelling it in the row's menu.
   """
 
   use LeafWeb, :live_view
@@ -37,16 +37,16 @@ defmodule LeafWeb.YourRequestsLive do
       <Parts.requests requests={@requests}>
         <:empty>You have not asked for any leave yet.</:empty>
         <:actions :let={request}>
-          <.link :if={request.revisable?} navigate={~p"/leave/#{request.id}/amend"}>Edit</.link>
-          <button
-            :if={request.revisable?}
-            type="button"
-            phx-click="cancel"
-            phx-value-id={request.id}
-            data-confirm="Give this leave back? The request is cancelled and what it drew returned."
-          >
-            Cancel
-          </button>
+          <Parts.row_menu :if={request.path} id={"request-#{request.id}"} label={request.dates}>
+            <button
+              type="button"
+              phx-click="cancel"
+              phx-value-id={request.id}
+              data-confirm="Give this leave back? The request is cancelled and what it drew returned."
+            >
+              Cancel
+            </button>
+          </Parts.row_menu>
         </:actions>
       </Parts.requests>
     </Layouts.app>
@@ -68,8 +68,11 @@ defmodule LeafWeb.YourRequestsLive do
   defp shown(request, person, today, manager) do
     request
     |> Wording.filed(today, manager)
-    |> Map.put(:revisable?, Leave.revisable?(request, person))
+    |> Map.put(:path, amend_path(request, Leave.revisable?(request, person)))
   end
+
+  defp amend_path(request, true), do: ~p"/leave/#{request.id}/amend"
+  defp amend_path(_request, false), do: nil
 
   defp cancelled(socket, {:ok, _request}),
     do: put_flash(socket, :info, "The request is cancelled.")

@@ -146,18 +146,40 @@ button:not(.button) {
   }
 }
 
-/* On a row of a record, an action is a word like the links beside it, not a button to press. */
-:is(tbody, li) button:not(.button) {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font-size: inherit;
+/* A menu opened from a button: where it stands is the opener's to say, what it looks like is not.
+   An item that cannot be undone asks first, and reads as the refusal it is when about to be chosen. */
+[popover] {
+  margin: 0;
+  padding: var(--step-1);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow: var(--lift);
 
-  &:hover {
-    color: var(--green);
-    text-decoration: underline;
-    text-underline-offset: 3px;
+  & :is(a, button) {
+    display: flex;
+    align-items: center;
+    inline-size: 100%;
+    block-size: 2rem;
+    padding: 0 var(--step-3);
+    border: 0;
+    border-radius: var(--radius);
+    background: none;
+    color: var(--ink-quiet);
+    font-size: var(--size-base);
+    white-space: nowrap;
+
+    &:hover {
+      background: var(--ground);
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    &[data-confirm]:hover {
+      background: var(--clay-wash);
+      color: var(--clay-ink);
+    }
   }
 }
 

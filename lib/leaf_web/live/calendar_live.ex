@@ -100,14 +100,16 @@ defmodule LeafWeb.CalendarLive do
               <td>{holiday.date}</td>
               <th scope="row">{holiday.name}</th>
               <td>
-                <button
-                  type="button"
-                  phx-click="remove"
-                  phx-value-id={holiday.id}
-                  data-confirm="Remove this holiday? Every allowance drawn from this calendar is recounted."
-                >
-                  Remove
-                </button>
+                <Parts.row_menu id={"holiday-#{holiday.id}"} label={holiday.name}>
+                  <button
+                    type="button"
+                    phx-click="remove"
+                    phx-value-id={holiday.id}
+                    data-confirm="Remove this holiday? Every allowance drawn from this calendar is recounted."
+                  >
+                    Remove
+                  </button>
+                </Parts.row_menu>
               </td>
             </tr>
           </tbody>
@@ -116,6 +118,19 @@ defmodule LeafWeb.CalendarLive do
       </section>
 
       <aside>
+        <section :if={!@country}>
+          <header>
+            <h2>Regions</h2>
+            <.link class="add" navigate={~p"/settings/calendars/#{@calendar}/regions/new"}>Add</.link>
+          </header>
+          <ul :if={@regions != []}>
+            <li :for={region <- @regions}>
+              <.link navigate={~p"/settings/calendars/#{region}"}>{region.name}</.link>
+            </li>
+          </ul>
+          <p :if={@regions == []}>No regions, so everybody here observes the same days.</p>
+        </section>
+
         <.form
           id="new-holiday"
           for={@holiday_form}
@@ -135,19 +150,6 @@ defmodule LeafWeb.CalendarLive do
             <button class="button" type="submit">Add it</button>
           </footer>
         </.form>
-
-        <section :if={!@country}>
-          <header>
-            <h2>Regions</h2>
-            <.link class="add" navigate={~p"/settings/calendars/#{@calendar}/regions/new"}>Add</.link>
-          </header>
-          <ul :if={@regions != []}>
-            <li :for={region <- @regions}>
-              <.link navigate={~p"/settings/calendars/#{region}"}>{region.name}</.link>
-            </li>
-          </ul>
-          <p :if={@regions == []}>No regions, so everybody here observes the same days.</p>
-        </section>
 
         <.form id="calendar" for={@form} phx-change="validate-calendar" phx-submit="save-calendar">
           <section>

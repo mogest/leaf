@@ -105,10 +105,51 @@ defmodule LeafWeb.Parts do
   end
 
   @doc """
+  What can be done to the row it ends: a `⋯` that opens a menu of it.
+
+  The menu is a popover, placed under its button when it opens. An item that cannot be undone
+  carries `data-confirm`, which is also what marks it as one.
+
+  ## Examples
+
+      <Parts.row_menu id={"holiday-\#{holiday.id}"} label={holiday.name}>
+        <button type="button" phx-click="remove" data-confirm="Remove this holiday?">Remove</button>
+      </Parts.row_menu>
+
+  """
+  attr :id, :string, required: true, doc: "the menu's id, unique on the page"
+  attr :label, :string, required: true, doc: "what the row is, for the button's accessible name"
+
+  slot :inner_block, required: true, doc: "the links and buttons the menu offers"
+
+  def row_menu(assigns) do
+    ~H"""
+    <button type="button" popovertarget={@id} aria-label={"Actions for #{@label}"}>⋯</button>
+    <div id={@id} popover phx-hook=".RowMenu">
+      {render_slot(@inner_block)}
+    </div>
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".RowMenu">
+      export default {
+        mounted() {
+          this.el.addEventListener("beforetoggle", ({newState}) => {
+            if (newState !== "open") return
+            const {bottom, right} = this.el.previousElementSibling.getBoundingClientRect()
+            this.el.style.top = `${bottom + window.scrollY}px`
+            this.el.style.right = `${document.documentElement.clientWidth - right}px`
+          })
+          this.el.addEventListener("click", () => this.el.hidePopover())
+        }
+      }
+    </script>
+    """
+  end
+
+  @doc """
   Requests as a record of them: a row each, a column for every part of one.
 
-  Each one is a `t:LeafWeb.Wording.filed/0`, worked out before it arrives here. What can be done
-  to one is the caller's to say, and the column for it is only there where anything can.
+  Each one is a `t:LeafWeb.Wording.filed/0`, worked out before it arrives here. One carrying a
+  `path` is opened by its row. What can be done to one is the caller's to say, and the column for
+  it is only there where anything can.
 
   ## Examples
 
@@ -141,12 +182,15 @@ defmodule LeafWeb.Parts do
             <th scope="col">Amount</th>
             <th scope="col">Standing</th>
             <th scope="col">Who and when</th>
-            <th :if={@actions != []} scope="col">Actions</th>
+            <th :if={@actions != []} scope="col"></th>
           </tr>
         </thead>
         <tbody>
           <tr :for={request <- @requests} data-tone={tone(request.standing)}>
-            <th scope="row">{request.dates}</th>
+            <th scope="row">
+              <.link :if={request[:path]} navigate={request[:path]}>{request.dates}</.link>
+              <span :if={!request[:path]}>{request.dates}</span>
+            </th>
             <td>{request.type}</td>
             <td>{request.amount}</td>
             <td>

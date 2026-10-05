@@ -22,6 +22,46 @@ section > header {
   }
 }
 
+/* What can be done to a row: a quiet mark at its end, standing above the link the row may be, and
+   a menu placed under it when it opens. A table gives the mark a column no wider than itself. */
+td:has(> button[popovertarget]) {
+  inline-size: 0;
+  padding-inline-end: 0;
+}
+
+:is(td, li) > button[popovertarget] {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pill);
+  background: none;
+  color: var(--ink-soft);
+  font-size: var(--size-md);
+  line-height: 1;
+
+  &:hover {
+    background: var(--rule);
+    color: var(--ink);
+  }
+}
+
+li > button[popovertarget] {
+  margin-inline-start: auto;
+}
+
+:is(td, li) > [popover] {
+  position: absolute;
+  inset: auto;
+  min-inline-size: 9rem;
+  margin-block-start: var(--step-1);
+}
+
 /* Adding to what a section lists: a thing to press, told apart from the words beside it. */
 .add {
   display: inline-flex;
@@ -339,10 +379,6 @@ section > header {
       text-decoration: line-through;
       text-decoration-color: var(--ink-faint);
     }
-  }
-
-  & tbody :is(a, button) + :is(a, button) {
-    margin-inline-start: var(--step-3);
   }
 
   & > p {
