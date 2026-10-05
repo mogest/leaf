@@ -115,64 +115,66 @@ defmodule LeafWeb.CalendarLive do
         <p :if={@holidays == []}>No holidays on this calendar yet.</p>
       </section>
 
-      <.form
-        id="new-holiday"
-        for={@holiday_form}
-        phx-change="validate-holiday"
-        phx-submit="save-holiday"
-      >
-        <section>
+      <aside>
+        <.form
+          id="new-holiday"
+          for={@holiday_form}
+          phx-change="validate-holiday"
+          phx-submit="save-holiday"
+        >
+          <section>
+            <header>
+              <h2>Add a holiday</h2>
+            </header>
+            <.input field={@holiday_form[:date]} type="date" label="Date" />
+            <.input field={@holiday_form[:name]} type="text" label="Name" />
+          </section>
+
+          <footer>
+            <p>A holiday goes on the date it is observed — a Saturday one on the Monday after.</p>
+            <button class="button" type="submit">Add it</button>
+          </footer>
+        </.form>
+
+        <section :if={!@country}>
           <header>
-            <h2>Add a holiday</h2>
+            <h2>Regions</h2>
+            <.link class="add" navigate={~p"/settings/calendars/#{@calendar}/regions/new"}>Add</.link>
           </header>
-          <.input field={@holiday_form[:date]} type="date" label="Date" />
-          <.input field={@holiday_form[:name]} type="text" label="Name" />
+          <ul :if={@regions != []}>
+            <li :for={region <- @regions}>
+              <.link navigate={~p"/settings/calendars/#{region}"}>{region.name}</.link>
+            </li>
+          </ul>
+          <p :if={@regions == []}>No regions, so everybody here observes the same days.</p>
         </section>
 
-        <footer>
-          <p>A holiday goes on the date it is observed — a Saturday one on the Monday after.</p>
-          <button class="button" type="submit">Add it</button>
-        </footer>
-      </.form>
+        <.form id="calendar" for={@form} phx-change="validate-calendar" phx-submit="save-calendar">
+          <section>
+            <header>
+              <h2>The calendar itself</h2>
+            </header>
+            <.input field={@form[:name]} type="text" label="Name" />
+            <.input
+              :if={!@country}
+              field={@form[:country_code]}
+              type="text"
+              label="Country code, two letters"
+            />
+            <.input
+              field={@form[:time_zone]}
+              type="select"
+              label="Time zone"
+              prompt="Choose one"
+              options={@time_zones}
+            />
+          </section>
 
-      <section :if={!@country}>
-        <header>
-          <h2>Regions</h2>
-          <.link class="add" navigate={~p"/settings/calendars/#{@calendar}/regions/new"}>Add</.link>
-        </header>
-        <ul :if={@regions != []}>
-          <li :for={region <- @regions}>
-            <.link navigate={~p"/settings/calendars/#{region}"}>{region.name}</.link>
-          </li>
-        </ul>
-        <p :if={@regions == []}>No regions, so everybody here observes the same days.</p>
-      </section>
-
-      <.form id="calendar" for={@form} phx-change="validate-calendar" phx-submit="save-calendar">
-        <section>
-          <header>
-            <h2>The calendar itself</h2>
-          </header>
-          <.input field={@form[:name]} type="text" label="Name" />
-          <.input
-            :if={!@country}
-            field={@form[:country_code]}
-            type="text"
-            label="Country code, two letters"
-          />
-          <.input
-            field={@form[:time_zone]}
-            type="select"
-            label="Time zone"
-            prompt="Choose one"
-            options={@time_zones}
-          />
-        </section>
-
-        <footer>
-          <button class="button" type="submit">Save</button>
-        </footer>
-      </.form>
+          <footer>
+            <button class="button" type="submit">Save</button>
+          </footer>
+        </.form>
+      </aside>
     </Layouts.app>
     """
   end

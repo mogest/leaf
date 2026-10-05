@@ -243,6 +243,26 @@ main:has(> .balance-sheet) {
   }
 }
 
+/* A page whose controls stand beside what they change: the record down the middle, the forms down
+   the side. */
+main:has(> aside) {
+  display: grid;
+  grid-template-columns: 1fr 20rem;
+  column-gap: var(--step-9);
+  align-content: start;
+  align-items: start;
+
+  & > header {
+    grid-column: 1 / -1;
+  }
+
+  & > aside {
+    display: flex;
+    flex-direction: column;
+    gap: var(--step-8);
+  }
+}
+
 main.styleguide > section {
   display: flex;
   flex-direction: column;
