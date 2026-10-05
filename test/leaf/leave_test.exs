@@ -5,6 +5,7 @@ defmodule Leaf.LeaveTest do
   alias Leaf.Fixtures
   alias Leaf.Leave
   alias Leaf.Leave.Request
+  alias Leaf.People
   alias Leaf.Policies
 
   @thursday ~D[2026-08-20]
@@ -137,9 +138,9 @@ defmodule Leaf.LeaveTest do
     assert Repo.all(Entry) == []
   end
 
-  # Filing a day needs the record to reach back over it in both senses: hours to measure it by, and
-  # a policy offering its leave type on the date.
-  test "a pattern and a policy reaching back over the date are what make it filable", context do
+  # Filing a day needs the record to reach back over it in every sense: hours to measure it by, a
+  # policy offering its leave type on the date, and employment on it.
+  test "a pattern, a policy and employment reaching back make a date filable", context do
     Fixtures.work_pattern(%{person_id: context.person.id, effective_from: ~D[2024-01-01]})
 
     Fixtures.policy_assignment(%{
@@ -151,7 +152,26 @@ defmodule Leaf.LeaveTest do
     {:ok, _reaching} =
       Policies.update_entitlement(context.entitlement, nil, %{effective_from: ~D[2024-01-01]})
 
-    assert {:ok, %{status: :pending}} = file(context, [~D[2024-02-01]])
+    assert {:error, changeset} = file(context, [~D[2024-02-01]])
+    assert errors_on(changeset).days == ["hold a leave type that was not on offer on its date"]
+
+    {:ok, person} =
+      People.update_person(context.person, nil, %{employment_start_date: ~D[2024-01-01]})
+
+    assert {:ok, %{status: :pending}} = file(%{context | person: person}, [~D[2024-02-01]])
+  end
+
+  test "leave cannot be filed or amended onto a date after employment ends", context do
+    {:ok, filed} = file(context, [@thursday])
+    {:ok, person} = People.update_person(context.person, nil, %{employment_end_date: @thursday})
+
+    assert {:error, filing} = file(%{context | person: person}, [@friday])
+    assert errors_on(filing).days == ["hold a leave type that was not on offer on its date"]
+
+    assert {:error, amending} =
+             Leave.amend(reload(filed), person, %{days: [entry(context.leave_type, @friday)]})
+
+    assert errors_on(amending).days == ["hold a leave type that was not on offer on its date"]
   end
 
   test "leave cannot be filed against a leave type nobody offers the person", context do

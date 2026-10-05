@@ -69,9 +69,10 @@ defmodule Leaf.Leave.Offer do
   Errors on a request holding a day of a type nobody offered the person on its date.
 
   A form asks first and offers only what it may, so this is the same question asked of what was
-  filed: it is what refuses a type from another organisation, one since withdrawn, or one whose
-  entitlement closed years before the date. The refusal is about the request rather than about a
-  field, the way a clashing day is, because which day it was is `types/2`'s to say.
+  filed: it is what refuses a type from another organisation, one since withdrawn, one whose
+  entitlement closed years before the date, or any type at all on a date outside the person's
+  employment. The refusal is about the request rather than about a field, the way a clashing day
+  is, because which day it was is `types/2`'s to say.
   """
   @spec validate(Changeset.t(), Person.t()) :: Changeset.t()
   def validate(%{valid?: false} = changeset, _person), do: changeset
@@ -94,13 +95,20 @@ defmodule Leaf.Leave.Offer do
     Enum.reject(days, fn day -> Enum.any?(offerings, &offers?(&1, day)) end)
   end
 
-  # Every entitlement the person's policies hold over `range`, each with the stretch of it they were
-  # on that policy for. A stretch they were on no policy for is in none of them, so it is a date
-  # nothing is offered on and no type covers the range.
+  # Every entitlement the person's policies hold over the part of `range` they are employed for, each
+  # with the stretch of it they were on that policy for. A stretch they were not employed for, or on
+  # no policy for, is in none of them, so it is a date nothing is offered on and no type covers the
+  # range.
   defp offerings(person, range) do
-    person
-    |> People.leave_policy_segments(range)
-    |> Enum.flat_map(fn {span, policy_id} -> of_policy(policy_id, span) end)
+    case Dates.intersect(range, person.employment_start_date, person.employment_end_date) do
+      {:ok, employed} ->
+        person
+        |> People.leave_policy_segments(employed)
+        |> Enum.flat_map(fn {span, policy_id} -> of_policy(policy_id, span) end)
+
+      :error ->
+        []
+    end
   end
 
   defp of_policy(policy_id, span) do
