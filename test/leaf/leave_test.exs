@@ -254,6 +254,13 @@ defmodule Leaf.LeaveTest do
     assert errors_on(changeset).days == ["ask for more of a day than is left in it"]
   end
 
+  test "a request holds a date against a leave type once", context do
+    assert {:error, changeset} = file(context, [@friday, @friday], %{amount: "4"})
+
+    assert %{date: ["has already been taken"]} in errors_on(changeset).days
+    assert Repo.all(Entry) == []
+  end
+
   test "a date is free again once the leave on it has been declined", context do
     {:ok, filed} = file(context, [@friday])
     {:ok, _declined} = filed |> reload() |> Leave.decline(context.manager)

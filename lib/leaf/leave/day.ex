@@ -57,6 +57,7 @@ defmodule Leaf.Leave.Day do
     |> validate_working_day()
     |> assoc_constraint(:leave_request)
     |> assoc_constraint(:leave_type)
+    |> unique_constraint([:leave_request_id, :date, :leave_type_id], error_key: :date)
   end
 
   @doc """
