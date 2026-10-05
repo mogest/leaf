@@ -8,6 +8,9 @@ defmodule LeafWeb.Parts do
 
   use Phoenix.Component
 
+  import Phoenix.LiveView, only: [put_flash: 3]
+
+  alias Leaf.Leave
   alias LeafWeb.Wording
 
   @weekdays [
@@ -73,8 +76,7 @@ defmodule LeafWeb.Parts do
     ~H"""
     <section :if={@balances != [] or @empty != []} class="balance-sheet">
       <header>
-        <.heading title={@title} path={@path} />
-        <p>as at today</p>
+        <.heading title={@title} path={@path}><small>as at today</small></.heading>
       </header>
       <dl :if={@balances != []}>
         <%= for balance <- @balances do %>
@@ -91,16 +93,17 @@ defmodule LeafWeb.Parts do
 
   attr :title, :string, required: true
   attr :path, :string, default: nil
+  slot :inner_block, required: true
 
   defp heading(%{path: nil} = assigns) do
     ~H"""
-    <h2>{@title}</h2>
+    <h2>{@title} {render_slot(@inner_block)}</h2>
     """
   end
 
   defp heading(assigns) do
     ~H"""
-    <h2><.link navigate={@path}>{@title}</.link></h2>
+    <h2><.link navigate={@path}>{@title}</.link> {render_slot(@inner_block)}</h2>
     """
   end
 
@@ -148,8 +151,8 @@ defmodule LeafWeb.Parts do
   Requests as a record of them: a row each, a column for every part of one.
 
   Each one is a `t:LeafWeb.Wording.filed/0`, worked out before it arrives here. One carrying a
-  `path` is opened by its row. What can be done to one is the caller's to say, and the column for
-  it is only there where anything can.
+  `path` is opened by its row. With `cancel`, one carrying `cancellable?` offers cancelling it in
+  its menu, which sends `"cancel-request"` for the page to answer with `cancel_request/2`.
 
   ## Examples
 
@@ -164,8 +167,9 @@ defmodule LeafWeb.Parts do
     default: nil,
     doc: "what to call them, where the page has not said already"
 
+  attr :cancel, :boolean, default: false, doc: "whether the page answers `\"cancel-request\"`"
+
   slot :empty, required: true, doc: "what to say where there are none"
-  slot :actions, doc: "what can be done to one, given the request"
   slot :footer, doc: "anything to say under the list"
 
   def requests(assigns) do
@@ -174,37 +178,77 @@ defmodule LeafWeb.Parts do
       <header :if={@title}>
         <h2>{@title}</h2>
       </header>
-      <table :if={@requests != []}>
-        <thead>
-          <tr>
-            <th scope="col">When</th>
-            <th scope="col">Leave</th>
-            <th scope="col">Amount</th>
-            <th scope="col">Standing</th>
-            <th scope="col">Who and when</th>
-            <th :if={@actions != []} scope="col"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr :for={request <- @requests} data-tone={tone(request.standing)}>
-            <th scope="row">
-              <.link :if={request[:path]} navigate={request[:path]}>{request.dates}</.link>
-              <span :if={!request[:path]}>{request.dates}</span>
-            </th>
-            <td>{request.type}</td>
-            <td>{request.amount}</td>
-            <td>
-              <span class="standing" data-standing={request.standing}>{request.label}</span>
-            </td>
-            <td>{request.progress}</td>
-            <td :if={@actions != []}>{render_slot(@actions, request)}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div :if={@requests != []}>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">When</th>
+              <th scope="col">Leave</th>
+              <th scope="col">Amount</th>
+              <th scope="col">Standing</th>
+              <th scope="col">Who and when</th>
+              <th :if={@cancel} scope="col"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :for={request <- @requests} data-tone={tone(request.standing)}>
+              <th scope="row">
+                <.link :if={request[:path]} navigate={request[:path]}>{request.dates}</.link>
+                <span :if={!request[:path]}>{request.dates}</span>
+              </th>
+              <td>{request.type}</td>
+              <td>{request.amount}</td>
+              <td>
+                <span class="standing" data-standing={request.standing}>{request.label}</span>
+              </td>
+              <td>{request.progress}</td>
+              <td :if={@cancel}>
+                <.row_menu
+                  :if={request.cancellable?}
+                  id={"request-#{request.id}"}
+                  label={request.dates}
+                >
+                  <button
+                    type="button"
+                    phx-click="cancel-request"
+                    phx-value-id={request.id}
+                    data-confirm="Cancel this leave? The request is cancelled and what it drew returned."
+                  >
+                    Cancel
+                  </button>
+                </.row_menu>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <p :if={@requests == []}>{render_slot(@empty)}</p>
       <p :if={@footer != []}>{render_slot(@footer)}</p>
     </section>
     """
+  end
+
+  @doc """
+  Cancels the request `id` names as whoever is signed in, and says how that went.
+
+  Whether they may is `Leaf.Leave`'s to decide; the page reloads what it shows afterwards.
+  """
+  @spec cancel_request(Phoenix.LiveView.Socket.t(), String.t()) :: Phoenix.LiveView.Socket.t()
+  def cancel_request(socket, id) do
+    {:ok, request} = Leave.fetch_request(id)
+
+    cancelled(socket, Leave.cancel(request, socket.assigns.current_person))
+  end
+
+  defp cancelled(socket, {:ok, _request}),
+    do: put_flash(socket, :info, "The request is cancelled.")
+
+  defp cancelled(socket, {:error, :forbidden}) do
+    put_flash(socket, :error, "That is not yours to cancel.")
+  end
+
+  defp cancelled(socket, {:error, _changeset}) do
+    put_flash(socket, :error, "The request would not cancel.")
   end
 
   # Leave that was given back or refused is over, and the row it is on reads as the past.

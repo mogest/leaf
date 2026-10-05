@@ -18,11 +18,8 @@ defmodule LeafWeb.YourRequestsLive do
 
   @impl Phoenix.LiveView
   @role :member
-  def handle_event("cancel", %{"id" => id}, socket) do
-    {:ok, request} = Leave.fetch_request(id)
-
-    {:noreply,
-     socket |> cancelled(Leave.cancel(request, socket.assigns.current_person)) |> listed()}
+  def handle_event("cancel-request", %{"id" => id}, socket) do
+    {:noreply, socket |> Parts.cancel_request(id) |> listed()}
   end
 
   @impl Phoenix.LiveView
@@ -34,20 +31,8 @@ defmodule LeafWeb.YourRequestsLive do
         <.link class="button" navigate={~p"/leave/new"}>Request leave</.link>
       </header>
 
-      <Parts.requests requests={@requests}>
+      <Parts.requests requests={@requests} cancel>
         <:empty>You have not asked for any leave yet.</:empty>
-        <:actions :let={request}>
-          <Parts.row_menu :if={request.path} id={"request-#{request.id}"} label={request.dates}>
-            <button
-              type="button"
-              phx-click="cancel"
-              phx-value-id={request.id}
-              data-confirm="Give this leave back? The request is cancelled and what it drew returned."
-            >
-              Cancel
-            </button>
-          </Parts.row_menu>
-        </:actions>
       </Parts.requests>
     </Layouts.app>
     """
@@ -66,22 +51,13 @@ defmodule LeafWeb.YourRequestsLive do
   end
 
   defp shown(request, person, today, manager) do
+    revisable? = Leave.revisable?(request, person)
+
     request
     |> Wording.filed(today, manager)
-    |> Map.put(:path, amend_path(request, Leave.revisable?(request, person)))
+    |> Map.merge(%{path: amend_path(request, revisable?), cancellable?: revisable?})
   end
 
   defp amend_path(request, true), do: ~p"/leave/#{request.id}/amend"
   defp amend_path(_request, false), do: nil
-
-  defp cancelled(socket, {:ok, _request}),
-    do: put_flash(socket, :info, "The request is cancelled.")
-
-  defp cancelled(socket, {:error, :forbidden}) do
-    put_flash(socket, :error, "That is not yours to cancel.")
-  end
-
-  defp cancelled(socket, {:error, _changeset}) do
-    put_flash(socket, :error, "The request would not cancel.")
-  end
 end

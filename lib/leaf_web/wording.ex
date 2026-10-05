@@ -340,7 +340,7 @@ defmodule LeafWeb.Wording do
 
   defp progress(%{status: :declined, review_comment: comment} = request, _awaiting)
        when is_binary(comment) do
-    "#{request.reviewed_by.name} said #{comment}"
+    "#{request.reviewed_by.name} said “#{comment}”"
   end
 
   defp progress(request, _awaiting) do

@@ -28,29 +28,31 @@ defmodule LeafWeb.PeopleLive do
         <.link class="button" navigate={~p"/people/new"}>Add</.link>
       </header>
 
-      <table>
-        <thead>
-          <tr>
-            <th scope="col">Name</th>
-            <th scope="col">Email</th>
-            <th scope="col">Employment</th>
-            <th scope="col">Hours a week</th>
-            <th scope="col">Manager</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr :for={person <- @people} data-tone={person.tone}>
-            <th scope="row">
-              <.link navigate={person.path}>{person.name}</.link>
-              <small :if={person.admin?}>administrator</small>
-            </th>
-            <td>{person.email}</td>
-            <td>{person.employment}</td>
-            <td>{person.hours}</td>
-            <td>{person.manager}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Email</th>
+              <th scope="col">Employment</th>
+              <th scope="col">Hours a week</th>
+              <th scope="col">Manager</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :for={person <- @people} data-tone={person.tone}>
+              <th scope="row">
+                <.link navigate={person.path}>{person.name}</.link>
+                <small :if={person.admin?}>administrator</small>
+              </th>
+              <td>{person.email}</td>
+              <td>{person.employment}</td>
+              <td>{person.hours}</td>
+              <td>{person.manager}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </Layouts.app>
     """
   end

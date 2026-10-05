@@ -55,7 +55,9 @@ defmodule LeafWeb.PolicyLive do
     ~H"""
     <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
-        <.link navigate={~p"/settings/policies"}>Leave policies</.link>
+        <nav>
+          <.link navigate={~p"/settings/policies"}>Leave policies</.link>
+        </nav>
         <h1>{@policy.name}</h1>
       </header>
 

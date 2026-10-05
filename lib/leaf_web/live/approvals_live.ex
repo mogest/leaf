@@ -35,14 +35,14 @@ defmodule LeafWeb.ApprovalsLive do
           <p>
             <.link navigate={~p"/people/#{request.person_id}"}>{request.person}</.link>
           </p>
+          <p>{request.detail}</p>
+          <p>{request.dates}</p>
           <p>
-            {request.dates}
             <span>{request.amount}</span>
             <span :if={request.remaining} data-tone={request.overdrawn && "wrong"}>
               {request.remaining}
             </span>
           </p>
-          <p>{request.detail}</p>
           <blockquote :if={request.note}>“{request.note}”</blockquote>
           <p :if={request.overdrawn} data-tone="wrong">
             Taking leave in advance. It can still be approved.
@@ -78,7 +78,7 @@ defmodule LeafWeb.ApprovalsLive do
       dates: Wording.dates(request),
       amount: Wording.amount(request),
       detail:
-        "#{Wording.types(request)} · asked on #{Wording.day_and_month(request.inserted_at)}",
+        "#{Wording.types(request)} · requested on #{Wording.day_and_month(request.inserted_at)}",
       note: request.note,
       remaining: Wording.remaining(projected),
       overdrawn: Wording.overdrawn?(projected)

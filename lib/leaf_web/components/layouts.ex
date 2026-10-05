@@ -66,7 +66,7 @@ defmodule LeafWeb.Layouts do
         </svg>
         <span>Leaf</span>
       </a>
-      <ul>
+      <ul id="pages" popover>
         <li :for={{label, path, pages} <- rail(@viewer)}>
           <a href={path} aria-current={current(@page, pages)}>{label}</a>
         </li>
@@ -82,6 +82,20 @@ defmodule LeafWeb.Layouts do
           </li>
         </ul>
       </div>
+      <button popovertarget="pages" aria-label="Menu">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        </svg>
+      </button>
     </nav>
     <main class={@page}>
       {render_slot(@inner_block)}

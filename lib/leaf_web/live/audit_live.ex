@@ -57,26 +57,28 @@ defmodule LeafWeb.AuditLive do
         <header>
           <h2>What has been changed</h2>
         </header>
-        <table :if={@entries != []}>
-          <thead>
-            <tr>
-              <th scope="col">When</th>
-              <th scope="col">What</th>
-              <th scope="col">By</th>
-              <th scope="col">About</th>
-              <th scope="col">Changed</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr :for={entry <- @entries}>
-              <td>{entry.at}</td>
-              <th scope="row">{entry.action}</th>
-              <td>{entry.actor}</td>
-              <td>{entry.subject}</td>
-              <td>{entry.changed}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div :if={@entries != []}>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">When</th>
+                <th scope="col">What</th>
+                <th scope="col">By</th>
+                <th scope="col">About</th>
+                <th scope="col">Changed</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :for={entry <- @entries}>
+                <td>{entry.at}</td>
+                <th scope="row">{entry.action}</th>
+                <td>{entry.actor}</td>
+                <td>{entry.subject}</td>
+                <td>{entry.changed}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <p :if={@entries == []}>Nothing has been recorded yet.</p>
       </section>
     </Layouts.app>
