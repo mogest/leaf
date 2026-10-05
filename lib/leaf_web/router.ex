@@ -70,6 +70,7 @@ defmodule LeafWeb.Router do
       live "/settings/policies/:policy_id/entitlements/:id", EntitlementLive, :edit
       live "/settings/calendars", CalendarsLive
       live "/settings/calendars/:id", CalendarLive
+      live "/settings/calendars/:calendar_id/regions/new", RegionLive
       live "/settings/audit", AuditLive
     end
 

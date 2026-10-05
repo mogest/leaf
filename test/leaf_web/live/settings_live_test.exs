@@ -160,9 +160,18 @@ defmodule LeafWeb.SettingsLiveTest do
     country = Fixtures.calendar(%{organisation_id: context.organisation.id})
     Fixtures.public_holiday(%{calendar_id: country.id, date: ~D[2026-10-26], name: "Labour Day"})
 
-    {:ok, live, _html} = live(context.conn, ~p"/settings/calendars/#{country}")
+    {:ok, live, _html} = live(context.conn, ~p"/settings/calendars/#{country}/regions/new")
 
-    live |> form("#new-region", region: %{"name" => "Auckland"}) |> render_submit()
+    assert live |> form("#region", calendar: %{"name" => ""}) |> render_submit() =~
+             "can&#39;t be blank"
+
+    {:ok, live, html} =
+      live
+      |> form("#region", calendar: %{"name" => "Auckland"})
+      |> render_submit()
+      |> follow_redirect(context.conn)
+
+    assert html =~ "Auckland is a region of New Zealand."
 
     assert [held, region] = Org.calendars(context.organisation.id)
     assert held.id == country.id
@@ -170,7 +179,9 @@ defmodule LeafWeb.SettingsLiveTest do
     assert region.country_code == country.country_code
     assert region.time_zone == country.time_zone
 
-    {:ok, live, _html} = live(context.conn, ~p"/settings/calendars/#{region}")
+    assert_raise MatchError, fn ->
+      live(context.conn, ~p"/settings/calendars/#{region}/regions/new")
+    end
 
     html =
       live
