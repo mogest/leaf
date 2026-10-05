@@ -49,7 +49,10 @@ defmodule LeafWeb.SettingsLiveTest do
     assert leave_type.name == "Study leave"
 
     {:ok, live, _html} = live(context.conn, ~p"/settings/leave-types/#{leave_type}")
-    live |> form("#leave-type", leave_type: %{"name" => "Study"}) |> render_submit()
+
+    live
+    |> form("#leave-type", leave_type: %{"name" => "Study", "suspends_accrual" => "true"})
+    |> render_submit()
 
     {:ok, _live, html} = live(context.conn, ~p"/settings/leave-types")
     assert html =~ "Study"
@@ -60,6 +63,7 @@ defmodule LeafWeb.SettingsLiveTest do
 
     {:ok, archived} = Policies.fetch_leave_type(leave_type.id)
     assert archived.archived_at
+    assert archived.suspends_accrual
   end
 
   test "a policy grants what its entitlements say, in words", context do

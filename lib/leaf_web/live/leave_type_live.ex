@@ -74,6 +74,7 @@ defmodule LeafWeb.LeaveTypeLive do
           </header>
           <.input field={@form[:name]} type="text" label="Name" />
           <.input field={@form[:unit]} type="select" label="Counted in" options={@units} />
+          <.input field={@form[:suspends_accrual]} type="checkbox" label="Suspends accrual" />
           <.input field={@form[:position]} type="number" label="Order" />
         </section>
 

@@ -26,13 +26,20 @@ defmodule LeafWeb.ApprovalsLiveTest do
     assert html =~ "Rae Halloran"
     assert html =~ "Monday 4 March"
     assert html =~ "A wedding"
+    refute html =~ "overdrawn"
   end
 
   test "a request the balance will not cover is flagged where it is decided", context do
+    Fixtures.balance_entry(%{
+      person_id: context.person.id,
+      leave_type_id: context.leave_type.id,
+      amount: "5"
+    })
+
     {:ok, _live, html} = live(sign_in(context.conn, context.manager), ~p"/approvals")
 
     assert html =~ ~s(data-tone="wrong")
-    assert html =~ "8 hours overdrawn"
+    assert html =~ "3 hours overdrawn"
     assert html =~ "Taking leave in advance. It can still be approved."
   end
 

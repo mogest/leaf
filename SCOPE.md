@@ -105,8 +105,12 @@ set:
 | Birthday leave | days | Block grant on the person's birthday | Lapses a configurable window (default 2 weeks) after the birthday | Always 1 day, not pro-rated. May go negative |
 | Longevity leave | days | Block grant on employment anniversary | Lapses at the next anniversary | Always 1 day, not pro-rated |
 | Public holiday allowance | hours | Calculated from the person's calendar × FTE (§4.9) | Follows annual leave | Only where holidays are included in entitlement |
-| Unpaid leave | hours | Not granted | n/a | No balance, recorded only |
+| Unpaid leave | hours | Not granted | n/a | No balance, recorded only. Suspends accrual |
 | Bereavement / other | days | Org-configurable | Org-configurable | |
+
+A type may **suspend accrual**: time on it counts as not worked, so daily accrual shrinks over it
+(§4.7). That is what the leave is rather than how a policy grants it, so it is set on the type.
+A type that grants nothing has no balance to go under, so filing it says nothing about one.
 
 ### 4.7 Granting: accrual and block grants
 Two mechanisms, chosen per leave type in the policy.
@@ -114,6 +118,12 @@ Two mechanisms, chosen per leave type in the policy.
 **Daily accrual.** The entitlement accrues evenly across its grant period, day by day. Rate
 derives from the policy entitlement, the person's FTE and the length of the period. This is
 annual leave's model, and it is the thing that removes the parallel spreadsheet.
+
+Approved leave of a type that suspends accrual (§4.6) takes its share of the person's working time
+off it: a stretch accrues `normal × (1 − suspended hours ÷ scheduled hours)`, scheduled hours being
+those of their work pattern. Measured in hours, the weekends inside a stretch of it accrue nothing
+either, and a half day suspends half. The year's entitlement shrinks; the anniversary does not move.
+Block grants, the public holiday allowance included, are never reduced.
 
 **Block grant.** The whole entitlement lands at once, on the first day of its grant period.
 Block grants exist because NZ and UK law grant some leave — sick leave in particular — as a

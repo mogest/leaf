@@ -5,6 +5,9 @@ defmodule Leaf.Policies.LeaveType do
   `unit` is the unit of the balance, inherited by every amount that measures it. Grant and expiry
   behaviour belongs to the policy, not here — the same type behaves differently under two
   policies.
+
+  `suspends_accrual` is what the leave is rather than how a policy grants it: time on it counts as
+  not worked, so daily accrual shrinks over it (§4.7).
   """
 
   use Leaf.Schema
@@ -15,11 +18,12 @@ defmodule Leaf.Policies.LeaveType do
 
   @units [:hours, :days]
 
-  @fields [:name, :unit, :position, :archived_at]
+  @fields [:name, :unit, :suspends_accrual, :position, :archived_at]
 
   schema "leave_types" do
     field :name, :string
     field :unit, Ecto.Enum, values: @units
+    field :suspends_accrual, :boolean, default: false
     field :position, :integer
     field :archived_at, :utc_datetime
 
@@ -32,7 +36,7 @@ defmodule Leaf.Policies.LeaveType do
   def changeset(leave_type, attrs) do
     leave_type
     |> cast(attrs, @fields)
-    |> validate_required([:organisation_id, :name, :unit, :position])
+    |> validate_required([:organisation_id, :name, :unit, :suspends_accrual, :position])
     |> assoc_constraint(:organisation)
   end
 end

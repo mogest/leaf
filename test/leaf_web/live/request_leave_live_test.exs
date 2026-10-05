@@ -86,13 +86,9 @@ defmodule LeafWeb.RequestLeaveLiveTest do
   end
 
   # A type the policy records and grants nothing in, so anything filed against it goes negative.
-  defp unfunded(context) do
+  defp unfunded(context, attrs) do
     leave_type =
-      Fixtures.leave_type(%{
-        organisation_id: context.person.organisation_id,
-        name: "Unpaid leave",
-        position: 3
-      })
+      Fixtures.leave_type(Map.put(attrs, :organisation_id, context.person.organisation_id))
 
     Fixtures.policy_entitlement(%{
       leave_policy_id: context.policy.id,
@@ -237,12 +233,28 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert html =~ "Send the request"
   end
 
-  test "leave the balance will not cover says so, and is filed all the same", context do
-    unpaid = unfunded(context)
+  test "leave the balance will not cover says so, and leave with no balance says nothing",
+       context do
+    unpaid = unfunded(context, %{name: "Unpaid leave", position: 2})
+    bereavement = unfunded(context, %{name: "Bereavement leave", position: 3})
+    Fixtures.balance_entry(%{person_id: context.person.id, leave_type_id: bereavement.id})
+
+    Fixtures.leave_request(%{
+      person_id: context.person.id,
+      days: [%{leave_type_id: unpaid.id, date: @friday, amount: "8", unit: :hours}]
+    })
 
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
-    asked = asking(context, %{"leave_type_id" => unpaid.id})
 
+    html =
+      live
+      |> form("form", request: asking(context, %{"leave_type_id" => unpaid.id}))
+      |> render_change()
+
+    refute html =~ "Unpaid leave —"
+    refute html =~ "What it would leave"
+
+    asked = asking(context, %{"leave_type_id" => bereavement.id})
     html = live |> form("form", request: asked) |> render_change()
 
     assert html =~ "-8 hours"
@@ -250,7 +262,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     live |> form("form", request: asked) |> render_submit()
 
-    assert [%{status: :pending}] = Leave.requests(context.person)
+    assert [%{status: :approved}, %{status: :pending}] = Leave.requests(context.person)
   end
 
   test "a range with nothing workable in it says so and files nothing", context do

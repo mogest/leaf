@@ -195,18 +195,18 @@ defmodule LeafWeb.RequestLeaveLive do
   # What the person holds now, read once: the balance a type is offered with does not turn on what
   # is typed into the form.
   defp holding(socket, person, today) do
-    ready? = Ledger.ready?(person, today)
-
     socket
     |> assign(:person, person)
-    |> assign(:ready?, ready?)
-    |> assign(:held, held(person, today, ready?))
+    |> assign(:held, held(person, today, Ledger.ready?(person, today)))
   end
 
   defp held(_person, _today, false), do: %{}
 
   defp held(person, today, true) do
-    person |> Ledger.statements(today) |> Map.new(&{&1.leave_type.id, &1})
+    person
+    |> Ledger.statements(today)
+    |> Enum.reject(& &1.recorded_only)
+    |> Map.new(&{&1.leave_type.id, &1})
   end
 
   # Which types can be asked for turns on the dates being asked about, so a stretch that is over
@@ -418,15 +418,8 @@ defmodule LeafWeb.RequestLeaveLive do
   defp projection(%{assigns: %{request: %{status: status}}}, _entries) when status != :pending,
     do: nil
 
-  defp projection(%{assigns: %{ready?: false}}, _entries), do: nil
-
-  defp projection(socket, [entry | _rest] = entries) do
-    %{person: person, today: today} = socket.assigns
-
-    case Ledger.fetch_statement(person, entry.leave_type_id, today, Leave.proposed(entries)) do
-      {:ok, statement} -> statement
-      :error -> nil
-    end
+  defp projection(socket, entries) do
+    socket.assigns.person |> Ledger.projected(Leave.proposed(entries)) |> List.first()
   end
 
   # One leave type is asked for, so one balance is left, and it is said whether the request is a
