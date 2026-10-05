@@ -10,7 +10,7 @@ defmodule Leaf.Leave.DayTest do
 
     assert Decimal.equal?(Day.in_unit(whole_day, :hours, nine), "9")
     assert Decimal.equal?(Day.in_unit(whole_day, :days, nine), "1")
-    assert Decimal.equal?(Day.in_unit(an_hour, :hours, nil), "1")
+    assert Decimal.equal?(Day.in_unit(an_hour, :hours, nine), "1")
 
     # Exact rather than 0.11: the figure is rounded where it is stored or shown, and not before.
     assert Decimal.equal?(Decimal.round(Day.in_unit(an_hour, :days, nine), 6), "0.111111")
@@ -37,6 +37,8 @@ defmodule Leaf.Leave.DayTest do
     none = Decimal.new("0")
 
     assert Decimal.equal?(Day.in_unit(whole_day, :hours, none), "0")
+    assert Decimal.equal?(Day.in_unit(whole_day, :days, none), "0")
+    assert Decimal.equal?(Day.in_unit(an_hour, :hours, none), "0")
     assert Decimal.equal?(Day.in_unit(an_hour, :days, none), "0")
   end
 end
