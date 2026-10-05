@@ -13,7 +13,6 @@ defmodule LeafWeb.CalendarLive do
 
   alias Leaf.Changeset
   alias Leaf.Org
-  alias Leaf.Org.Calendar
 
   @impl Phoenix.LiveView
   def mount(%{"id" => id}, _session, socket) do
@@ -48,20 +47,6 @@ defmodule LeafWeb.CalendarLive do
     written = Org.update_calendar(socket.assigns.calendar, socket.assigns.current_person, params)
 
     {:noreply, renamed(socket, written)}
-  end
-
-  @role :admin
-  def handle_event("validate-region", %{"region" => params}, socket) do
-    changeset = Org.change_region(socket.assigns.calendar, params)
-
-    {:noreply, assign(socket, :region_form, region_form(changeset, action: :validate))}
-  end
-
-  @role :admin
-  def handle_event("save-region", %{"region" => params}, socket) do
-    created = Org.create_region(socket.assigns.calendar, socket.assigns.current_person, params)
-
-    {:noreply, added_region(socket, created)}
   end
 
   @role :admin
@@ -154,6 +139,7 @@ defmodule LeafWeb.CalendarLive do
       <section :if={!@country}>
         <header>
           <h2>Regions</h2>
+          <.link class="add" navigate={~p"/settings/calendars/#{@calendar}/regions/new"}>Add</.link>
         </header>
         <ul :if={@regions != []}>
           <li :for={region <- @regions}>
@@ -162,31 +148,6 @@ defmodule LeafWeb.CalendarLive do
         </ul>
         <p :if={@regions == []}>No regions, so everybody here observes the same days.</p>
       </section>
-
-      <.form
-        :if={!@country}
-        id="new-region"
-        for={@region_form}
-        phx-change="validate-region"
-        phx-submit="save-region"
-      >
-        <section>
-          <header>
-            <h2>Add a region</h2>
-          </header>
-          <.input field={@region_form[:name]} type="text" label="Name" />
-          <.input
-            field={@region_form[:time_zone]}
-            type="select"
-            label="Time zone, where it differs from the country's"
-            options={@time_zones}
-          />
-        </section>
-
-        <footer>
-          <button class="button" type="submit">Add it</button>
-        </footer>
-      </.form>
 
       <.form id="calendar" for={@form} phx-change="validate-calendar" phx-submit="save-calendar">
         <section>
@@ -226,19 +187,12 @@ defmodule LeafWeb.CalendarLive do
   end
 
   defp blank(socket) do
-    socket
-    |> assign(:holiday_form, to_form(Org.change_public_holiday(socket.assigns.calendar, %{})))
-    |> assign(:region_form, region_form(socket.assigns.calendar))
+    assign(
+      socket,
+      :holiday_form,
+      to_form(Org.change_public_holiday(socket.assigns.calendar, %{}))
+    )
   end
-
-  # A region is a calendar like its country, so its form is named apart from the one below it.
-  defp region_form(%Calendar{parent_id: nil} = country) do
-    region_form(Org.change_region(country, %{}), [])
-  end
-
-  defp region_form(%Calendar{}), do: nil
-
-  defp region_form(changeset, opts), do: to_form(changeset, [as: :region] ++ opts)
 
   defp row(holiday) do
     %{id: holiday.id, date: Wording.date(holiday.date), name: holiday.name}
@@ -263,16 +217,6 @@ defmodule LeafWeb.CalendarLive do
 
   defp renamed(socket, {:error, changeset}) do
     assign(socket, :form, to_form(changeset, action: :validate))
-  end
-
-  defp added_region(socket, {:ok, region}) do
-    socket
-    |> put_flash(:info, "#{region.name} is a region of #{socket.assigns.calendar.name}.")
-    |> push_navigate(to: ~p"/settings/calendars/#{region}")
-  end
-
-  defp added_region(socket, {:error, changeset}) do
-    assign(socket, :region_form, region_form(changeset, action: :validate))
   end
 
   defp added(socket, {:ok, holiday}) do
