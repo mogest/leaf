@@ -79,7 +79,6 @@ defmodule LeafWeb.CalendarsLive do
         <section>
           <header>
             <h2>Add a country</h2>
-            <p>its regions go on its own page, once it is here</p>
           </header>
           <.input field={@form[:name]} type="text" label="Name" />
           <.input field={@form[:country_code]} type="text" label="Country code, two letters" />
