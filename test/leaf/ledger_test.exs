@@ -176,12 +176,14 @@ defmodule Leaf.LedgerTest do
     entitlement(context, annual, %{grant_amount: "200"})
 
     take(person, annual, ~D[2024-05-01], "1", :days)
+    take(person, annual, ~D[2024-05-02], "8", :hours)
 
-    # The day is granted off after the fact, so it stopped being a day off anybody spent.
-    observes(context, person, [~D[2024-05-01]])
+    # The days are granted off after the fact, so they stopped being days off anybody spent.
+    observes(context, person, [~D[2024-05-01], ~D[2024-05-02]])
 
-    assert [taken] = drawn(statement(person, annual, ~D[2024-05-31]))
-    assert Decimal.equal?(taken.amount, 0)
+    assert [in_days, in_hours] = drawn(statement(person, annual, ~D[2024-05-31]))
+    assert Decimal.equal?(in_days.amount, 0)
+    assert Decimal.equal?(in_hours.amount, 0)
   end
 
   test "converting a day rounds once, where the figure is shown", context do
@@ -716,7 +718,7 @@ defmodule Leaf.LedgerTest do
     [whole_year] = Ledger.statements(person, ~D[2025-03-03])
 
     [projected] =
-      Ledger.statements(person, ~D[2025-03-03], [day(annual, ~D[2025-03-01], "8", :hours)])
+      Ledger.statements(person, ~D[2025-03-03], [day(annual, ~D[2025-02-28], "8", :hours)])
 
     # Dated past the date asked about, so the account has to run on to it to answer at all.
     ahead = [day(annual, ~D[2025-03-03], "8", :hours)]

@@ -62,23 +62,17 @@ defmodule Leaf.Leave.Day do
   @doc """
   What the day is worth in `unit`, given the hours its person works on its date.
 
-  `hours_in_day` is unread where the day is already in the unit asked for, which is most of them,
-  so a caller with nothing to convert need not go and find it.
-
   A date worth no hours — a public holiday their policy grants them off, or a pattern since
-  corrected to none — is worth nothing in either unit. The figure is exact: it is rounded where it
-  is stored or shown and never on the way there.
+  corrected to none — is worth nothing in either unit, whichever it was asked for in. The figure is
+  exact: it is rounded where it is stored or shown and never on the way there.
   """
-  @spec in_unit(t(), unit(), Decimal.t() | nil) :: Decimal.t()
-  def in_unit(%{unit: unit} = day, unit, _hours_in_day), do: day.amount
-  def in_unit(%{unit: :days} = day, :hours, hours), do: Decimal.mult(day.amount, hours)
+  @spec in_unit(t(), unit(), Decimal.t()) :: Decimal.t()
+  def in_unit(day, unit, hours), do: worth(day, unit, hours, Decimal.positive?(hours))
 
-  def in_unit(%{unit: :hours} = day, :days, hours) do
-    over(day.amount, hours, Decimal.positive?(hours))
-  end
-
-  defp over(amount, hours, true), do: Decimal.div(amount, hours)
-  defp over(_amount, _hours, false), do: @none
+  defp worth(_day, _unit, _hours, false), do: @none
+  defp worth(%{unit: unit} = day, unit, _hours, true), do: day.amount
+  defp worth(%{unit: :days} = day, :hours, hours, true), do: Decimal.mult(day.amount, hours)
+  defp worth(%{unit: :hours} = day, :days, hours, true), do: Decimal.div(day.amount, hours)
 
   defp validate_working_day(changeset) do
     known(changeset, get_field(changeset, :hours_in_day))

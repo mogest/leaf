@@ -57,7 +57,7 @@ defmodule Leaf.Ledger do
       spans: spans,
       entered: Leave.balance_entries(person, as_at),
       taken: taken,
-      hours: hours_taken_against(person, taken, leave_types)
+      hours: hours_taken_against(person, taken)
     }
 
     Enum.flat_map(leave_types, &statement(&1, context))
@@ -115,7 +115,7 @@ defmodule Leaf.Ledger do
     days = Leave.days_awaiting(person)
     leave_types = Policies.leave_types(person.organisation_id)
     units = Map.new(leave_types, &{&1.id, &1.unit})
-    hours = hours_taken_against(person, days, leave_types)
+    hours = hours_taken_against(person, days)
 
     days
     |> Enum.group_by(& &1.leave_type_id)
@@ -184,23 +184,14 @@ defmodule Leaf.Ledger do
     %Movement{date: day.date, kind: :taken, amount: Decimal.negate(amount)}
   end
 
-  # A day asked for in the unit its leave type counts in converts through nothing, and most are,
-  # so the work patterns are read only where one is not. Nothing is filed that cannot be measured,
-  # so a day that does convert has hours on record for its date and asking for them is safe.
-  # The hours are the ones the request and the calendar are measured against, public holidays
-  # granted off included, so a day off one draws what it was worth on the date rather than a
-  # figure only the ledger believes.
-  defp hours_taken_against(person, taken, leave_types) do
-    units = Map.new(leave_types, &{&1.id, &1.unit})
+  # The hours the request and the calendar are measured against, public holidays granted off
+  # included, so a day off one draws what it is worth on the date now rather than when it was filed.
+  # Nothing is filed that cannot be measured, so every day has hours on record to ask for.
+  defp hours_taken_against(_person, []), do: %{}
 
-    case Enum.reject(taken, &(&1.unit == Map.fetch!(units, &1.leave_type_id))) do
-      [] ->
-        %{}
-
-      converting ->
-        span = Dates.spanning(Enum.map(converting, & &1.date))
-        person |> Leave.hours_per_day!(span) |> Map.new()
-    end
+  defp hours_taken_against(person, days) do
+    span = Dates.spanning(Enum.map(days, & &1.date))
+    person |> Leave.hours_per_day!(span) |> Map.new()
   end
 
   # A public holiday allowance is counted over the range its grant is measured over, which for a
