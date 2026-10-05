@@ -49,6 +49,7 @@ defmodule Leaf.Ledger do
     spans = Span.all(person, organisation, as_at)
     leave_types = Policies.leave_types(organisation.id)
     taken = Leave.days_approved(person) ++ days
+    hours = hours_taken_against(person, taken)
 
     context = %{
       organisation: organisation,
@@ -57,7 +58,8 @@ defmodule Leaf.Ledger do
       spans: spans,
       entered: Leave.balance_entries(person, as_at),
       taken: taken,
-      hours: hours_taken_against(person, taken)
+      hours: hours,
+      suspended: suspended(taken, leave_types, hours)
     }
 
     Enum.flat_map(leave_types, &statement(&1, context))
@@ -84,7 +86,8 @@ defmodule Leaf.Ledger do
   Only the leave types those days draw on: what approving a request comes to is a question about
   what it draws and not about everything the person holds. A balance that comes out under nothing
   is an answer rather than a refusal — leave may be taken in advance (§5.2), so nothing here
-  blocks anybody.
+  blocks anybody. A type that is recorded only has no balance to come out under, so it is left out
+  too.
   """
   @spec projected(Person.t(), [Day.t()]) :: [Statement.t()]
   def projected(person, days) do
@@ -101,7 +104,7 @@ defmodule Leaf.Ledger do
 
     person
     |> statements(today, days)
-    |> Enum.filter(&MapSet.member?(drawn, &1.leave_type.id))
+    |> Enum.filter(&(MapSet.member?(drawn, &1.leave_type.id) and not &1.recorded_only))
   end
 
   @doc """
@@ -159,14 +162,16 @@ defmodule Leaf.Ledger do
   end
 
   defp replay(leave_type, context, spans, entered, taken) do
+    %{organisation: organisation, holidays: holidays, suspended: suspended} = context
+
     movements =
-      Enum.flat_map(spans, &Grant.movements(&1, context.organisation, context.holidays)) ++
+      Enum.flat_map(spans, &Grant.movements(&1, organisation, holidays, suspended)) ++
         Enum.map(entered, &entered_movement/1) ++
         Enum.map(taken, &taken_movement(&1, leave_type, context.hours))
 
     {movements, lots} = Drawdown.run(movements, Grant.caps(spans), context.as_at)
 
-    Statement.new(leave_type, context.as_at, movements, lots)
+    Statement.new(leave_type, context.as_at, movements, lots, spans == [] and entered == [])
   end
 
   defp entered_movement(entry) do
@@ -192,6 +197,14 @@ defmodule Leaf.Ledger do
   defp hours_taken_against(person, days) do
     span = Dates.spanning(Enum.map(days, & &1.date))
     person |> Leave.hours_per_day!(span) |> Map.new()
+  end
+
+  defp suspended(taken, leave_types, hours) do
+    suspending = leave_types |> Enum.filter(& &1.suspends_accrual) |> MapSet.new(& &1.id)
+
+    for day <- taken, day.leave_type_id in suspending do
+      {day.date, Day.in_unit(day, :hours, hours[day.date])}
+    end
   end
 
   # A public holiday allowance is counted over the range its grant is measured over, which for a

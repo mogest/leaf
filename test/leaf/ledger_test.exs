@@ -2,6 +2,7 @@ defmodule Leaf.LedgerTest do
   use Leaf.DataCase, async: true
 
   alias Leaf.Fixtures
+  alias Leaf.Leave
   alias Leaf.Leave.Day
   alias Leaf.Ledger
   alias Leaf.People
@@ -546,9 +547,10 @@ defmodule Leaf.LedgerTest do
              [{:accrual, ~D[2024-04-30], Decimal.new("66.12"), nil}]
   end
 
-  test "a projection is only the leave types the days themselves draw on", context do
+  test "a projection is only the leave types the days draw on that hold a balance", context do
     person = context.person
     full_time(person)
+    annual = leave_type(context, %{})
     unpaid = leave_type(context, %{name: "Unpaid leave", position: 2})
     study = leave_type(context, %{name: "Study leave", position: 3})
 
@@ -560,13 +562,69 @@ defmodule Leaf.LedgerTest do
       grant_timing: nil
     }
 
+    entitlement(context, annual, %{})
     entitlement(context, unpaid, nothing)
     entitlement(context, study, nothing)
     take(person, study, ~D[2024-05-01], "8", :hours)
 
-    assert [statement] = Ledger.projected(person, [day(unpaid, ~D[2024-05-02], "8", :hours)])
-    assert statement.leave_type.id == unpaid.id
-    assert Decimal.equal?(statement.balance, "-8.00")
+    days = [day(annual, ~D[2024-05-02], "8", :hours), day(unpaid, ~D[2024-05-03], "8", :hours)]
+
+    assert [statement] = Ledger.projected(person, days)
+    assert statement.leave_type.id == annual.id
+  end
+
+  test "leave that suspends accrual takes its share of working time off accrual, not a block",
+       context do
+    person = context.person
+    full_time(person)
+    annual = leave_type(context, %{})
+    sick = leave_type(context, %{name: "Sick leave", unit: :days, position: 2})
+    unpaid = leave_type(context, %{name: "Unpaid leave", position: 3, suspends_accrual: true})
+    entitlement(context, annual, %{grant_amount: "365"})
+
+    entitlement(context, sick, %{
+      grant_amount: "10",
+      grant_timing: :period_start,
+      pro_rated_by_fte: false
+    })
+
+    # Two whole weeks and half the Monday after are 84 of four weeks' 160 hours, so the 28 hours
+    # four weeks of a 365-hour year accrue keep 76/160 of themselves.
+    weeks =
+      for date <- Date.range(~D[2024-03-04], ~D[2024-03-15]), Date.day_of_week(date) < 6, do: date
+
+    Fixtures.leave_request(%{
+      person_id: person.id,
+      days:
+        Enum.map(weeks, &%{leave_type_id: unpaid.id, date: &1, amount: "1", unit: :days}) ++
+          [%{leave_type_id: unpaid.id, date: ~D[2024-03-18], amount: "4", unit: :hours}]
+    })
+
+    assert movements(statement(person, annual, ~D[2024-03-31])) ==
+             [{:accrual, ~D[2024-03-31], Decimal.new("13.30"), nil}]
+
+    assert Decimal.equal?(statement(person, sick, ~D[2024-03-31]).balance, "10.00")
+  end
+
+  test "leave that does not suspend accrual, or no longer does, takes nothing off it", context do
+    person = context.person
+    full_time(person)
+    annual = leave_type(context, %{})
+    bereavement = leave_type(context, %{name: "Bereavement leave", unit: :days, position: 2})
+    unpaid = leave_type(context, %{name: "Unpaid leave", position: 3, suspends_accrual: true})
+    entitlement(context, annual, %{grant_amount: "365"})
+    admin = Fixtures.person(%{organisation_id: context.organisation.id, role: :admin})
+
+    take(person, bereavement, ~D[2024-03-11], "1", :days)
+    unpaid_day = take(person, unpaid, ~D[2024-03-12], "1", :days)
+
+    # 28 hours accrued over four weeks, less the 8 of their 160 that were suspended.
+    assert Decimal.equal?(statement(person, annual, ~D[2024-03-31]).balance, "26.60")
+
+    {:ok, request} = Leave.fetch_request(unpaid_day.id)
+    {:ok, _cancelled} = Leave.cancel(request, admin)
+
+    assert Decimal.equal?(statement(person, annual, ~D[2024-03-31]).balance, "28.00")
   end
 
   test "moving to another policy part-way through a year splits the accrual", context do
