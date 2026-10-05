@@ -203,10 +203,7 @@ defmodule LeafWeb.RequestLeaveLive do
   defp held(_person, _today, false), do: %{}
 
   defp held(person, today, true) do
-    person
-    |> Ledger.statements(today)
-    |> Enum.reject(& &1.recorded_only)
-    |> Map.new(&{&1.leave_type.id, &1})
+    person |> Ledger.balances(today) |> Map.new(&{&1.leave_type.id, &1})
   end
 
   # Which types can be asked for turns on the dates being asked about, so a stretch that is over

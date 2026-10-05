@@ -573,6 +573,64 @@ defmodule Leaf.LedgerTest do
     assert statement.leave_type.id == annual.id
   end
 
+  test "balances leave out a type never granted anything, whichever date they are read at",
+       context do
+    person = context.person
+    full_time(person)
+    annual = leave_type(context, %{})
+    study = leave_type(context, %{name: "Study leave", position: 2})
+    bereavement = leave_type(context, %{name: "Bereavement leave", position: 3})
+
+    entitlement(context, annual, %{})
+    take(person, study, ~D[2024-07-01], "8", :hours)
+    take(person, bereavement, ~D[2024-07-01], "8", :hours)
+
+    Fixtures.balance_entry(%{
+      person_id: person.id,
+      leave_type_id: bereavement.id,
+      date: ~D[2024-07-10],
+      kind: :adjustment,
+      amount: "8",
+      reason: "Granted for a funeral"
+    })
+
+    Fixtures.balance_entry(%{person_id: person.id, leave_type_id: study.id, date: @started})
+
+    Fixtures.balance_entry(%{
+      person_id: person.id,
+      leave_type_id: study.id,
+      date: ~D[2024-07-10],
+      kind: :adjustment,
+      amount: "-8",
+      reason: "Corrected"
+    })
+
+    assert Ledger.granted(person) == MapSet.new([annual.id, bereavement.id])
+
+    assert person |> Ledger.balances(~D[2024-07-05]) |> Enum.map(& &1.leave_type.id) ==
+             [annual.id, bereavement.id]
+  end
+
+  test "a type is granted by a policy only where it grants while the person is on it", context do
+    study = leave_type(context, %{name: "Study leave"})
+    sabbatical = leave_type(context, %{name: "Sabbatical", position: 2})
+
+    stops = %{
+      amount_source: :none,
+      grant_amount: nil,
+      grant_basis: nil,
+      grant_period: nil,
+      grant_timing: nil
+    }
+
+    entitlement(context, study, %{effective_from: ~D[2023-01-01], effective_to: ~D[2023-12-31]})
+    entitlement(context, study, Map.put(stops, :effective_from, ~D[2024-01-01]))
+    entitlement(context, sabbatical, %{effective_to: ~D[2024-06-30]})
+    entitlement(context, sabbatical, Map.put(stops, :effective_from, ~D[2024-07-01]))
+
+    assert Ledger.granted(context.person) == MapSet.new([sabbatical.id])
+  end
+
   test "leave that suspends accrual takes its share of working time off accrual, not a block",
        context do
     person = context.person

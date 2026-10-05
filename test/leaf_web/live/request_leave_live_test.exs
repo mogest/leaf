@@ -237,7 +237,12 @@ defmodule LeafWeb.RequestLeaveLiveTest do
        context do
     unpaid = unfunded(context, %{name: "Unpaid leave", position: 2})
     bereavement = unfunded(context, %{name: "Bereavement leave", position: 3})
-    Fixtures.balance_entry(%{person_id: context.person.id, leave_type_id: bereavement.id})
+
+    Fixtures.balance_entry(%{
+      person_id: context.person.id,
+      leave_type_id: bereavement.id,
+      amount: "4"
+    })
 
     Fixtures.leave_request(%{
       person_id: context.person.id,
@@ -257,7 +262,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     asked = asking(context, %{"leave_type_id" => bereavement.id})
     html = live |> form("form", request: asked) |> render_change()
 
-    assert html =~ "-8 hours"
+    assert html =~ "-4 hours"
     assert html =~ "That is more leave than the balance holds. It can still be approved."
 
     live |> form("form", request: asked) |> render_submit()

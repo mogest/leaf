@@ -89,7 +89,7 @@ defmodule LeafWeb.AtAGlanceLive do
         awaiting = Ledger.awaiting(person)
 
         person
-        |> Ledger.statements(today)
+        |> Ledger.balances(today)
         |> Enum.reject(&nothing?(&1, awaiting))
         |> Enum.map(&balance(&1, awaiting))
 
