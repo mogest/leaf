@@ -112,8 +112,8 @@ defmodule Leaf.Org do
   @doc """
   Creates a region within a country.
 
-  Its country and its zone are the country's until it says otherwise, so a region that keeps both —
-  most of them — is a name. A region of a region is not a shape the model has.
+  Its zone is the country's until it says otherwise, so a region that keeps it — most of them — is a
+  name. A region of a region is not a shape the model has.
   """
   @spec create_region(Calendar.t(), Person.t() | nil, map()) :: Audit.written(Calendar.t())
   def create_region(%Calendar{} = country, actor, attrs) do
@@ -123,9 +123,8 @@ defmodule Leaf.Org do
   @doc """
   Amends a calendar.
 
-  A region does not follow its country here. Its country code and zone were taken when it was
-  created and are its own from then, so a country that moves zone leaves its regions to be moved
-  after it.
+  A region does not follow its country's zone. It took the zone when it was created and keeps it
+  from then, so a country that moves zone leaves its regions to be moved after it.
   """
   @spec update_calendar(Calendar.t(), Person.t() | nil, map()) :: Audit.written(Calendar.t())
   def update_calendar(calendar, actor, attrs) do
@@ -197,7 +196,6 @@ defmodule Leaf.Org do
     %Calendar{
       organisation_id: country.organisation_id,
       parent_id: country.id,
-      country_code: country.country_code,
       time_zone: country.time_zone
     }
   end

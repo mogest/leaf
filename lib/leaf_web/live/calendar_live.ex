@@ -25,7 +25,7 @@ defmodule LeafWeb.CalendarLive do
      |> assign(:country, calendar.parent)
      |> assign(:regions, calendar.regions)
      |> assign(:form, to_form(Changeset.change(calendar, %{})))
-     |> assign(:time_zones, Org.time_zones(calendar.country_code))
+     |> assign(:time_zones, Org.time_zones((calendar.parent || calendar).country_code))
      |> blank()
      |> listed()}
   end
@@ -34,7 +34,9 @@ defmodule LeafWeb.CalendarLive do
   @role :admin
   def handle_event("validate-calendar", %{"calendar" => params}, socket) do
     changeset = Changeset.change(socket.assigns.calendar, params)
-    country_code = params["country_code"] || socket.assigns.calendar.country_code
+
+    country_code =
+      params["country_code"] || (socket.assigns.country || socket.assigns.calendar).country_code
 
     {:noreply,
      socket
@@ -173,6 +175,9 @@ defmodule LeafWeb.CalendarLive do
           </section>
 
           <footer>
+            <p :if={@regions != []}>
+              Changing the time zone here leaves its regions' zones as they are.
+            </p>
             <button class="button" type="submit">Save</button>
           </footer>
         </.form>

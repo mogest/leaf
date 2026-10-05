@@ -2,8 +2,8 @@ defmodule LeafWeb.RegionLive do
   @moduledoc """
   Adding a region to a country's calendar.
 
-  A region takes its country's code and time zone unless it says otherwise, so most are a name. A
-  region of a region is not a shape the model has, so a region's id here is as unknown as any other.
+  A region takes its country's time zone unless it says otherwise, so most are a name. A region of a
+  region is not a shape the model has, so a region's id here is as unknown as any other.
   """
 
   use LeafWeb, :live_view
