@@ -14,4 +14,23 @@ defmodule Leaf.Dates do
   def earliest(nil, date), do: date
   def earliest(date, nil), do: date
   def earliest(a, b), do: Enum.min([a, b], Date)
+
+  @doc """
+  The part of `range` from `from` to `to`, where a `to` of `nil` is no bound at all.
+
+  `:error` where they leave nothing.
+  """
+  @spec intersect(Date.Range.t(), Date.t(), Date.t() | nil) :: {:ok, Date.Range.t()} | :error
+  def intersect(range, from, to) do
+    bounded(Enum.max([range.first, from], Date), earliest(range.last, to))
+  end
+
+  @doc "The range from `first` to `last`, or `:error` where `last` is before `first`."
+  @spec bounded(Date.t(), Date.t()) :: {:ok, Date.Range.t()} | :error
+  def bounded(first, last) do
+    case Date.compare(first, last) do
+      :gt -> :error
+      _ -> {:ok, Date.range(first, last)}
+    end
+  end
 end

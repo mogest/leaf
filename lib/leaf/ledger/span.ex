@@ -75,7 +75,7 @@ defmodule Leaf.Ledger.Span do
   """
   @spec tracked_range(Person.t(), Organisation.t(), Date.t()) :: {:ok, Date.Range.t()} | :error
   def tracked_range(person, organisation, as_at) do
-    bounded(
+    Dates.bounded(
       Enum.max([organisation.tracked_from, person.employment_start_date], Date),
       Dates.earliest(as_at, person.employment_end_date)
     )
@@ -98,7 +98,8 @@ defmodule Leaf.Ledger.Span do
   defp entitlement_spans(_context, %{amount_source: :none}, _assigned), do: []
 
   defp entitlement_spans(context, entitlement, assigned) do
-    with {:ok, life} <- intersect(assigned, entitlement.effective_from, entitlement.effective_to),
+    with {:ok, life} <-
+           Dates.intersect(assigned, entitlement.effective_from, entitlement.effective_to),
          {:ok, cycle} <- cycle(context, entitlement) do
       cycle
       |> GrantCycle.periods_overlapping(life)
@@ -123,7 +124,7 @@ defmodule Leaf.Ledger.Span do
   defp anchor(:organisation_year, %{year_start_month: month}), do: {:ok, {month, 1}}
 
   defp period_spans(context, entitlement, period, life) do
-    {:ok, covered} = intersect(life, period.first, period.last)
+    {:ok, covered} = Dates.intersect(life, period.first, period.last)
 
     Enum.flat_map(context.patterns, fn {worked, pattern} ->
       pattern_span(context, entitlement, period, covered, worked, pattern)
@@ -131,7 +132,7 @@ defmodule Leaf.Ledger.Span do
   end
 
   defp pattern_span(context, entitlement, period, covered, worked, pattern) do
-    case intersect(covered, worked.first, worked.last) do
+    case Dates.intersect(covered, worked.first, worked.last) do
       :error ->
         []
 
@@ -150,20 +151,9 @@ defmodule Leaf.Ledger.Span do
   end
 
   defp granting(entitlement, dates) do
-    case intersect(dates, dates.first, entitlement.granted_to) do
+    case Dates.intersect(dates, dates.first, entitlement.granted_to) do
       :error -> nil
       {:ok, granting} -> granting
-    end
-  end
-
-  defp intersect(range, from, to) do
-    bounded(Enum.max([range.first, from], Date), Dates.earliest(range.last, to))
-  end
-
-  defp bounded(first, last) do
-    case Date.compare(first, last) do
-      :gt -> :error
-      _ -> {:ok, Date.range(first, last)}
     end
   end
 end
