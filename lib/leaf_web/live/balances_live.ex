@@ -8,7 +8,9 @@ defmodule LeafWeb.BalancesLive do
 
   A type nothing is held in is listed all the same, along with one their policy offers but grants
   nothing for: what somebody may ask for is as much part of this page as what they have, and
-  nothing held is an answer.
+  nothing held is an answer. One they have never been granted anything in reads as recorded only
+  rather than as a figure, at any date, since the only figure it has is the leave taken with a
+  minus in front.
   """
 
   use LeafWeb, :live_view
@@ -162,6 +164,8 @@ defmodule LeafWeb.BalancesLive do
 
   defp listed(socket, person, mine?, as_at, accounts, chosen) do
     selected = selected(chosen)
+    granted = Ledger.granted(person)
+    listings = Enum.map(accounts, &listing(&1, granted, person, mine?, as_at, selected))
 
     socket
     |> assign(:page_title, title(person, mine?))
@@ -169,8 +173,8 @@ defmodule LeafWeb.BalancesLive do
     |> assign(:mine?, mine?)
     |> assign(:selected, selected)
     |> assign(:form, to_form(%{"as_at" => to_string(as_at)}, as: :ledger))
-    |> assign(:accounts, Enum.map(accounts, &listing(&1, person, mine?, as_at, selected)))
-    |> assign(:account, account(chosen, Ledger.awaiting(person), as_at))
+    |> assign(:accounts, listings)
+    |> assign(:account, account(chosen, granted, Ledger.awaiting(person), as_at))
     |> assign(:nothing, nothing(accounts, person, mine?, as_at))
   end
 
@@ -233,30 +237,35 @@ defmodule LeafWeb.BalancesLive do
 
   # Every link on the page carries the date the page is being read at, so stepping between
   # accounts does not quietly step back to today.
-  defp listing({leave_type, statement}, person, mine?, as_at, selected) do
+  defp listing({leave_type, statement}, granted, person, mine?, as_at, selected) do
     %{
       name: leave_type.name,
-      amount: figure(statement, leave_type),
+      amount: figure(statement, leave_type, granted),
       path: path(person, mine?, leave_type.id, to_string(as_at)),
       current?: leave_type.id == selected
     }
   end
 
-  defp account(nil, _awaiting, _as_at), do: nil
+  defp account(nil, _granted, _awaiting, _as_at), do: nil
 
-  defp account({leave_type, statement}, awaiting, as_at) do
+  defp account({leave_type, statement}, granted, awaiting, as_at) do
     %{
       name: leave_type.name,
       as_at: Wording.date(as_at),
-      held: figure(statement, leave_type),
+      held: figure(statement, leave_type, granted),
       awaiting: Wording.asked(awaiting[leave_type.id], leave_type.unit),
       lots: lots(statement, leave_type),
       movements: movements(statement, leave_type)
     }
   end
 
-  defp figure(nil, leave_type), do: Wording.figure(Decimal.new(0), leave_type.unit)
-  defp figure(statement, leave_type), do: Wording.figure(statement.balance, leave_type.unit)
+  defp figure(statement, leave_type, granted) do
+    case {MapSet.member?(granted, leave_type.id), statement} do
+      {false, _statement} -> "recorded only"
+      {true, nil} -> Wording.figure(Decimal.new(0), leave_type.unit)
+      {true, statement} -> Wording.figure(statement.balance, leave_type.unit)
+    end
+  end
 
   defp lots(nil, _leave_type), do: []
   defp lots(statement, leave_type), do: Enum.map(statement.lots, &lot(&1, leave_type))

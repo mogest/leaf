@@ -279,7 +279,7 @@ defmodule LeafWeb.PersonLive do
   end
 
   defp held(person, today, awaiting) do
-    person |> Ledger.statements(today) |> Enum.map(&balance(&1, person, awaiting))
+    person |> Ledger.balances(today) |> Enum.map(&balance(&1, person, awaiting))
   end
 
   defp balance(statement, person, awaiting) do

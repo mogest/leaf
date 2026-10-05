@@ -24,6 +24,8 @@ defmodule Leaf.Ledger do
   alias Leaf.People.Person
   alias Leaf.Policies
 
+  @forever ~D[9999-12-31]
+
   @doc """
   An account for each leave type the person holds one in, as at `as_at`, in the organisation's
   order.
@@ -66,6 +68,43 @@ defmodule Leaf.Ledger do
   end
 
   @doc """
+  The accounts that hold a balance, in the organisation's order.
+
+  `statements/3` less the types that are recorded only, being those outside `granted/1`: one the
+  person is granted nothing in has no balance to show, and a figure for it would only be the leave
+  taken, with a minus in front.
+  """
+  @spec balances(Person.t(), Date.t(), [Day.t()]) :: [Statement.t()]
+  def balances(person, as_at, days \\ []) do
+    granted = granted(person)
+
+    person |> statements(as_at, days) |> Enum.filter(&MapSet.member?(granted, &1.leave_type.id))
+  end
+
+  @doc """
+  The leave types the person has ever been granted anything in, by a policy or by hand.
+
+  By a policy is an entitlement that grants something while they were employed and on it; by hand
+  is a balance entry adding to the balance. Every other type is recorded only for them. That is a
+  fact about the person rather than about a date, so it is read over all of their history: a type
+  does not turn recorded only by being read before its first grant.
+  """
+  @spec granted(Person.t()) :: MapSet.t(Ecto.UUID.t())
+  def granted(person) do
+    employed = Date.range(person.employment_start_date, person.employment_end_date || @forever)
+
+    by_policy =
+      person
+      |> People.leave_policy_segments(employed)
+      |> Enum.flat_map(fn {span, policy_id} -> Policies.entitlements(policy_id, span) end)
+      |> Enum.reject(&(&1.amount_source == :none))
+
+    by_hand = person |> Leave.balance_entries() |> Enum.filter(&Decimal.positive?(&1.amount))
+
+    MapSet.new(by_policy ++ by_hand, & &1.leave_type_id)
+  end
+
+  @doc """
   The person's account in one leave type, or `:error` where they hold none.
 
   Every leave type replays from the date the organisation started tracking leave, so this works
@@ -83,11 +122,11 @@ defmodule Leaf.Ledger do
   @doc """
   The accounts `days` would leave behind, in the organisation's order.
 
-  Only the leave types those days draw on: what approving a request comes to is a question about
-  what it draws and not about everything the person holds. A balance that comes out under nothing
-  is an answer rather than a refusal — leave may be taken in advance (§5.2), so nothing here
-  blocks anybody. A type that is recorded only has no balance to come out under, so it is left out
-  too.
+  Only the leave types those days draw on, out of `balances/3`: what approving a request comes to
+  is a question about what it draws and not about everything the person holds, and a type that is
+  recorded only has no balance to come out under. A balance that comes out under nothing is an
+  answer rather than a refusal — leave may be taken in advance (§5.2), so nothing here blocks
+  anybody.
   """
   @spec projected(Person.t(), [Day.t()]) :: [Statement.t()]
   def projected(person, days) do
@@ -103,8 +142,8 @@ defmodule Leaf.Ledger do
     drawn = MapSet.new(days, & &1.leave_type_id)
 
     person
-    |> statements(today, days)
-    |> Enum.filter(&(MapSet.member?(drawn, &1.leave_type.id) and not &1.recorded_only))
+    |> balances(today, days)
+    |> Enum.filter(&MapSet.member?(drawn, &1.leave_type.id))
   end
 
   @doc """
@@ -171,7 +210,7 @@ defmodule Leaf.Ledger do
 
     {movements, lots} = Drawdown.run(movements, Grant.caps(spans), context.as_at)
 
-    Statement.new(leave_type, context.as_at, movements, lots, spans == [] and entered == [])
+    Statement.new(leave_type, context.as_at, movements, lots)
   end
 
   defp entered_movement(entry) do

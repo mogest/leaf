@@ -77,18 +77,79 @@ defmodule LeafWeb.BalancesLiveTest do
     assert flash["error"] == "Those balances are not yours to read."
   end
 
-  test "a type that is offered but grants nothing is listed, and reads as empty", context do
+  test "a type that is offered but grants nothing is listed as recorded only, never as a figure",
+       context do
     bereavement = recorded_only(context)
 
     {:ok, live, html} = live(context.conn, ~p"/balances")
 
     assert html =~ "Bereavement leave"
-    assert html =~ "0 days"
+    assert html =~ "recorded only"
 
     html = live |> element(~s(a[href^="/balances/#{bereavement.id}"])) |> render_click()
 
     assert html =~ "Nothing held."
     assert html =~ "Nothing has happened to it yet."
+
+    {:ok, _live, html} = live(context.conn, ~p"/balances/#{bereavement}?as_at=2023-06-01")
+
+    assert html =~ "<dd>recorded only</dd>"
+
+    Fixtures.leave_request(%{
+      person_id: context.person.id,
+      days: [%{leave_type_id: bereavement.id, date: ~D[2024-07-01], amount: "1", unit: :days}]
+    })
+
+    {:ok, _live, html} = live(context.conn, ~p"/balances/#{bereavement}")
+
+    assert html =~ "<dd>recorded only</dd>"
+    assert html =~ "Taken"
+  end
+
+  test "a type granted by policy reads as a figure before tracking started, leave or none",
+       context do
+    from = ~D[2023-06-01]
+
+    person =
+      Fixtures.person(%{
+        organisation_id: context.organisation.id,
+        name: "Kit Rua",
+        employment_start_date: from
+      })
+
+    Fixtures.work_pattern(%{person_id: person.id, effective_from: from})
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+
+    Fixtures.policy_entitlement(%{
+      leave_policy_id: policy.id,
+      leave_type_id: context.leave_type.id,
+      effective_from: from
+    })
+
+    Fixtures.policy_assignment(%{
+      person_id: person.id,
+      leave_policy_id: policy.id,
+      effective_from: from
+    })
+
+    conn = sign_in(build_conn(), person)
+    {:ok, _live, html} = live(conn, ~p"/balances?as_at=2023-12-01")
+
+    assert html =~ "Annual leave"
+    assert html =~ "<dd>0 hours</dd>"
+    refute html =~ "recorded only"
+
+    Fixtures.leave_request(%{
+      person_id: person.id,
+      days: [
+        %{leave_type_id: context.leave_type.id, date: ~D[2023-11-01], amount: "8", unit: :hours}
+      ]
+    })
+
+    {:ok, _live, html} = live(conn, ~p"/balances?as_at=2023-12-01")
+
+    assert html =~ "<dd>-8 hours</dd>"
+    refute html =~ "recorded only"
   end
 
   test "the date at the top is the whole page's question", context do
