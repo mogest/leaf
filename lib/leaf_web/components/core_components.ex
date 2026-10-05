@@ -43,6 +43,7 @@ defmodule LeafWeb.CoreComponents do
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
       role="alert"
+      data-kind={@kind}
       {@rest}
     >
       <p :if={@title}>{@title}</p>
@@ -218,7 +219,7 @@ defmodule LeafWeb.CoreComponents do
   ## JS Commands
 
   def show(js \\ %JS{}, selector) do
-    JS.show(js, to: selector)
+    JS.show(js, to: selector, display: "flex")
   end
 
   def hide(js \\ %JS{}, selector) do

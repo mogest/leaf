@@ -120,6 +120,61 @@ body > div[data-phx-main] {
   }
 }
 
+/* What just happened, or went wrong, said over the page's corner until it is dismissed. */
+:is(body, div[data-phx-main]) > div[aria-live] {
+  position: fixed;
+  inset-block-start: var(--step-6);
+  inset-inline-end: var(--step-6);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--step-2);
+  max-inline-size: 24rem;
+
+  & > [role="alert"]:not([hidden]) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--step-4);
+    padding: var(--step-3) var(--step-4);
+    border-radius: var(--radius);
+    background: var(--green-wash);
+    color: var(--green-ink);
+    font-size: var(--size-base);
+    box-shadow: var(--lift);
+    cursor: pointer;
+
+    &[data-kind="error"] {
+      background: var(--clay-wash);
+      color: var(--clay-ink);
+    }
+
+    & > p:not(:last-of-type) {
+      flex-basis: 100%;
+      font-weight: 600;
+    }
+
+    & > p:last-of-type {
+      flex: 1;
+    }
+
+    & > button {
+      padding: 0;
+      border: 0;
+      background: none;
+      color: inherit;
+      font-size: var(--size-sm);
+      opacity: 0.75;
+
+      &:hover {
+        opacity: 1;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+    }
+  }
+}
+
 /* A page is a stack of sections down a measure, its header the first of them. */
 main {
   flex-grow: 1;
