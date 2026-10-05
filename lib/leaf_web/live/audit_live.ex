@@ -56,7 +56,6 @@ defmodule LeafWeb.AuditLive do
       <section>
         <header>
           <h2>What has been changed</h2>
-          <p>{@counted}</p>
         </header>
         <table :if={@entries != []}>
           <thead>
@@ -110,14 +109,8 @@ defmodule LeafWeb.AuditLive do
   defp shown(socket, entries) do
     zone = People.time_zone(socket.assigns.current_person)
 
-    socket
-    |> assign(:entries, Enum.map(entries, &row(&1, zone)))
-    |> assign(:counted, counted(entries))
+    assign(socket, :entries, Enum.map(entries, &row(&1, zone)))
   end
-
-  defp counted([]), do: "nothing yet"
-  defp counted([_one]), do: "one entry"
-  defp counted(entries), do: "the #{length(entries)} most recent"
 
   defp row(entry, zone) do
     %{
