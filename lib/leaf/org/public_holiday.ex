@@ -24,6 +24,6 @@ defmodule Leaf.Org.PublicHoliday do
     |> cast(attrs, @fields)
     |> validate_required([:calendar_id | @fields])
     |> assoc_constraint(:calendar)
-    |> unique_constraint([:calendar_id, :date])
+    |> unique_constraint([:calendar_id, :date], error_key: :date)
   end
 end

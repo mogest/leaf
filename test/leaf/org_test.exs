@@ -171,6 +171,6 @@ defmodule Leaf.OrgTest do
     attrs = %{date: ~D[2026-01-01], name: "New Year"}
 
     assert {:error, changeset} = Org.create_public_holiday(calendar, nil, attrs)
-    assert errors_on(changeset).calendar_id == ["has already been taken"]
+    assert errors_on(changeset).date == ["has already been taken"]
   end
 end
