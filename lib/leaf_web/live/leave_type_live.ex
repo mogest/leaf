@@ -19,14 +19,10 @@ defmodule LeafWeb.LeaveTypeLive do
 
   @impl Phoenix.LiveView
   def mount(%{"id" => id}, _session, socket) do
-    {:ok, leave_type} = Policies.fetch_leave_type(id)
-
-    {:ok,
-     socket
-     |> assign(:page_title, leave_type.name)
-     |> assign(:leave_type, leave_type)
-     |> assign(:units, @units)
-     |> assign(:form, to_form(Changeset.change(leave_type, %{})))}
+    case Policies.fetch_leave_type(id) do
+      {:ok, leave_type} -> {:ok, opened(socket, leave_type)}
+      :error -> {:ok, unknown(socket)}
+    end
   end
 
   @impl Phoenix.LiveView
@@ -88,6 +84,20 @@ defmodule LeafWeb.LeaveTypeLive do
       </.form>
     </Layouts.app>
     """
+  end
+
+  defp opened(socket, leave_type) do
+    socket
+    |> assign(:page_title, leave_type.name)
+    |> assign(:leave_type, leave_type)
+    |> assign(:units, @units)
+    |> assign(:form, to_form(Changeset.change(leave_type, %{})))
+  end
+
+  defp unknown(socket) do
+    socket
+    |> put_flash(:error, "That leave type is not on record.")
+    |> push_navigate(to: ~p"/settings/leave-types")
   end
 
   defp standing(%{archived_at: nil}),

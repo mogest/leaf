@@ -118,6 +118,40 @@ defmodule LeafWeb.PagesTest do
     end)
   end
 
+  test "an administrator's page naming nothing turns them back with a flash", context do
+    nothing = Ecto.UUID.generate()
+
+    [
+      {~p"/people/#{nothing}/edit", "/people"},
+      {~p"/people/#{nothing}/work-patterns/new", "/people"},
+      {~p"/people/#{nothing}/policy-assignments/new", "/people"},
+      {~p"/people/#{nothing}/balance-entries/new", "/people"},
+      {~p"/settings/leave-types/#{nothing}", "/settings/leave-types"},
+      {~p"/settings/policies/#{nothing}", "/settings/policies"},
+      {~p"/settings/policies/#{nothing}/entitlements/new", "/settings/policies"},
+      {~p"/settings/calendars/#{nothing}", "/settings/calendars"},
+      {~p"/settings/calendars/#{nothing}/regions/new", "/settings/calendars"}
+    ]
+    |> Enum.each(fn {path, back} ->
+      assert {:error, {:live_redirect, %{to: ^back, flash: %{"error" => _refusal}}}} =
+               live(context.conn, path)
+    end)
+  end
+
+  test "a request an event names that is not there is refused, not crashed on", context do
+    nothing = Ecto.UUID.generate()
+
+    {:ok, live, _html} = live(context.conn, ~p"/leave")
+
+    assert render_click(live, "cancel-request", %{"id" => nothing}) =~
+             "That is not yours to cancel."
+
+    {:ok, live, _html} = live(context.conn, ~p"/approvals")
+
+    assert render_submit(live, "decide", %{"request_id" => nothing, "decision" => "approve"}) =~
+             "That is not yours to decide."
+  end
+
   test "the specimen sheet renders every part the pages are built from", context do
     {:ok, _live, html} = live(context.conn, "/dev/styleguide")
 

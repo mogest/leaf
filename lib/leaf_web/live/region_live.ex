@@ -12,14 +12,10 @@ defmodule LeafWeb.RegionLive do
 
   @impl Phoenix.LiveView
   def mount(%{"calendar_id" => id}, _session, socket) do
-    {:ok, %{parent_id: nil} = country} = Org.fetch_calendar(id)
-
-    {:ok,
-     socket
-     |> assign(:page_title, "Add a region")
-     |> assign(:country, country)
-     |> assign(:time_zones, Org.time_zones(country.country_code))
-     |> assign(:form, to_form(Org.change_region(country, %{})))}
+    case Org.fetch_calendar(id) do
+      {:ok, %{parent_id: nil} = country} -> {:ok, opened(socket, country)}
+      _unknown -> {:ok, unknown(socket)}
+    end
   end
 
   @impl Phoenix.LiveView
@@ -67,6 +63,20 @@ defmodule LeafWeb.RegionLive do
       </.form>
     </Layouts.app>
     """
+  end
+
+  defp opened(socket, country) do
+    socket
+    |> assign(:page_title, "Add a region")
+    |> assign(:country, country)
+    |> assign(:time_zones, Org.time_zones(country.country_code))
+    |> assign(:form, to_form(Org.change_region(country, %{})))
+  end
+
+  defp unknown(socket) do
+    socket
+    |> put_flash(:error, "That is not a country's calendar.")
+    |> push_navigate(to: ~p"/settings/calendars")
   end
 
   defp saved(socket, {:ok, region}) do

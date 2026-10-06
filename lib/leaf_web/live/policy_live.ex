@@ -14,14 +14,10 @@ defmodule LeafWeb.PolicyLive do
 
   @impl Phoenix.LiveView
   def mount(%{"id" => id}, _session, socket) do
-    {:ok, policy} = Policies.fetch_leave_policy(id)
-
-    {:ok,
-     socket
-     |> assign(:page_title, policy.name)
-     |> assign(:policy, policy)
-     |> assign(:form, to_form(Changeset.change(policy, %{})))
-     |> listed()}
+    case Policies.fetch_leave_policy(id) do
+      {:ok, policy} -> {:ok, opened(socket, policy)}
+      :error -> {:ok, unknown(socket)}
+    end
   end
 
   @impl Phoenix.LiveView
@@ -112,6 +108,20 @@ defmodule LeafWeb.PolicyLive do
       </.form>
     </Layouts.app>
     """
+  end
+
+  defp opened(socket, policy) do
+    socket
+    |> assign(:page_title, policy.name)
+    |> assign(:policy, policy)
+    |> assign(:form, to_form(Changeset.change(policy, %{})))
+    |> listed()
+  end
+
+  defp unknown(socket) do
+    socket
+    |> put_flash(:error, "That policy is not on record.")
+    |> push_navigate(to: ~p"/settings/policies")
   end
 
   defp listed(socket) do
