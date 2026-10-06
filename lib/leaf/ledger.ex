@@ -203,9 +203,10 @@ defmodule Leaf.Ledger do
 
   defp replay(leave_type, context, spans, entered, taken) do
     %{organisation: organisation, holidays: holidays, suspended: suspended} = context
+    dates = Enum.map(taken, & &1.date)
 
     movements =
-      Enum.flat_map(spans, &Grant.movements(&1, organisation, holidays, suspended)) ++
+      Enum.flat_map(spans, &Grant.movements(&1, organisation, holidays, suspended, dates)) ++
         Enum.map(entered, &entered_movement/1) ++
         Enum.map(taken, &taken_movement(&1, leave_type, context.hours))
 

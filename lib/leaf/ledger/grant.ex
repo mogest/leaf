@@ -3,16 +3,21 @@ defmodule Leaf.Ledger.Grant do
   What a covered span grants, and when what it grants lapses.
 
   A block grant lands whole on the first day of its period; an accrual lands at the end of each
-  span, worth the part of the period that span is. Either way the amount is pro-rated in a single
-  division — the hours worked and the days elapsed multiplied together before dividing once — so
-  that a year of accruals sums back to the year's entitlement instead of drifting by a rounding
-  error per span.
+  span, worth the part of the period that span is. An accrual also lands on each day leave of its
+  type is taken inside the span, worth what has accrued since the last, so that leave draws on what
+  had accrued by its date and nothing more. Either way the amount is pro-rated in a single division
+  — the hours worked and the days elapsed multiplied together before dividing once — so that the
+  pieces of a span sum back to the span, and a year of accruals to the year's entitlement, instead
+  of drifting by a rounding error per piece. Suspended leave is the exception: it is measured
+  piece by piece, below. A piece lapses when the accrual it was cut from would
+  have, so taking leave does not bring a lapse forward.
 
   Leave of a type that suspends accrual takes its share of the person's working time out of an
-  accrual, in the same division: a span earns `normal × (1 − suspended hours ÷ scheduled hours)`.
-  Measuring in hours rather than dates leaves the weekends inside a stretch of it unworked too, and
-  suspends a half day by half. A block grant is not an accrual and is never reduced (§4.7), and
-  nor is a public holiday allowance, which counts holidays rather than time.
+  accrual, in the same division: a piece earns `normal × (1 − suspended hours ÷ scheduled hours)`
+  over its own dates, so what leave drew on is what had accrued by then, whatever is suspended
+  later. Measuring in hours rather than dates leaves the weekends inside a stretch of it unworked
+  too, and suspends a half day by half. A block grant is not an accrual and is never reduced (§4.7),
+  and nor is a public holiday allowance, which counts holidays rather than time.
   """
 
   alias Leaf.Dates
@@ -26,15 +31,31 @@ defmodule Leaf.Ledger.Grant do
 
   `holidays` are the dates the person observes as public holidays, which is what an entitlement
   drawn from the holiday calendar is measured in. `suspended` is the hours of each day of leave
-  that suspends accrual.
+  that suspends accrual. `taken` is the dates leave of the span's type is taken on.
   """
-  @spec movements(Span.t(), Organisation.t(), [Date.t()], [{Date.t(), Decimal.t()}]) ::
+  @spec movements(Span.t(), Organisation.t(), [Date.t()], [{Date.t(), Decimal.t()}], [Date.t()]) ::
           [Movement.t()]
-  def movements(span, organisation, holidays, suspended) do
+  def movements(span, organisation, holidays, suspended, taken) do
     span
     |> measured()
+    |> Enum.flat_map(&pieces(span.entitlement.grant_timing, &1, taken))
     |> Enum.map(&arrival(span, &1, organisation, holidays, suspended))
     |> Enum.reject(&Decimal.equal?(&1.amount, 0))
+  end
+
+  # Each piece with the range it was cut from.
+  defp pieces(:period_start, measured, _taken), do: [{measured, measured}]
+
+  defp pieces(:daily, measured, taken) do
+    {pieces, _next} =
+      taken
+      |> Enum.filter(&(&1 in measured))
+      |> Enum.concat([measured.last])
+      |> Enum.sort(Date)
+      |> Enum.dedup()
+      |> Enum.map_reduce(measured.first, &{{Date.range(&2, &1), measured}, Date.add(&1, 1)})
+
+    pieces
   end
 
   @doc """
@@ -100,14 +121,15 @@ defmodule Leaf.Ledger.Grant do
   defp granting_on?(%{granted_to: nil}, _date), do: true
   defp granting_on?(entitlement, date), do: not Date.before?(entitlement.granted_to, date)
 
-  defp arrival(span, measured, organisation, holidays, suspended) do
-    {kind, date} = lands(span.entitlement.grant_timing, measured)
+  defp arrival(span, {piece, measured}, organisation, holidays, suspended) do
+    {kind, date} = lands(span.entitlement.grant_timing, piece)
+    {_kind, whole_lands_on} = lands(span.entitlement.grant_timing, measured)
 
     %Movement{
       date: date,
       kind: kind,
-      amount: amount(span, measured, organisation, holidays, suspended),
-      expires_on: expires_on(span.entitlement, span.period, date)
+      amount: amount(span, piece, organisation, holidays, suspended),
+      expires_on: expires_on(span.entitlement, span.period, whole_lands_on)
     }
   end
 
@@ -147,7 +169,7 @@ defmodule Leaf.Ledger.Grant do
      Decimal.mult(den, organisation.full_time_week_hours)}
   end
 
-  # A span the person suspended no time in is left alone, which is also what keeps one they are
+  # A piece the person suspended no time in is left alone, which is also what keeps one they are
   # scheduled no hours over from being divided by none.
   defp by_time_suspended(
          %{entitlement: %{amount_source: :fixed, grant_timing: :daily}} = span,
