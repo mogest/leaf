@@ -142,7 +142,9 @@ defmodule Leaf.PeopleTest do
     assert Decimal.equal?(People.fte(pattern, organisation.full_time_week_hours), "0.55")
   end
 
-  test "a person cannot report to themselves", %{person: person} do
+  test "a person cannot report to themselves, and a change to them is recorded against them", %{
+    person: person
+  } do
     assert {:error, changeset} = People.update_person(person, nil, %{manager_id: person.id})
     assert errors_on(changeset).manager_id == ["cannot be the person themselves"]
 
@@ -150,6 +152,8 @@ defmodule Leaf.PeopleTest do
 
     assert {:ok, reporting} = People.update_person(person, nil, %{manager_id: manager.id})
     assert reporting.manager_id == manager.id
+    assert [%{action: "person.updated", subject_person_id: subject}] = Repo.all(Entry)
+    assert subject == person.id
   end
 
   test "the policy a person is on comes back as the id in force over each span", %{
