@@ -5,8 +5,10 @@ defmodule Leaf.AuditTest do
   alias Leaf.Audit.Entry
   alias Leaf.Fixtures
   alias Leaf.Leave.Request
+  alias Leaf.Org
   alias Leaf.Org.PublicHoliday
   alias Leaf.People.Person
+  alias Leaf.Policies
 
   setup do
     organisation = Fixtures.organisation()
@@ -97,6 +99,38 @@ defmodule Leaf.AuditTest do
     assert [%{changes: changes}] = Repo.all(Entry)
     assert [%{"id" => id}] = changes["days"]["to"]
     assert [%{id: ^id}] = filed.days
+  end
+
+  test "a created row's entry names what it belongs to", %{
+    organisation: organisation,
+    actor: actor
+  } do
+    country = Fixtures.calendar(%{organisation_id: organisation.id})
+    policy = Fixtures.leave_policy(%{organisation_id: organisation.id})
+    leave_type = Fixtures.leave_type(%{organisation_id: organisation.id})
+
+    assert {:ok, region} = Org.create_region(country, actor, %{name: "Canterbury"})
+
+    assert {:ok, holiday} =
+             Org.create_public_holiday(region, actor, %{name: "Show Day", date: ~D[2026-11-13]})
+
+    assert {:ok, entitlement} =
+             Policies.create_entitlement(policy, leave_type, actor, %{
+               effective_from: ~D[2026-01-01],
+               amount_source: :fixed,
+               grant_amount: "160",
+               grant_basis: :employment_date,
+               grant_period: :year,
+               grant_timing: :daily,
+               pro_rated_by_fte: true,
+               expiry_rule: :never
+             })
+
+    changes = Map.new(Repo.all(Entry), &{&1.entity_id, &1.changes})
+    assert changes[region.id]["parent_id"] == %{"from" => nil, "to" => country.id}
+    assert changes[holiday.id]["calendar_id"] == %{"from" => nil, "to" => region.id}
+    assert changes[entitlement.id]["leave_policy_id"] == %{"from" => nil, "to" => policy.id}
+    assert changes[entitlement.id]["leave_type_id"] == %{"from" => nil, "to" => leave_type.id}
   end
 
   test "a save that changed nothing is not recorded", context do
