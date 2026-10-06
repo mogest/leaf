@@ -149,7 +149,7 @@ defmodule LeafWeb.BalancesLive do
     as_at = as_at(params["as_at"], socket.assigns.current_person)
     mine? = person.id == socket.assigns.current_person.id
 
-    case chosen(accounts(person, as_at), person, params["leave_type_id"]) do
+    case accounts(person, as_at, params["leave_type_id"]) do
       {:ok, accounts, chosen} -> listed(socket, person, mine?, as_at, accounts, chosen)
       :error -> missing(socket, person, mine?, as_at)
     end
@@ -173,23 +173,23 @@ defmodule LeafWeb.BalancesLive do
     |> assign(:selected, selected)
     |> assign(:form, to_form(%{"as_at" => to_string(as_at)}, as: :ledger))
     |> assign(:accounts, listings)
-    |> assign(:account, account(chosen, granted, Ledger.awaiting(person), as_at))
+    |> assign(:account, account(chosen, granted, person, as_at))
     |> assign(:nothing, nothing(accounts, person, mine?, as_at))
   end
 
   defp title(_person, true), do: "Balances"
   defp title(person, false), do: "#{person.name}'s balances"
 
-  # Every type the person holds an account in, and every one their policy offers them. The two
-  # overlap in all but the extremes: a type granting nothing holds no account until there is leave
-  # against it, and one they have left behind holds what it holds without being on offer any more.
-  defp accounts(person, as_at) do
+  defp accounts(person, as_at, id) do
     case Ledger.ready?(person, as_at) do
-      true -> held(person, as_at)
-      false -> []
+      true -> chosen(held(person, as_at), person, id)
+      false -> {:ok, [], nil}
     end
   end
 
+  # Every type the person holds an account in, and every one their policy offers them. The two
+  # overlap in all but the extremes: a type granting nothing holds no account until there is leave
+  # against it, and one they have left behind holds what it holds without being on offer any more.
   defp held(person, as_at) do
     statements = Map.new(Ledger.statements(person, as_at), &{&1.leave_type.id, &1})
 
@@ -245,14 +245,14 @@ defmodule LeafWeb.BalancesLive do
     }
   end
 
-  defp account(nil, _granted, _awaiting, _as_at), do: nil
+  defp account(nil, _granted, _person, _as_at), do: nil
 
-  defp account({leave_type, statement}, granted, awaiting, as_at) do
+  defp account({leave_type, statement}, granted, person, as_at) do
     %{
       name: leave_type.name,
       as_at: Wording.date(as_at),
       held: figure(statement, leave_type, granted),
-      awaiting: Wording.asked(awaiting[leave_type.id], leave_type.unit),
+      awaiting: Wording.asked(Ledger.awaiting(person)[leave_type.id], leave_type.unit),
       lots: lots(statement, leave_type),
       movements: movements(statement, leave_type)
     }

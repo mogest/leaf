@@ -16,8 +16,9 @@ defmodule Leaf.Leave.Day do
   with it: a hole in the record is not a day off, and leave filed into one cannot be measured.
 
   Leave dated before a person's first work pattern is therefore filed by recording a pattern that
-  reaches back over it, which is how a sick day found after go-live is entered (§4.10). Every day
-  held here has hours on record for its date, and everything measuring one may rely on that.
+  reaches back over it, which is how a sick day found after go-live is entered (§4.10). Removing
+  that pattern afterwards leaves the day with no hours on record, which `Leaf.Ledger.ready?/2`
+  answers for.
   """
 
   use Leaf.Schema
