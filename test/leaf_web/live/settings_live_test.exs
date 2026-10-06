@@ -105,6 +105,26 @@ defmodule LeafWeb.SettingsLiveTest do
     assert html =~ "This policy grants nothing yet."
   end
 
+  test "withdrawing a policy leaves its name form alone, and a rename retitles the tab",
+       context do
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+    {:ok, live, _html} = live(context.conn, ~p"/settings/policies/#{policy}")
+
+    live |> form("#policy", leave_policy: %{"name" => "Unsaved"}) |> render_change()
+    html = live |> element("button", "Withdraw") |> render_click()
+
+    assert html =~ "Withdrawn"
+    assert html =~ ~s(value="Unsaved")
+
+    live |> form("#policy", leave_policy: %{"name" => "Contractor"}) |> render_submit()
+    assert page_title(live) =~ "Contractor"
+
+    calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
+    {:ok, live, _html} = live(context.conn, ~p"/settings/calendars/#{calendar}")
+    live |> form("#calendar", calendar: %{"name" => "Aotearoa"}) |> render_submit()
+    assert page_title(live) =~ "Aotearoa"
+  end
+
   test "an entitlement that grants nothing is refused a grant period", context do
     leave_type = Fixtures.leave_type(%{organisation_id: context.organisation.id})
     policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})

@@ -218,6 +218,7 @@ defmodule LeafWeb.CalendarLive do
 
   defp renamed(socket, {:ok, calendar}) do
     socket
+    |> assign(:page_title, calendar.name)
     |> assign(:calendar, calendar)
     |> assign(:form, to_form(Changeset.change(calendar, %{})))
     |> put_flash(:info, "Saved.")
