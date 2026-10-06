@@ -63,6 +63,7 @@ defmodule LeafWeb.WhoIsAwayLive do
                   :for={day <- row.days}
                   data-working={day.working}
                   data-leave={day.leave}
+                  data-part={day.part?}
                   data-holiday={day.holiday}
                   data-today={day.today?}
                 >
@@ -75,6 +76,7 @@ defmodule LeafWeb.WhoIsAwayLive do
 
         <ul class="legend">
           <li data-leave="approved">Away</li>
+          <li data-leave="approved" data-part>Away part of the day</li>
           <li data-holiday>Public holiday</li>
           <li>Faded days are ones they do not work</li>
         </ul>
@@ -127,6 +129,7 @@ defmodule LeafWeb.WhoIsAwayLive do
     %{
       working: working(day.working?),
       leave: day.leave,
+      part?: day.part?,
       holiday: day.holiday,
       today?: day.date == today,
       title: day.holiday

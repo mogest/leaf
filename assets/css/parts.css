@@ -231,6 +231,10 @@ li > button[popovertarget] {
     border: 1px dashed var(--green);
   }
 
+  & > li[data-part]::before {
+    background: linear-gradient(to bottom right, var(--green-wash) 50%, transparent 50%);
+  }
+
   & > li[data-holiday]::before {
     background: var(--ochre-wash);
   }
@@ -303,6 +307,19 @@ li > button[popovertarget] {
     outline-offset: -1px;
     color: var(--green-ink);
     font-weight: 600;
+  }
+
+  & td[data-leave="approved"]:where([data-part]) {
+    background: linear-gradient(to bottom right, var(--green-wash) 50%, transparent 50%);
+  }
+
+  & td[data-leave="pending"]:where([data-part]) {
+    background: linear-gradient(
+      to bottom right,
+      transparent calc(50% - 0.5px),
+      var(--green) 50%,
+      transparent calc(50% + 0.5px)
+    );
   }
 
   & td[data-holiday] {

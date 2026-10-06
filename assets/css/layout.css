@@ -694,6 +694,11 @@ main.who-is-away {
     background: var(--green-mark);
   }
 
+  & td[data-part],
+  & .legend > li[data-part]::before {
+    background: linear-gradient(to bottom right, var(--green-mark) 50%, var(--ground) 50%);
+  }
+
   & td[data-holiday] {
     background: var(--ochre-wash);
   }

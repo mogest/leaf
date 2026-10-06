@@ -32,14 +32,28 @@ defmodule LeafWeb.WhoIsAwayLiveTest do
 
     request = Fixtures.pending_request(person, %{leave_type_id: leave_type.id, dates: [@date]})
 
-    %{conn: sign_in(conn, person), organisation: organisation, person: person, request: request}
+    %{
+      conn: sign_in(conn, person),
+      organisation: organisation,
+      person: person,
+      leave_type: leave_type,
+      request: request
+    }
   end
 
   test "a month shows everybody's leave, holidays and days off in one grid", context do
+    Fixtures.leave_request(%{
+      person_id: context.person.id,
+      days: [
+        %{leave_type_id: context.leave_type.id, date: ~D[2030-03-05], amount: "4", unit: :hours}
+      ]
+    })
+
     {:ok, _live, html} = live(context.conn, ~p"/away?month=2030-03")
 
     assert html =~ "March 2030"
     assert html =~ "Rae Halloran"
+    assert html =~ ~s(<td data-leave="approved" data-part)
     assert html =~ "Fair Day"
     assert html =~ ~s(data-working="no")
   end

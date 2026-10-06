@@ -108,7 +108,7 @@ defmodule LeafWeb.StyleguideLive do
     [
       {10, :approved},
       {11, :approved},
-      {12, :approved},
+      {12, :part},
       {13, :off},
       {14, :pending},
       {15, :off},
@@ -315,11 +315,13 @@ defmodule LeafWeb.StyleguideLive do
       date: Date.new!(@august.year, @august.month, number),
       working?: state not in [:off, :today],
       leave: leave(state),
+      part?: state == :part,
       holiday: holiday(state)
     }
   end
 
   defp leave(state) when state in [:approved, :pending], do: state
+  defp leave(:part), do: :approved
   defp leave(_state), do: nil
 
   defp holiday(:holiday), do: "Labour Day"
