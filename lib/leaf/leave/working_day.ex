@@ -59,21 +59,9 @@ defmodule Leaf.Leave.WorkingDay do
     person |> People.public_holidays(range) |> Enum.map(& &1.date)
   end
 
-  # The stretches of `range` over which the person's policy credits public holidays rather than
-  # granting them off.
   defp credited(person, range) do
     person
     |> People.leave_policy_segments(range)
-    |> Enum.flat_map(fn {span, policy_id} -> crediting(policy_id, span) end)
+    |> Enum.flat_map(fn {span, policy} -> Policies.crediting(policy, span) end)
   end
-
-  defp crediting(policy_id, span) do
-    policy_id
-    |> Policies.entitlements(span)
-    |> Enum.filter(&(&1.amount_source == :public_holidays))
-    |> Enum.map(&Date.range(Enum.max([&1.effective_from, span.first], Date), closes_on(&1, span)))
-  end
-
-  defp closes_on(%{effective_to: nil}, span), do: span.last
-  defp closes_on(entitlement, span), do: Enum.min([entitlement.effective_to, span.last], Date)
 end

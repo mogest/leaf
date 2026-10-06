@@ -156,7 +156,13 @@ defmodule Leaf.PeopleTest do
     assert subject == person.id
   end
 
-  test "the policy a person is on comes back as the id in force over each span", %{
+  defp policy_ids(person, range) do
+    person
+    |> People.leave_policy_segments(range)
+    |> Enum.map(fn {span, policy} -> {span, policy.id} end)
+  end
+
+  test "the policy a person is on comes back as the one in force over each span", %{
     person: person,
     organisation: organisation
   } do
@@ -170,7 +176,7 @@ defmodule Leaf.PeopleTest do
       effective_from: ~D[2026-01-01]
     })
 
-    assert People.leave_policy_segments(person, Date.range(~D[2025-12-30], ~D[2026-01-02])) == [
+    assert policy_ids(person, Date.range(~D[2025-12-30], ~D[2026-01-02])) == [
              {Date.range(~D[2025-12-30], ~D[2025-12-31]), first.id},
              {Date.range(~D[2026-01-01], ~D[2026-01-02]), second.id}
            ]
@@ -199,14 +205,14 @@ defmodule Leaf.PeopleTest do
 
     assert corrected.person_id == person.id
 
-    assert People.leave_policy_segments(person, Date.range(~D[2026-01-15], ~D[2026-02-15])) == [
+    assert policy_ids(person, Date.range(~D[2026-01-15], ~D[2026-02-15])) == [
              {Date.range(~D[2026-01-15], ~D[2026-01-31]), first.id},
              {Date.range(~D[2026-02-01], ~D[2026-02-15]), second.id}
            ]
 
     assert {:ok, _removed} = People.delete_policy_assignment(corrected, nil)
 
-    assert People.leave_policy_segments(person, Date.range(~D[2026-02-01], ~D[2026-02-15])) == [
+    assert policy_ids(person, Date.range(~D[2026-02-01], ~D[2026-02-15])) == [
              {Date.range(~D[2026-02-01], ~D[2026-02-15]), first.id}
            ]
   end

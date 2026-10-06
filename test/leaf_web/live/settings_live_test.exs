@@ -219,7 +219,7 @@ defmodule LeafWeb.SettingsLiveTest do
     assert html =~ "Anniversary"
     refute html =~ "Labour Day"
 
-    observed = Org.observed_holidays(region.id, Date.range(~D[2026-01-01], ~D[2026-12-31]))
+    observed = Org.observed_holidays(region, Date.range(~D[2026-01-01], ~D[2026-12-31]))
 
     assert Enum.map(observed, & &1.name) == ["Anniversary", "Labour Day"]
   end

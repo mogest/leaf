@@ -11,6 +11,7 @@ defmodule Leaf.Policies do
   import Ecto.Query
 
   alias Leaf.Audit
+  alias Leaf.Dates
   alias Leaf.Leave
   alias Leaf.Org.Organisation
   alias Leaf.People
@@ -183,8 +184,8 @@ defmodule Leaf.Policies do
   defp drawn_on?(person, entitlement, window) do
     person
     |> People.leave_policy_segments(window)
-    |> Enum.filter(fn {_span, policy_id} -> policy_id == entitlement.leave_policy_id end)
-    |> Enum.any?(fn {span, _policy_id} ->
+    |> Enum.filter(fn {_span, policy} -> policy.id == entitlement.leave_policy_id end)
+    |> Enum.any?(fn {span, _policy} ->
       Leave.taken?(person, entitlement.leave_type_id, span)
     end)
   end
@@ -261,6 +262,20 @@ defmodule Leaf.Policies do
         where: entitlement.effective_from <= ^range.last,
         where: is_nil(entitlement.effective_to) or entitlement.effective_to >= ^range.first
     )
+  end
+
+  @doc "What `crediting/2` reads of a policy, to load it for many policies at once."
+  @spec entitlements_preload() :: atom()
+  def entitlements_preload, do: :entitlements
+
+  @doc "The stretches of `range` over which a policy credits public holidays rather than granting them off."
+  @spec crediting(LeavePolicy.t(), Date.Range.t()) :: [Date.Range.t()]
+  def crediting(policy, range) do
+    %{entitlements: entitlements} = Repo.preload(policy, entitlements_preload())
+
+    for %{amount_source: :public_holidays} = held <- entitlements,
+        {:ok, span} <- [Dates.intersect(range, held.effective_from, held.effective_to)],
+        do: span
   end
 
   defp of_policy(leave_policy_id) do

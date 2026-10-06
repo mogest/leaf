@@ -9,6 +9,9 @@ defmodule Leaf.People.Person do
   use Leaf.Schema
 
   alias Leaf.Org.Organisation
+  alias Leaf.People.PersonCalendar
+  alias Leaf.People.PersonPolicyAssignment
+  alias Leaf.People.WorkPattern
 
   @type t :: %__MODULE__{}
 
@@ -37,6 +40,9 @@ defmodule Leaf.People.Person do
 
     belongs_to :organisation, Organisation
     belongs_to :manager, __MODULE__
+    has_many :work_patterns, WorkPattern
+    has_many :policy_assignments, PersonPolicyAssignment
+    has_many :calendar_assignments, PersonCalendar
 
     timestamps()
   end

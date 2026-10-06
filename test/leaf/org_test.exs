@@ -106,12 +106,12 @@ defmodule Leaf.OrgTest do
 
     quarter = Date.range(~D[2026-01-01], ~D[2026-03-31])
 
-    assert Enum.map(Org.observed_holidays(calendar.id, quarter), & &1.date) == [
+    assert Enum.map(Org.observed_holidays(calendar, quarter), & &1.date) == [
              ~D[2026-01-01],
              ~D[2026-02-06]
            ]
 
-    assert Enum.map(Org.observed_holidays(region.id, quarter), & &1.date) == [
+    assert Enum.map(Org.observed_holidays(region, quarter), & &1.date) == [
              ~D[2026-01-01],
              ~D[2026-01-19],
              ~D[2026-02-06]
@@ -143,7 +143,7 @@ defmodule Leaf.OrgTest do
       name: "Waitangi here"
     })
 
-    observed = Org.observed_holidays(region.id, Date.range(~D[2026-01-01], ~D[2026-12-31]))
+    observed = Org.observed_holidays(region, Date.range(~D[2026-01-01], ~D[2026-12-31]))
 
     assert Enum.map(observed, & &1.name) == ["Waitangi here"]
   end

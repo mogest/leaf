@@ -32,25 +32,37 @@ defmodule Leaf.Leave.Booked do
   """
   @spec days(Person.t(), Date.Range.t()) :: [Day.t()]
   def days(person, range) do
-    Repo.all(
-      from [day, request] in held(person, range),
-        order_by: day.date,
-        preload: [leave_request: request]
-    )
+    [person.id] |> held([:approved, :pending], range) |> listed()
+  end
+
+  @doc "Every day of approved leave each of `people` holds within `range`, oldest first, by their id."
+  @spec approved([Person.t()], Date.Range.t()) :: %{Ecto.UUID.t() => [Day.t()]}
+  def approved(people, range) do
+    people
+    |> Enum.map(& &1.id)
+    |> held([:approved], range)
+    |> listed()
+    |> Enum.group_by(& &1.leave_request.person_id)
   end
 
   @doc "Whether the person holds any leave of that type within `range`, by the same rule."
   @spec any?(Person.t(), Ecto.UUID.t(), Date.Range.t()) :: boolean()
   def any?(person, leave_type_id, range) do
-    Repo.exists?(from day in held(person, range), where: day.leave_type_id == ^leave_type_id)
+    held = held([person.id], [:approved, :pending], range)
+
+    Repo.exists?(from day in held, where: day.leave_type_id == ^leave_type_id)
   end
 
-  defp held(person, range) do
+  defp held(person_ids, statuses, range) do
     from day in Day,
       join: request in assoc(day, :leave_request),
-      where: request.person_id == ^person.id,
-      where: request.status in [:approved, :pending],
+      where: request.person_id in ^person_ids,
+      where: request.status in ^statuses,
       where: day.date >= ^range.first and day.date <= ^range.last
+  end
+
+  defp listed(held) do
+    Repo.all(from [day, request] in held, order_by: day.date, preload: [leave_request: request])
   end
 
   @doc """

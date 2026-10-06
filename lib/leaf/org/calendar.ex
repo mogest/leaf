@@ -11,6 +11,7 @@ defmodule Leaf.Org.Calendar do
   use Leaf.Schema
 
   alias Leaf.Org.Organisation
+  alias Leaf.Org.PublicHoliday
 
   @type t :: %__MODULE__{}
 
@@ -22,6 +23,7 @@ defmodule Leaf.Org.Calendar do
     belongs_to :organisation, Organisation
     belongs_to :parent, __MODULE__
     has_many :regions, __MODULE__, foreign_key: :parent_id
+    has_many :public_holidays, PublicHoliday
 
     timestamps()
   end

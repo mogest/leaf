@@ -104,7 +104,7 @@ defmodule Leaf.Leave.Offer do
       {:ok, employed} ->
         person
         |> People.leave_policy_segments(employed)
-        |> Enum.flat_map(fn {span, policy_id} -> of_policy(policy_id, span) end)
+        |> Enum.flat_map(fn {span, policy} -> of_policy(policy.id, span) end)
 
       :error ->
         []
