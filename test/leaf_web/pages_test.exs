@@ -78,7 +78,9 @@ defmodule LeafWeb.PagesTest do
       ~p"/settings/calendars",
       ~p"/settings/calendars/#{context.calendar}",
       ~p"/settings/calendars/#{context.calendar}/regions/new",
-      ~p"/settings/audit"
+      ~p"/settings/audit",
+      ~p"/reports",
+      ~p"/reports/ipayroll"
     ]
   end
 
@@ -119,6 +121,28 @@ defmodule LeafWeb.PagesTest do
     end)
   end
 
+  test "a report's options go into its address, and download as a CSV of its rows", context do
+    {:ok, live, _html} = live(context.conn, ~p"/reports/ipayroll")
+
+    live
+    |> form("#options", options: %{from: "2026-10-01", to: "2026-10-31"})
+    |> render_change()
+
+    assert_patch(live, ~p"/reports/ipayroll?from=2026-10-01&to=2026-10-31")
+
+    path = ~p"/reports/ipayroll/download?from=2026-10-01&to=2026-10-31"
+    assert has_element?(live, ~s(a[href="#{path}"]))
+
+    conn = get(context.conn, path)
+    assert response_content_type(conn, :csv) =~ "text/csv"
+    assert response(conn, 200) == "Id,Name,Leave Type,First Day,Last Day,Hours,Days,Reason\r\n"
+
+    backwards = ~p"/reports/ipayroll/download?from=2026-10-31&to=2026-10-01"
+    assert context.conn |> get(backwards) |> response(400)
+
+    assert build_conn() |> sign_in(context.other) |> get(path) |> redirected_to() == "/"
+  end
+
   test "an administrator's page naming nothing turns them back with a flash", context do
     nothing = Ecto.UUID.generate()
 
@@ -131,7 +155,8 @@ defmodule LeafWeb.PagesTest do
       {~p"/settings/policies/#{nothing}", "/settings/policies"},
       {~p"/settings/policies/#{nothing}/entitlements/new", "/settings/policies"},
       {~p"/settings/calendars/#{nothing}", "/settings/calendars"},
-      {~p"/settings/calendars/#{nothing}/regions/new", "/settings/calendars"}
+      {~p"/settings/calendars/#{nothing}/regions/new", "/settings/calendars"},
+      {~p"/reports/nothing", "/reports"}
     ]
     |> Enum.each(fn {path, back} ->
       assert {:error, {:live_redirect, %{to: ^back, flash: %{"error" => _refusal}}}} =

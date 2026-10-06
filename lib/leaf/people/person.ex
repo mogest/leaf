@@ -4,6 +4,8 @@ defmodule Leaf.People.Person do
 
   Employee or contractor is not a distinction made here — it is expressed by which leave policy
   the person is on. Manager is not a role either: it follows from having reports.
+
+  `employee_number` is who they are to the payroll system, which is how its export names them.
   """
 
   use Leaf.Schema
@@ -26,7 +28,8 @@ defmodule Leaf.People.Person do
     :role,
     :employment_start_date,
     :employment_end_date,
-    :birth_date
+    :birth_date,
+    :employee_number
   ]
 
   schema "people" do
@@ -37,6 +40,7 @@ defmodule Leaf.People.Person do
     field :employment_start_date, :date
     field :employment_end_date, :date
     field :birth_date, :date
+    field :employee_number, :string
 
     belongs_to :organisation, Organisation
     belongs_to :manager, __MODULE__
@@ -57,6 +61,7 @@ defmodule Leaf.People.Person do
     |> validate_date_order(:employment_start_date, :employment_end_date)
     |> unique_constraint(:email, name: :people_lower_email_index)
     |> unique_constraint(:google_sub)
+    |> unique_constraint(:employee_number, name: :people_organisation_id_employee_number_index)
     |> assoc_constraint(:organisation)
     |> assoc_constraint(:manager)
   end

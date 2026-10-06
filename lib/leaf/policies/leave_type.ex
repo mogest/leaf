@@ -8,6 +8,9 @@ defmodule Leaf.Policies.LeaveType do
 
   `suspends_accrual` is what the leave is rather than how a policy grants it: time on it counts as
   not worked, so daily accrual shrinks over it (§4.7).
+
+  `payroll_code` is what the payroll system calls the type. Leave of a type without one is not
+  exported to it.
   """
 
   use Leaf.Schema
@@ -18,13 +21,14 @@ defmodule Leaf.Policies.LeaveType do
 
   @units [:hours, :days]
 
-  @fields [:name, :unit, :suspends_accrual, :position, :archived_at]
+  @fields [:name, :unit, :suspends_accrual, :position, :payroll_code, :archived_at]
 
   schema "leave_types" do
     field :name, :string
     field :unit, Ecto.Enum, values: @units
     field :suspends_accrual, :boolean, default: false
     field :position, :integer
+    field :payroll_code, :string
     field :archived_at, :utc_datetime
 
     belongs_to :organisation, Organisation

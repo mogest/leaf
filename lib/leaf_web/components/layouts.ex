@@ -24,6 +24,7 @@ defmodule LeafWeb.Layouts do
 
   @administered [
     @people,
+    {"Reports", "/reports", ~w(reports)},
     {"Settings", "/settings", ~w(settings)}
   ]
 
