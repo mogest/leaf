@@ -120,13 +120,29 @@ defmodule Leaf.Policies do
   Closing one means setting `effective_to`, which lapses what it granted. Changing its terms means
   setting `granted_to` and opening the next row the day after: two grant windows for one leave type
   under one policy may not overlap, but their lives may.
+
+  Once leave has been taken against one, those two dates are all that may change: anything else is
+  refused with `{:error, :drawn_on}`, since it would rewrite what the leave already taken drew on.
   """
   @spec update_entitlement(PolicyEntitlement.t(), Person.t() | nil, map()) ::
-          Audit.written(PolicyEntitlement.t())
+          Audit.written(PolicyEntitlement.t()) | {:error, :drawn_on}
   def update_entitlement(entitlement, actor, attrs) do
-    entitlement
-    |> PolicyEntitlement.changeset(attrs)
-    |> Audit.write("policy_entitlement.updated", actor)
+    write = fn entitlement ->
+      entitlement
+      |> PolicyEntitlement.changeset(attrs)
+      |> Audit.write("policy_entitlement.updated", actor)
+    end
+
+    amended(entitlement, PolicyEntitlement.changeset(entitlement, attrs), write)
+  end
+
+  defp amended(_entitlement, %{valid?: false} = changeset, _write), do: {:error, changeset}
+
+  defp amended(entitlement, changeset, write) do
+    case Map.keys(changeset.changes) -- [:granted_to, :effective_to] do
+      [] -> write.(entitlement)
+      _terms -> unless_drawn_on(entitlement, write)
+    end
   end
 
   @doc """
@@ -141,23 +157,27 @@ defmodule Leaf.Policies do
   @spec delete_entitlement(PolicyEntitlement.t(), Person.t() | nil) ::
           Audit.written(PolicyEntitlement.t()) | {:error, :drawn_on}
   def delete_entitlement(entitlement, actor) do
-    removed(entitlement, actor, drawn_on?(entitlement))
+    unless_drawn_on(entitlement, &Audit.delete(&1, "policy_entitlement.deleted", actor))
   end
 
-  defp removed(_entitlement, _actor, true), do: {:error, :drawn_on}
+  # The entitlement is read again inside the lock, so that the check and the write are both about
+  # the row as it stands rather than as the caller last saw it.
+  defp unless_drawn_on(entitlement, write) do
+    people = People.on_policy(entitlement.leave_policy_id)
 
-  defp removed(entitlement, actor, false) do
-    Audit.delete(entitlement, "policy_entitlement.deleted", actor)
+    Leave.serialised(Enum.map(people, & &1.id), fn ->
+      {:ok, entitlement} = Repo.fetch(PolicyEntitlement, entitlement.id)
+
+      if drawn_on?(people, entitlement), do: {:error, :drawn_on}, else: write.(entitlement)
+    end)
   end
 
   # Leave draws on a pool rather than on the row that filled it, so what counts as having drawn on
   # an entitlement is leave of its type taken by somebody its policy governed while it was in force.
-  defp drawn_on?(entitlement) do
+  defp drawn_on?(people, entitlement) do
     window = Date.range(entitlement.effective_from, entitlement.effective_to || @forever)
 
-    entitlement.leave_policy_id
-    |> People.on_policy()
-    |> Enum.any?(&drawn_on?(&1, entitlement, window))
+    Enum.any?(people, &drawn_on?(&1, entitlement, window))
   end
 
   defp drawn_on?(person, entitlement, window) do

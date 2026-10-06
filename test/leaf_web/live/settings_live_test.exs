@@ -235,6 +235,40 @@ defmodule LeafWeb.SettingsLiveTest do
     assert flash["error"] == "That entitlement is not on this policy."
   end
 
+  test "an entitlement leave has been taken against closes, and says why nothing else changes",
+       context do
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+    leave_type = Fixtures.leave_type(%{organisation_id: context.organisation.id})
+    person = Fixtures.person(%{organisation_id: context.organisation.id})
+
+    entitlement =
+      Fixtures.policy_entitlement(%{leave_policy_id: policy.id, leave_type_id: leave_type.id})
+
+    Fixtures.policy_assignment(%{person_id: person.id, leave_policy_id: policy.id})
+
+    Fixtures.leave_request(%{
+      person_id: person.id,
+      days: [%{leave_type_id: leave_type.id, date: ~D[2026-08-20], amount: "4", unit: :hours}]
+    })
+
+    {:ok, live, _html} =
+      live(context.conn, ~p"/settings/policies/#{policy}/entitlements/#{entitlement}")
+
+    assert live
+           |> form("#entitlement", policy_entitlement: %{"grant_amount" => "200"})
+           |> render_submit() =~ "Leave has been taken against this entitlement"
+
+    {:ok, live, _html} =
+      live(context.conn, ~p"/settings/policies/#{policy}/entitlements/#{entitlement}")
+
+    live
+    |> form("#entitlement", policy_entitlement: %{"effective_to" => "2027-03-31"})
+    |> render_submit()
+
+    assert_redirect(live, ~p"/settings/policies/#{policy}")
+    assert [%{effective_to: ~D[2027-03-31]}] = Policies.entitlements(policy.id)
+  end
+
   test "a calendar will not let a holiday off another calendar", context do
     calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
 

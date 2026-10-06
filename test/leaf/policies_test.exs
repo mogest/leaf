@@ -113,7 +113,7 @@ defmodule Leaf.PoliciesTest do
     assert changes["effective_to"] == %{"from" => nil, "to" => "2026-03-31"}
   end
 
-  test "an entitlement leave has been taken against will not be deleted", context do
+  test "an entitlement leave has been taken against can only be closed", context do
     %{organisation: organisation, policy: policy, quarterly: quarterly} = context
     admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
     person = Fixtures.person(%{organisation_id: organisation.id})
@@ -127,8 +127,23 @@ defmodule Leaf.PoliciesTest do
     })
 
     assert Policies.delete_entitlement(offered, admin) == {:error, :drawn_on}
+
+    assert Policies.update_entitlement(offered, admin, %{effective_from: ~D[2026-09-01]}) ==
+             {:error, :drawn_on}
+
+    assert {:error, changeset} =
+             Policies.update_entitlement(offered, admin, %{effective_from: nil})
+
+    assert errors_on(changeset).effective_from == ["can't be blank"]
+
     assert Enum.map(Policies.entitlements(policy.id), & &1.id) == [offered.id]
     assert Repo.all(Entry) == []
+
+    assert {:ok, _closed} =
+             Policies.update_entitlement(offered, admin, %{
+               granted_to: ~D[2026-12-31],
+               effective_to: ~D[2027-03-31]
+             })
   end
 
   test "an entitlement nobody has drawn on comes off", context do
