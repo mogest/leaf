@@ -80,7 +80,11 @@ defmodule LeafWeb.PagesTest do
       ~p"/settings/calendars/#{context.calendar}/regions/new",
       ~p"/settings/audit",
       ~p"/reports",
-      ~p"/reports/ipayroll"
+      ~p"/reports/ipayroll",
+      ~p"/reports/taken",
+      ~p"/reports/reconciliation",
+      ~p"/reports/balances",
+      ~p"/reports/expiring"
     ]
   end
 

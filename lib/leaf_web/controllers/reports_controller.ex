@@ -7,12 +7,15 @@ defmodule LeafWeb.ReportsController do
 
   use LeafWeb, :controller
 
+  alias Leaf.People
   alias Leaf.Reports
 
   def download(conn, %{"report" => report} = params) do
-    case Reports.run(conn.assigns.current_person, params) do
+    person = conn.assigns.current_person
+
+    case Reports.run(person, params) do
       {:ok, table} ->
-        send_download(conn, {:binary, Reports.csv(table)},
+        send_download(conn, {:binary, Reports.csv(table, People.time_zone(person))},
           filename: "#{report}.csv",
           content_type: "text/csv"
         )

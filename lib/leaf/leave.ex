@@ -39,6 +39,18 @@ defmodule Leaf.Leave do
 
   @whole Decimal.new(1)
 
+  # What payroll has to hear about. A decline is not among them: a request nobody approved was
+  # never anything payroll paid.
+  @revisions %{
+    "leave_request.requested" => :requested,
+    "leave_request.amended" => :amended,
+    "leave_request.approved" => :approved,
+    "leave_request.cancelled" => :cancelled
+  }
+
+  @typedoc "A change to a request that payroll has to hear about."
+  @type revision :: :requested | :amended | :approved | :cancelled
+
   @typedoc """
   One line of a request: an amount of one leave type on one date, in whichever unit was asked for.
 
@@ -302,6 +314,55 @@ defmodule Leaf.Leave do
         preload: [:person, days: :leave_type]
     )
   end
+
+  @doc "Every day of approved leave each of `people` holds within `range`, oldest first, by their id."
+  @spec approved([Person.t()], Date.Range.t()) :: %{Ecto.UUID.t() => [Day.t()]}
+  defdelegate approved(people, range), to: Booked
+
+  @doc """
+  Each change payroll has to hear about made to the organisation's leave in `range` after `since`.
+
+  Oldest first, each with the request as it stands now, its person and its days with their types.
+  A request is about `range` where it holds a day in it now or held one before an amendment moved
+  it, since moving leave out of a period changes what that period paid. The audit log is what says
+  so: it holds every change, where amending only the days leaves the request's own row untouched.
+  """
+  @spec revisions(Ecto.UUID.t(), Date.Range.t(), DateTime.t()) ::
+          [{Request.t(), revision(), DateTime.t()}]
+  def revisions(organisation_id, range, since) do
+    entries =
+      Request
+      |> Audit.entries_since(organisation_id, since)
+      |> Enum.filter(&@revisions[&1.action])
+
+    ids = Enum.map(entries, & &1.entity_id)
+
+    requests =
+      Repo.all(
+        from request in Request,
+          where: request.id in ^ids,
+          preload: [:person, days: :leave_type]
+      )
+      |> Map.new(&{&1.id, &1})
+
+    recorded = Enum.group_by(entries, & &1.entity_id, &dates_recorded/1)
+
+    for entry <- entries,
+        request = requests[entry.entity_id],
+        about?(request, List.flatten(recorded[request.id]), range) do
+      {request, @revisions[entry.action], entry.inserted_at}
+    end
+  end
+
+  defp about?(request, recorded, range) do
+    Enum.any?(Enum.map(request.days, & &1.date) ++ recorded, &(&1 in range))
+  end
+
+  defp dates_recorded(%{changes: %{"days" => %{"from" => from, "to" => to}}}) do
+    Enum.map(List.wrap(from) ++ List.wrap(to), &Date.from_iso8601!(&1["date"]))
+  end
+
+  defp dates_recorded(_entry), do: []
 
   @doc """
   The pending requests `approver` is the one to decide, the leave starting soonest first.

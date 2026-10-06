@@ -1185,6 +1185,7 @@ main.reports {
     }
   }
 
+  & > p,
   & > section > p {
     font-size: var(--size-base);
     color: var(--ink-soft);

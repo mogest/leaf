@@ -70,6 +70,18 @@ defmodule Leaf.Audit do
     Repo.all(from entry in newest_first(limit), where: entry.subject_person_id == ^person.id)
   end
 
+  @doc "Every entry about the organisation's people against a row of `schema` after `since`, oldest first."
+  @spec entries_since(module(), Ecto.UUID.t(), DateTime.t()) :: [Entry.t()]
+  def entries_since(schema, organisation_id, since) do
+    Repo.all(
+      from entry in Entry,
+        join: person in assoc(entry, :subject_person),
+        where: person.organisation_id == ^organisation_id,
+        where: entry.entity_type == ^schema.__schema__(:source) and entry.inserted_at > ^since,
+        order_by: entry.inserted_at
+    )
+  end
+
   defp newest_first(limit) do
     from entry in Entry,
       order_by: [desc: entry.inserted_at],

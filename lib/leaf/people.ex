@@ -24,6 +24,7 @@ defmodule Leaf.People do
   alias Ecto.Changeset
   alias Leaf.Audit
   alias Leaf.Org
+  alias Leaf.Org.Calendar
   alias Leaf.Org.Organisation
   alias Leaf.Org.PublicHoliday
   alias Leaf.People.Person
@@ -185,6 +186,19 @@ defmodule Leaf.People do
   @doc "One of the person's calendar assignments, or `:error` where it is not theirs."
   @spec fetch_calendar_assignment(Person.t(), Ecto.UUID.t()) :: {:ok, PersonCalendar.t()} | :error
   def fetch_calendar_assignment(person, id), do: fetch_of(PersonCalendar, person, id)
+
+  @doc """
+  The country of the calendar a person is on `date`: the calendar itself, or the one it is a region of.
+
+  `:error` before their first calendar takes effect.
+  """
+  @spec fetch_country_on(Person.t(), Date.t()) :: {:ok, Calendar.t()} | :error
+  def fetch_country_on(person, date) do
+    with {:ok, assignment} <-
+           person |> succession(:calendar_assignments, calendar: :parent) |> Timeline.fetch(date) do
+      {:ok, assignment.calendar.parent || assignment.calendar}
+    end
+  end
 
   @doc "Every work pattern a person has been on, earliest first."
   @spec work_patterns(Person.t()) :: [WorkPattern.t()]

@@ -82,6 +82,16 @@ defmodule Leaf.Org do
     )
   end
 
+  @doc "The organisation's countries, by name: its calendars that are no region of another."
+  @spec countries(Ecto.UUID.t()) :: [Calendar.t()]
+  def countries(organisation_id) do
+    Repo.all(
+      from calendar in Calendar,
+        where: calendar.organisation_id == ^organisation_id and is_nil(calendar.parent_id),
+        order_by: calendar.name
+    )
+  end
+
   @doc "The time zones a calendar in a country might keep, for it to be offered a choice of."
   @spec time_zones(String.t() | nil) :: [String.t()]
   defdelegate time_zones(country_code), to: TimeZones, as: :of
