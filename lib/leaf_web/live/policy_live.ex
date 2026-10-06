@@ -38,7 +38,7 @@ defmodule LeafWeb.PolicyLive do
 
   @role :admin
   def handle_event("archive", _params, socket) do
-    {:noreply, saved(socket, offer(socket.assigns.policy, socket.assigns.current_person))}
+    {:noreply, written(socket, offer(socket.assigns.policy, socket.assigns.current_person))}
   end
 
   @role :admin
@@ -209,8 +209,16 @@ defmodule LeafWeb.PolicyLive do
   defp offer(%{archived_at: nil} = policy, actor), do: Policies.withdraw(policy, actor)
   defp offer(policy, actor), do: Policies.reoffer(policy, actor)
 
+  defp written(socket, {:ok, policy}) do
+    socket |> assign(:policy, policy) |> put_flash(:info, "Saved.")
+  end
+
+  defp written(socket, {:error, _changeset}),
+    do: put_flash(socket, :error, "That would not save.")
+
   defp saved(socket, {:ok, policy}) do
     socket
+    |> assign(:page_title, policy.name)
     |> assign(:policy, policy)
     |> assign(:form, to_form(Changeset.change(policy, %{})))
     |> put_flash(:info, "Saved.")
