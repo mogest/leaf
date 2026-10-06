@@ -23,10 +23,6 @@ defmodule Leaf.Ledger.Lot do
   @spec latest_first([t()]) :: [t()]
   def latest_first(lots), do: lots |> soonest_first() |> Enum.reverse()
 
-  @doc "The total held across `lots`."
-  @spec total([t()]) :: Decimal.t()
-  def total(lots), do: Enum.reduce(lots, Decimal.new(0), &Decimal.add(&2, &1.amount))
-
   defp lapses_no_later?(nil, nil), do: true
   defp lapses_no_later?(nil, _later), do: false
   defp lapses_no_later?(_earlier, nil), do: true

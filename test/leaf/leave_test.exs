@@ -258,8 +258,8 @@ defmodule Leaf.LeaveTest do
     assert Leave.working_days(context.person, Date.range(@thursday, @saturday)) ==
              [{@thursday, Decimal.new("8.00")}]
 
-    assert {:ok, %{movements: []}} =
-             Ledger.fetch_statement(context.person, allowance.id, ~D[2026-08-31])
+    statements = Ledger.statements(context.person, ~D[2026-08-31])
+    assert %{movements: []} = Enum.find(statements, &(&1.leave_type.id == allowance.id))
   end
 
   test "a block allowance credits nothing after it ends, though its period runs on", context do
@@ -271,8 +271,10 @@ defmodule Leaf.LeaveTest do
     assert Leave.working_days(context.person, Date.range(@thursday, @saturday)) ==
              [{@thursday, Decimal.new("8.00")}]
 
-    assert {:ok, %{movements: []}} =
-             Ledger.fetch_statement(context.person, allowance.leave_type_id, ~D[2026-08-31])
+    statements = Ledger.statements(context.person, ~D[2026-08-31])
+
+    assert %{movements: []} =
+             Enum.find(statements, &(&1.leave_type.id == allowance.leave_type_id))
   end
 
   test "leave cannot be filed on a date before the person's first work pattern", context do
@@ -532,7 +534,7 @@ defmodule Leaf.LeaveTest do
     Fixtures.leave_request(%{person_id: person.id, days: [entry(leave_type, @ahead)]})
     taken(context)
 
-    assert Enum.map(Leave.days_approved(person), & &1.date) == [@thursday, @ahead]
+    assert Enum.map(Leave.days(person, :approved), & &1.date) == [@thursday, @ahead]
   end
 
   test "balance entries come back oldest first, up to the date asked about", context do

@@ -26,6 +26,8 @@ defmodule Leaf.Policies do
   # the window it could have been drawn on within has to be closed somewhere past all of it.
   @forever ~D[9999-12-31]
 
+  @audited_as %{LeaveType => "leave_type", LeavePolicy => "leave_policy"}
+
   @doc "Creates a leave type."
   @spec create_leave_type(Organisation.t(), Person.t() | nil, map()) ::
           Audit.written(LeaveType.t())
@@ -95,16 +97,10 @@ defmodule Leaf.Policies do
   @spec reoffer(LeavePolicy.t(), Person.t() | nil) :: Audit.written(LeavePolicy.t())
   def reoffer(record, actor), do: archived(record, actor, nil, "reoffered")
 
-  defp archived(%LeaveType{} = leave_type, actor, at, action) do
-    leave_type
-    |> LeaveType.changeset(%{archived_at: at})
-    |> Audit.write("leave_type.#{action}", actor)
-  end
-
-  defp archived(%LeavePolicy{} = policy, actor, at, action) do
-    policy
-    |> LeavePolicy.changeset(%{archived_at: at})
-    |> Audit.write("leave_policy.#{action}", actor)
+  defp archived(%schema{} = record, actor, at, action) do
+    record
+    |> schema.changeset(%{archived_at: at})
+    |> Audit.write("#{Map.fetch!(@audited_as, schema)}.#{action}", actor)
   end
 
   @doc "Creates one of a policy's entitlements, for one leave type."

@@ -29,8 +29,4 @@ defmodule Leaf.Ledger.Movement do
 
   @enforce_keys [:date, :kind, :amount]
   defstruct [:date, :kind, :amount, :expires_on]
-
-  @doc "The total the movements come to."
-  @spec total([t()]) :: Decimal.t()
-  def total(movements), do: Enum.reduce(movements, Decimal.new(0), &Decimal.add(&2, &1.amount))
 end

@@ -91,11 +91,6 @@ defmodule Leaf.People do
   @spec fetch_person(Ecto.UUID.t()) :: {:ok, Person.t()} | :error
   def fetch_person(id), do: Repo.fetch(Person, id)
 
-  @doc "The person's manager, or `:error` where they have none."
-  @spec fetch_manager(Person.t()) :: {:ok, Person.t()} | :error
-  def fetch_manager(%{manager_id: nil}), do: :error
-  def fetch_manager(person), do: fetch_person(person.manager_id)
-
   @doc "The name of the person's manager, or `nil` where they have none."
   @spec manager_name(Person.t()) :: String.t() | nil
   def manager_name(person) do
@@ -104,6 +99,9 @@ defmodule Leaf.People do
       :error -> nil
     end
   end
+
+  defp fetch_manager(%{manager_id: nil}), do: :error
+  defp fetch_manager(person), do: fetch_person(person.manager_id)
 
   @doc "Puts a person on a work pattern from a date, superseding whatever they were on."
   @spec create_work_pattern(Person.t(), Person.t() | nil, map()) :: Audit.written(WorkPattern.t())
@@ -190,19 +188,16 @@ defmodule Leaf.People do
 
   @doc "Every work pattern a person has been on, earliest first."
   @spec work_patterns(Person.t()) :: [WorkPattern.t()]
-  def work_patterns(person), do: Repo.all(effective_dated(WorkPattern, person))
+  def work_patterns(person), do: succession(person, :work_patterns)
 
   @doc "Every policy a person has been on, earliest first, each with the policy."
   @spec policy_assignments(Person.t()) :: [PersonPolicyAssignment.t()]
-  def policy_assignments(person) do
-    Repo.all(preload(effective_dated(PersonPolicyAssignment, person), :leave_policy))
-  end
+  def policy_assignments(person), do: succession(person, :policy_assignments, :leave_policy)
 
   @doc "Every calendar a person has been on, earliest first, each with the calendar and country."
   @spec calendar_assignments(Person.t()) :: [PersonCalendar.t()]
-  def calendar_assignments(person) do
-    Repo.all(preload(effective_dated(PersonCalendar, person), calendar: :parent))
-  end
+  def calendar_assignments(person),
+    do: succession(person, :calendar_assignments, calendar: :parent)
 
   @doc """
   Whether anybody reports to `person`.
@@ -439,10 +434,6 @@ defmodule Leaf.People do
   end
 
   defp fetch_of(schema, person, id), do: Repo.fetch(schema, id, person_id: person.id)
-
-  defp effective_dated(schema, person) do
-    from row in schema, where: row.person_id == ^person.id, order_by: row.effective_from
-  end
 
   defp succession(person, rows, preloads \\ []) do
     person |> Repo.preload([{rows, preloads}]) |> Map.fetch!(rows)

@@ -102,9 +102,7 @@ defmodule Leaf.LedgerTest do
   end
 
   defp statement(person, leave_type, as_at) do
-    {:ok, statement} = Ledger.fetch_statement(person, leave_type.id, as_at)
-
-    statement
+    person |> Ledger.statements(as_at) |> Enum.find(&(&1.leave_type.id == leave_type.id))
   end
 
   defp movements(statement) do
@@ -505,7 +503,7 @@ defmodule Leaf.LedgerTest do
       effective_from: @started
     })
 
-    assert Ledger.fetch_statement(without_birth_date, birthday.id, ~D[2024-08-23]) == :error
+    assert statement(without_birth_date, birthday, ~D[2024-08-23]) == nil
   end
 
   test "a public holiday allowance credits the person's share of the year's calendar", context do
@@ -970,8 +968,7 @@ defmodule Leaf.LedgerTest do
     # Dated past the date asked about, so the account has to run on to it to answer at all.
     ahead = [day(annual, ~D[2025-03-03], "8", :hours)]
 
-    assert {:ok, projected_ahead} =
-             Ledger.fetch_statement(person, annual.id, ~D[2025-02-28], ahead)
+    [projected_ahead] = Ledger.statements(person, ~D[2025-02-28], ahead)
 
     # Approved for three months' time, so it is spent out of the year that has been accrued and
     # accrues nothing further.
@@ -1141,7 +1138,7 @@ defmodule Leaf.LedgerTest do
     full_time(person)
     annual = leave_type(context, %{})
     carried = leave_type(context, %{name: "Carried leave", position: 2})
-    unused = leave_type(context, %{name: "Study leave", position: 3})
+    leave_type(context, %{name: "Study leave", position: 3})
     entitlement(context, annual, %{grant_amount: "200"})
 
     Fixtures.balance_entry(%{person_id: person.id, leave_type_id: carried.id, amount: "40"})
@@ -1149,6 +1146,5 @@ defmodule Leaf.LedgerTest do
     statements = Ledger.statements(person, ~D[2024-06-01])
 
     assert Enum.map(statements, & &1.leave_type.name) == ["Annual leave", "Carried leave"]
-    assert Ledger.fetch_statement(person, unused.id, ~D[2024-06-01]) == :error
   end
 end

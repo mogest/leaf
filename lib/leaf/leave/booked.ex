@@ -16,6 +16,7 @@ defmodule Leaf.Leave.Booked do
 
   alias Ecto.Changeset
   alias Leaf.Dates
+  alias Leaf.Decimals
   alias Leaf.Leave.Day
   alias Leaf.Leave.Request
   alias Leaf.Leave.WorkingDay
@@ -119,9 +120,7 @@ defmodule Leaf.Leave.Booked do
     |> Map.new(fn {date, on_date} -> {date, summed(on_date, at(hours, date))} end)
   end
 
-  defp summed(days, hours) do
-    Enum.reduce(days, @none, &Decimal.add(&2, Day.in_unit(&1, :hours, hours)))
-  end
+  defp summed(days, hours), do: Decimals.total(days, &Day.in_unit(&1, :hours, hours))
 
   # A date the person is on no pattern for has no hours to spend, which is the same answer as none
   # left: leave filed into a hole in the record is refused for being in one.

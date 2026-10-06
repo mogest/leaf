@@ -12,6 +12,7 @@ defmodule Leaf.Ledger do
   """
 
   alias Leaf.Dates
+  alias Leaf.Decimals
   alias Leaf.Leave
   alias Leaf.Leave.BalanceEntry
   alias Leaf.Leave.Day
@@ -61,7 +62,7 @@ defmodule Leaf.Ledger do
     %{organisation: organisation} = person = People.dated(person)
     spans = Span.all(person, organisation, as_at)
     leave_types = Policies.leave_types(organisation.id)
-    taken = Leave.days_approved(person) ++ days
+    taken = Leave.days(person, :approved) ++ days
     hours = hours_taken_against(person, taken)
 
     context = %{
@@ -161,21 +162,6 @@ defmodule Leaf.Ledger do
   defp effective_to(entitlement), do: entitlement.effective_to
 
   @doc """
-  The person's account in one leave type, or `:error` where they hold none.
-
-  Every leave type replays from the date the organisation started tracking leave, so this works
-  the whole ledger out and takes one account from it: one type on its own is no less work.
-  """
-  @spec fetch_statement(Person.t(), Ecto.UUID.t(), Date.t(), [Day.t()]) ::
-          {:ok, Statement.t()} | :error
-  def fetch_statement(person, leave_type_id, as_at, days \\ []) do
-    case Enum.find(statements(person, as_at, days), &(&1.leave_type.id == leave_type_id)) do
-      nil -> :error
-      statement -> {:ok, statement}
-    end
-  end
-
-  @doc """
   The accounts `days` would leave behind, in the organisation's order.
 
   Only the leave types those days draw on, out of `balances/3`: what approving a request comes to
@@ -209,7 +195,7 @@ defmodule Leaf.Ledger do
   end
 
   defp undecided(person) do
-    days = Leave.days_awaiting(person)
+    days = Leave.days(person, :pending)
     leave_types = Policies.leave_types(person.organisation_id)
     units = Map.new(leave_types, &{&1.id, &1.unit})
     hours = hours_taken_against(person, days)
@@ -268,7 +254,7 @@ defmodule Leaf.Ledger do
   defp of_type?(row, leave_type), do: row.leave_type_id == leave_type.id
 
   defp asked(days, unit, hours) do
-    Enum.reduce(days, Decimal.new(0), &Decimal.add(&2, Leave.in_unit(&1, unit, hours[&1.date])))
+    Decimals.total(days, &Leave.in_unit(&1, unit, hours[&1.date]))
   end
 
   defp replay(leave_type, context, spans, entered, taken) do

@@ -7,6 +7,7 @@ defmodule Leaf.Leave.Diary do
   so this is where a day is decided and neither of them decides it again.
   """
 
+  alias Leaf.Decimals
   alias Leaf.Leave.Day
   alias Leaf.Leave.WorkingDay
   alias Leaf.People
@@ -61,7 +62,7 @@ defmodule Leaf.Leave.Diary do
 
   defp leave(days, hours) do
     {status, shown} = days |> Enum.group_by(& &1.leave_request.status) |> furthest()
-    taken = Enum.reduce(shown, @none, &Decimal.add(&2, Day.in_unit(&1, :hours, hours)))
+    taken = Decimals.total(shown, &Day.in_unit(&1, :hours, hours))
 
     {status, Decimal.lt?(taken, hours)}
   end

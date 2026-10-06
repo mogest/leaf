@@ -237,14 +237,7 @@ defmodule LeafWeb.RequestLeaveLive do
   defp offering(leave_type, nil), do: leave_type.name
 
   defp offering(leave_type, statement) do
-    "#{leave_type.name} — #{remaining(statement.balance, leave_type.unit)}"
-  end
-
-  defp remaining(balance, unit) do
-    case Decimal.negative?(balance) do
-      true -> "#{Wording.figure(Decimal.abs(balance), unit)} overdrawn"
-      false -> "#{Wording.figure(balance, unit)} left"
-    end
+    "#{leave_type.name} — #{Wording.left(statement)}"
   end
 
   # An amendment starts from what the request already says: the span its days cover, the type of

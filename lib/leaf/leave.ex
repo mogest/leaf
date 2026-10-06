@@ -177,34 +177,19 @@ defmodule Leaf.Leave do
   defdelegate in_unit(day, unit, hours), to: Day
 
   @doc """
-  Every day of approved leave a person holds, oldest first.
+  Every day of leave a person has in requests standing at `status`, oldest first.
 
-  Bounded at neither end. Leave somebody is already going on is spent whether they have been on it
-  yet or not, and leave dated before the organisation started tracking draws down the opening
-  balance that accounts for that period.
+  Bounded at neither end. Approved leave somebody is already going on is spent whether they have
+  been on it yet or not, and leave dated before the organisation started tracking draws down the
+  opening balance that accounts for that period. Undecided leave is mostly ahead of them, and is
+  waiting whatever date it falls on.
   """
-  @spec days_approved(Person.t()) :: [Day.t()]
-  def days_approved(person) do
+  @spec days(Person.t(), :approved | :pending) :: [Day.t()]
+  def days(person, status) do
     Repo.all(
       from day in Day,
         join: request in assoc(day, :leave_request),
-        where: request.person_id == ^person.id and request.status == :approved,
-        order_by: day.date
-    )
-  end
-
-  @doc """
-  Every day of leave a person has asked for and nobody has decided yet, oldest first.
-
-  Undecided leave is mostly ahead of the person, so this has no ceiling: what they are waiting on
-  is waiting whatever date it falls on.
-  """
-  @spec days_awaiting(Person.t()) :: [Day.t()]
-  def days_awaiting(person) do
-    Repo.all(
-      from day in Day,
-        join: request in assoc(day, :leave_request),
-        where: request.person_id == ^person.id and request.status == :pending,
+        where: request.person_id == ^person.id and request.status == ^status,
         order_by: day.date
     )
   end
