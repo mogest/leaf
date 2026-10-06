@@ -386,10 +386,10 @@ defmodule LeafWeb.PersonLive do
   # Every entry, whatever it is dated: an import of a balance held before go-live is the whole
   # story up to it, and an adjustment can be dated ahead of today.
   defp entries(person, leave_types) do
-    person |> Leave.balance_entries() |> Enum.map(&entry(&1, leave_types))
+    person |> Ledger.balance_entries() |> Enum.map(&entry(&1, leave_types))
   end
 
-  defp entry(entry, leave_types) do
+  defp entry({entry, lapses_on}, leave_types) do
     leave_type = Map.fetch!(leave_types, entry.leave_type_id)
 
     %{
@@ -398,7 +398,7 @@ defmodule LeafWeb.PersonLive do
       kind: kind(entry.kind),
       leave_type: leave_type.name,
       amount: Wording.figure(entry.amount, leave_type.unit),
-      expires: Wording.brief_date(entry.expires_on),
+      expires: Wording.brief_date(lapses_on),
       reason: entry.reason
     }
   end
