@@ -182,7 +182,7 @@ defmodule LeafWeb.PagesTest do
     {:ok, _live, html} = live(context.conn, ~p"/approvals")
     assert html =~ "Monday 7 – Friday 11 October"
 
-    {:ok, _live, html} = live(context.conn, ~p"/away?month=2030-10")
-    assert html =~ ~s(data-leave="pending")
+    {:ok, _live, html} = live(context.conn, ~p"/?from=2030-10")
+    assert html =~ ~s(<td data-leave="pending")
   end
 end

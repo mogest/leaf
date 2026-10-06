@@ -3,8 +3,8 @@ defmodule LeafWeb.WhoIsAwayLive do
   A month of the whole organisation at once: a row each, a column a day.
 
   The cells are the days a calendar is drawn from, so a person's leave, their public holidays and
-  the days they do not work read here as they read on their own page. What the viewer may not see
-  of somebody else's record is decided in `Leaf.Leave`, not here.
+  the days they do not work read here as they read on their own page. Which of somebody's leave the
+  whole organisation may see is decided in `Leaf.Leave`, not here.
   """
 
   use LeafWeb, :live_view
@@ -75,7 +75,6 @@ defmodule LeafWeb.WhoIsAwayLive do
 
         <ul class="legend">
           <li data-leave="approved">Away</li>
-          <li data-leave="pending">Asked for</li>
           <li data-holiday>Public holiday</li>
           <li>Faded days are ones they do not work</li>
         </ul>
@@ -89,7 +88,7 @@ defmodule LeafWeb.WhoIsAwayLive do
 
     viewer.organisation_id
     |> People.people()
-    |> Leave.away(viewer, range)
+    |> Leave.away(range)
     |> Enum.map(&row(&1, viewer, today))
   end
 
