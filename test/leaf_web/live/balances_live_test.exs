@@ -195,7 +195,8 @@ defmodule LeafWeb.BalancesLiveTest do
 
     {:ok, _live, html} = live(context.conn, ~p"/balances")
 
-    assert html =~ "No balance can be worked out until you are on a work pattern throughout."
+    assert html =~
+             "No balance can be worked out until you are on a work pattern and a calendar throughout."
   end
 
   test "the date at the top is the whole page's question", context do
