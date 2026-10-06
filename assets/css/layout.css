@@ -714,13 +714,158 @@ main.who-is-away {
 
 main.chart {
   & li {
-    padding-block-start: var(--step-2);
+    display: flex;
+    flex-direction: column;
   }
 
-  & li > ul {
-    margin-inline-start: var(--step-1);
-    padding-inline-start: var(--step-5);
-    border-inline-start: 1px solid var(--rule-firm);
+  & li > :is(a, span) {
+    padding: var(--step-2) var(--step-4);
+    border: 1px solid var(--edge);
+    border-radius: var(--radius);
+    background: var(--sheet);
+    white-space: nowrap;
+  }
+
+  & > ul > li + li {
+    margin-block-start: var(--step-8);
+  }
+
+  @media (width < 48rem) {
+    & li {
+      align-items: flex-start;
+    }
+
+    & li > ul {
+      padding-inline-start: var(--step-6);
+
+      & > li {
+        position: relative;
+        padding-block-start: var(--step-2);
+      }
+
+      & > li::before,
+      & > li:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        inset-inline-start: calc(var(--step-3) - var(--step-6));
+        border-inline-start: 1px solid var(--rule-firm);
+      }
+
+      & > li::before {
+        inset-block-start: 0;
+        inline-size: calc(var(--step-6) - var(--step-3));
+        block-size: calc(2 * var(--step-2) + 0.5lh);
+        border-block-end: 1px solid var(--rule-firm);
+        border-end-start-radius: var(--radius);
+      }
+
+      & > li:not(:last-child)::after {
+        inset-block: 0;
+      }
+    }
+  }
+
+  @media (width >= 48rem) {
+    & > ul {
+      overflow-x: auto;
+      padding-block: var(--step-1) var(--step-2);
+
+      & > li {
+        inline-size: fit-content;
+        margin-inline: auto;
+      }
+    }
+
+    & li {
+      align-items: center;
+    }
+
+    & li > ul {
+      position: relative;
+      display: flex;
+      padding-block-start: var(--step-5);
+
+      &::before {
+        content: "";
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline-start: 50%;
+        block-size: var(--step-5);
+        border-inline-start: 1px solid var(--rule-firm);
+      }
+
+      & > li {
+        position: relative;
+        padding: var(--step-5) var(--step-2) 0;
+      }
+
+      & > li::before,
+      & > li::after {
+        content: "";
+        position: absolute;
+        inset-block-start: 0;
+        inline-size: 50%;
+        block-size: var(--step-5);
+        border-block-start: 1px solid var(--rule-firm);
+      }
+
+      & > li::before {
+        inset-inline-end: 50%;
+      }
+
+      & > li::after {
+        inset-inline-start: 50%;
+        border-inline-start: 1px solid var(--rule-firm);
+      }
+
+      & > li:first-child::before,
+      & > li:last-child::after {
+        display: none;
+      }
+
+      & > li:first-child::after {
+        border-start-start-radius: var(--radius);
+      }
+
+      & > li:last-child::before {
+        border-inline-end: 1px solid var(--rule-firm);
+        border-start-end-radius: var(--radius);
+      }
+
+      & > li:only-child {
+        padding-block-start: 0;
+      }
+    }
+
+    & li > ul:not(:has(ul)) {
+      flex-direction: column;
+
+      & > li {
+        align-items: stretch;
+        padding: 0;
+      }
+
+      & > li::before,
+      & > li::after {
+        display: none;
+      }
+
+      & > li > :is(a, span) {
+        border-radius: 0;
+        border-block-start-width: 0;
+      }
+
+      & > li:first-child > :is(a, span) {
+        border-block-start-width: 1px;
+        border-start-start-radius: var(--radius);
+        border-start-end-radius: var(--radius);
+      }
+
+      & > li:last-child > :is(a, span) {
+        border-end-start-radius: var(--radius);
+        border-end-end-radius: var(--radius);
+      }
+    }
   }
 }
 
