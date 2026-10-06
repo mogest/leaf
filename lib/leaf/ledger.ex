@@ -259,7 +259,7 @@ defmodule Leaf.Ledger do
   defp of_type?(row, leave_type), do: row.leave_type_id == leave_type.id
 
   defp asked(days, unit, hours) do
-    Enum.reduce(days, Decimal.new(0), &Decimal.add(&2, Day.in_unit(&1, unit, hours[&1.date])))
+    Enum.reduce(days, Decimal.new(0), &Decimal.add(&2, Leave.in_unit(&1, unit, hours[&1.date])))
   end
 
   defp replay(leave_type, context, spans, entered, taken) do
@@ -286,7 +286,7 @@ defmodule Leaf.Ledger do
   end
 
   defp taken_movement(day, leave_type, hours) do
-    amount = Day.in_unit(day, leave_type.unit, hours[day.date])
+    amount = Leave.in_unit(day, leave_type.unit, hours[day.date])
 
     %Movement{date: day.date, kind: :taken, amount: Decimal.negate(amount)}
   end
@@ -306,7 +306,7 @@ defmodule Leaf.Ledger do
     suspending = leave_types |> Enum.filter(& &1.suspends_accrual) |> MapSet.new(& &1.id)
 
     for day <- taken, day.leave_type_id in suspending do
-      {day.date, Day.in_unit(day, :hours, hours[day.date])}
+      {day.date, Leave.in_unit(day, :hours, hours[day.date])}
     end
   end
 
