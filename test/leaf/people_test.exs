@@ -169,27 +169,8 @@ defmodule Leaf.PeopleTest do
     |> Enum.map(fn {span, policy} -> {span, policy.id} end)
   end
 
-  test "the policy a person is on comes back as the one in force over each span", %{
-    person: person,
-    organisation: organisation
-  } do
-    first = Fixtures.leave_policy(%{organisation_id: organisation.id})
-    second = Fixtures.leave_policy(%{organisation_id: organisation.id, name: "Hybrid contractor"})
-    Fixtures.policy_assignment(%{person_id: person.id, leave_policy_id: first.id})
-
-    Fixtures.policy_assignment(%{
-      person_id: person.id,
-      leave_policy_id: second.id,
-      effective_from: ~D[2026-01-01]
-    })
-
-    assert policy_ids(person, Date.range(~D[2025-12-30], ~D[2026-01-02])) == [
-             {Date.range(~D[2025-12-30], ~D[2025-12-31]), first.id},
-             {Date.range(~D[2026-01-01], ~D[2026-01-02]), second.id}
-           ]
-  end
-
-  test "removing a policy assignment lets the previous one run on", context do
+  test "the policy a person is on comes back as the one in force over each span, until an assignment is removed",
+       context do
     %{person: person, organisation: organisation} = context
     first = Fixtures.leave_policy(%{organisation_id: organisation.id})
     second = Fixtures.leave_policy(%{organisation_id: organisation.id, name: "Hybrid contractor"})
@@ -199,44 +180,18 @@ defmodule Leaf.PeopleTest do
       Fixtures.policy_assignment(%{
         person_id: person.id,
         leave_policy_id: second.id,
-        effective_from: ~D[2026-02-01]
-      })
-
-    assert {:ok, _removed} = People.delete_policy_assignment(moved, nil)
-
-    assert policy_ids(person, Date.range(~D[2026-02-01], ~D[2026-02-15])) == [
-             {Date.range(~D[2026-02-01], ~D[2026-02-15]), first.id}
-           ]
-  end
-
-  test "so does the calendar a person is on, until an assignment is removed", context do
-    %{person: person, organisation: organisation} = context
-    calendar = Fixtures.calendar(%{organisation_id: organisation.id})
-
-    other =
-      Fixtures.calendar(%{
-        organisation_id: organisation.id,
-        name: "Spain",
-        country_code: "ES",
-        time_zone: "Europe/Madrid"
-      })
-
-    Fixtures.public_holiday(%{calendar_id: calendar.id, date: ~D[2026-01-02], name: "Day after"})
-    Fixtures.public_holiday(%{calendar_id: other.id, date: ~D[2026-01-06], name: "Reyes"})
-    Fixtures.calendar_assignment(%{person_id: person.id, calendar_id: calendar.id})
-
-    moved =
-      Fixtures.calendar_assignment(%{
-        person_id: person.id,
-        calendar_id: other.id,
         effective_from: ~D[2026-01-01]
       })
 
-    january = Date.range(~D[2026-01-01], ~D[2026-01-31])
+    span = Date.range(~D[2025-12-30], ~D[2026-01-02])
 
-    assert Enum.map(People.public_holidays(person, january), & &1.name) == ["Reyes"]
-    assert {:ok, _removed} = People.delete_calendar_assignment(moved, nil)
-    assert Enum.map(People.public_holidays(person, january), & &1.name) == ["Day after"]
+    assert policy_ids(person, span) == [
+             {Date.range(~D[2025-12-30], ~D[2025-12-31]), first.id},
+             {Date.range(~D[2026-01-01], ~D[2026-01-02]), second.id}
+           ]
+
+    assert {:ok, _removed} = People.delete_policy_assignment(moved, nil)
+    assert policy_ids(person, span) == [{span, first.id}]
   end
 
   test "a second pattern, policy or calendar from the same date is refused on the date",
@@ -346,7 +301,8 @@ defmodule Leaf.PeopleTest do
            ]
   end
 
-  test "the holidays a person observes follow the calendar in force", context do
+  test "the holidays a person observes follow the calendar in force, until an assignment is removed",
+       context do
     nz = Fixtures.calendar(%{organisation_id: context.organisation.id})
 
     spain =
@@ -377,15 +333,22 @@ defmodule Leaf.PeopleTest do
       effective_from: ~D[2026-01-01]
     })
 
-    Fixtures.calendar_assignment(%{
-      person_id: context.person.id,
-      calendar_id: spain.id,
-      effective_from: ~D[2026-07-01]
-    })
+    moved =
+      Fixtures.calendar_assignment(%{
+        person_id: context.person.id,
+        calendar_id: spain.id,
+        effective_from: ~D[2026-07-01]
+      })
 
-    observed = People.public_holidays(context.person, Date.range(~D[2026-01-01], ~D[2026-08-31]))
+    span = Date.range(~D[2026-01-01], ~D[2026-08-31])
 
-    assert Enum.map(observed, & &1.name) == ["King's", "Asunción"]
+    assert Enum.map(People.public_holidays(context.person, span), & &1.name) == [
+             "King's",
+             "Asunción"
+           ]
+
+    assert {:ok, _removed} = People.delete_calendar_assignment(moved, nil)
+    assert Enum.map(People.public_holidays(context.person, span), & &1.name) == ["King's"]
   end
 
   test "a stretch on no calendar is a hole in the record where the whole share is counted",
