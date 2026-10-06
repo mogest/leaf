@@ -164,6 +164,13 @@ defmodule Leaf.PoliciesTest do
     assert [%{action: "policy_entitlement.deleted"}] = Repo.all(Entry)
   end
 
+  test "a leave type's order is one the column can hold", %{annual: annual} do
+    assert {:error, changeset} =
+             Policies.update_leave_type(annual, nil, %{position: 3_000_000_000})
+
+    assert errors_on(changeset).position == ["must be less than or equal to 2147483647"]
+  end
+
   test "a withdrawn leave type stays on the record, so what it granted still reads", context do
     %{organisation: organisation, annual: annual, quarterly: quarterly} = context
     admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})

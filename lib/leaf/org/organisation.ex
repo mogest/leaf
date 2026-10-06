@@ -30,6 +30,6 @@ defmodule Leaf.Org.Organisation do
     |> validate_required(@fields)
     |> as_stored(:full_time_week_hours, greater_than: 0, less_than_or_equal_to: 168)
     |> as_stored(:standard_day_hours, greater_than: 0, less_than_or_equal_to: 24)
-    |> validate_inclusion(:year_start_month, 1..12)
+    |> as_stored(:year_start_month, greater_than_or_equal_to: 1, less_than_or_equal_to: 12)
   end
 end

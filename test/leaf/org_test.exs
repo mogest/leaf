@@ -18,7 +18,7 @@ defmodule Leaf.OrgTest do
 
     assert {:error, changeset} = Org.create_organisation(nil, attrs)
     assert errors_on(changeset).full_time_week_hours == ["must be greater than 0"]
-    assert errors_on(changeset).year_start_month == ["is invalid"]
+    assert errors_on(changeset).year_start_month == ["must be less than or equal to 12"]
   end
 
   test "an organisation cannot work more hours than a week or a day holds" do
