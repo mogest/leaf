@@ -475,6 +475,9 @@ defmodule LeafWeb.RequestLeaveLiveTest do
         days: [%{leave_type_id: context.leave_type.id, date: @monday, amount: "8", unit: :hours}]
       })
 
+    {:ok, _amend, html} = live(conn, ~p"/leave/#{request}/amend")
+    assert html =~ "Rae Halloran&#39;s leave will be reviewed by Ines Vasquez"
+
     {:ok, _approved} = Leave.approve(request, manager)
 
     {:ok, page, _html} = live(conn, ~p"/people/#{person}")
@@ -482,7 +485,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     {:ok, amend, html} = live(conn, ~p"/leave/#{request}/amend")
     assert has_element?(amend, ~s(a[href="/people/#{person.id}"]), "Cancel")
-    refute html =~ "Your leave will be reviewed by"
+    refute html =~ "leave will be reviewed by"
 
     assert dating(amend, context, %{"from" => to_string(@saturday), "to" => to_string(@saturday)}) =~
              "Saturday 7 March is not a working day."
