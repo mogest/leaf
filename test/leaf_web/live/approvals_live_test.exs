@@ -5,6 +5,7 @@ defmodule LeafWeb.ApprovalsLiveTest do
 
   alias Leaf.Fixtures
   alias Leaf.Leave
+  alias Leaf.Ledger
 
   @date ~D[2030-03-04]
 
@@ -55,6 +56,44 @@ defmodule LeafWeb.ApprovalsLiveTest do
     assert html =~ "32 hours left"
     refute html =~ "Taking leave in advance"
     refute html =~ ~s(data-tone="wrong")
+  end
+
+  test "leave far enough ahead is projected against what will have accrued by then", context do
+    today = Date.utc_today()
+    organisation_id = context.organisation.id
+    manager = Fixtures.person(%{organisation_id: organisation_id, name: "Tomas Reid"})
+
+    starter =
+      Fixtures.person(%{
+        organisation_id: organisation_id,
+        manager_id: manager.id,
+        employment_start_date: today
+      })
+
+    Fixtures.work_pattern(%{person_id: starter.id, effective_from: today})
+
+    Fixtures.offering(%{
+      person_id: starter.id,
+      organisation_id: organisation_id,
+      leave_type_id: context.leave_type.id,
+      effective_from: today,
+      amount_source: :fixed,
+      grant_amount: "160",
+      grant_basis: :employment_date,
+      grant_period: :year,
+      grant_timing: :daily
+    })
+
+    monday = today |> Date.add(182) |> Date.beginning_of_week()
+    Fixtures.pending_request(starter, %{leave_type_id: context.leave_type.id, dates: [monday]})
+
+    assert [%{balance: balance}] = Ledger.balances(starter, today)
+    assert Decimal.lt?(balance, 8)
+
+    {:ok, _live, html} = live(sign_in(context.conn, manager), ~p"/approvals")
+
+    assert html =~ "hours left"
+    refute html =~ "overdrawn"
   end
 
   test "somebody with no reports has nothing waiting on them", context do
