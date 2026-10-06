@@ -77,9 +77,21 @@ defmodule Leaf.Reports.Payroll do
   end
 
   defp unidentified_notes(measured) do
-    for {{%{person: %{employee_number: nil} = person}, _leave_type, _days}, _worth} <- measured,
-        uniq: true,
-        do: "#{person.name} has no employee number, so the Id on their rows is blank."
+    unidentified =
+      for {{%{person: %{employee_number: nil} = person}, _leave_type, _days}, _worth} <- measured,
+          uniq: true,
+          do: person
+
+    case unidentified do
+      [] ->
+        []
+
+      [person] ->
+        ["#{person.name} has no employee number, so the Id on their rows is blank."]
+
+      people ->
+        ["#{length(people)} people have no employee number, so the Id on their rows is blank."]
+    end
   end
 
   defp counted(requests) do

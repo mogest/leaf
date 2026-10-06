@@ -14,7 +14,7 @@ defmodule Leaf.Reports.Options do
 
   @type t :: %__MODULE__{}
 
-  @reports [:ipayroll, :taken, :reconciliation, :balances, :expiring]
+  @reports [:taken, :reconciliation, :balances, :expiring, :ipayroll]
 
   @required [:report, :from, :to, :cut_off, :as_at, :within]
   @fields @required ++ [:country_id, :leave_type_id]
@@ -37,7 +37,7 @@ defmodule Leaf.Reports.Options do
     from = Date.beginning_of_month(today)
 
     %__MODULE__{
-      report: :ipayroll,
+      report: :taken,
       from: from,
       to: Date.end_of_month(today),
       cut_off: Date.add(from, -1),
