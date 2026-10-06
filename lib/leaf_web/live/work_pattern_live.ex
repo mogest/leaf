@@ -23,9 +23,13 @@ defmodule LeafWeb.WorkPatternLive do
 
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
-    {:ok, person} = People.fetch_person(params["person_id"])
+    case People.fetch_person(params["person_id"]) do
+      {:ok, person} ->
+        {:ok, opened(socket, person, amending(socket.assigns.live_action, person, params))}
 
-    {:ok, opened(socket, person, amending(socket.assigns.live_action, person, params))}
+      :error ->
+        {:ok, unknown(socket)}
+    end
   end
 
   @impl Phoenix.LiveView
@@ -85,6 +89,10 @@ defmodule LeafWeb.WorkPatternLive do
     socket
     |> put_flash(:error, "That work pattern is not theirs.")
     |> push_navigate(to: ~p"/people/#{person}")
+  end
+
+  defp unknown(socket) do
+    socket |> put_flash(:error, "That person is not on record.") |> push_navigate(to: ~p"/people")
   end
 
   defp title(:new), do: "Add a work pattern"

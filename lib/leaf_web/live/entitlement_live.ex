@@ -43,9 +43,13 @@ defmodule LeafWeb.EntitlementLive do
 
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
-    {:ok, policy} = Policies.fetch_leave_policy(params["policy_id"])
+    case Policies.fetch_leave_policy(params["policy_id"]) do
+      {:ok, policy} ->
+        {:ok, opened(socket, policy, amending(socket.assigns.live_action, policy, params))}
 
-    {:ok, opened(socket, policy, amending(socket.assigns.live_action, policy, params))}
+      :error ->
+        {:ok, unknown(socket)}
+    end
   end
 
   @impl Phoenix.LiveView
@@ -197,6 +201,12 @@ defmodule LeafWeb.EntitlementLive do
     socket
     |> put_flash(:error, "That entitlement is not on this policy.")
     |> push_navigate(to: ~p"/settings/policies/#{policy}")
+  end
+
+  defp unknown(socket) do
+    socket
+    |> put_flash(:error, "That policy is not on record.")
+    |> push_navigate(to: ~p"/settings/policies")
   end
 
   defp title(:new), do: "Add an entitlement"

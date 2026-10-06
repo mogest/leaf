@@ -32,18 +32,10 @@ defmodule LeafWeb.AssignmentLive do
 
   @impl Phoenix.LiveView
   def mount(%{"person_id" => id}, _session, socket) do
-    {:ok, person} = People.fetch_person(id)
-    action = socket.assigns.live_action
-    kind = @kinds[action]
-    opening = %{"effective_from" => to_string(person.employment_start_date)}
-
-    {:ok,
-     socket
-     |> assign(:page_title, kind.title)
-     |> assign(:kind, kind)
-     |> assign(:person, person)
-     |> assign(:options, options(action, person))
-     |> assign(:form, as_form(change(action, person, opening)))}
+    case People.fetch_person(id) do
+      {:ok, person} -> {:ok, opened(socket, person)}
+      :error -> {:ok, unknown(socket)}
+    end
   end
 
   @impl Phoenix.LiveView
@@ -90,6 +82,23 @@ defmodule LeafWeb.AssignmentLive do
       </.form>
     </Layouts.app>
     """
+  end
+
+  defp opened(socket, person) do
+    action = socket.assigns.live_action
+    kind = @kinds[action]
+    opening = %{"effective_from" => to_string(person.employment_start_date)}
+
+    socket
+    |> assign(:page_title, kind.title)
+    |> assign(:kind, kind)
+    |> assign(:person, person)
+    |> assign(:options, options(action, person))
+    |> assign(:form, as_form(change(action, person, opening)))
+  end
+
+  defp unknown(socket) do
+    socket |> put_flash(:error, "That person is not on record.") |> push_navigate(to: ~p"/people")
   end
 
   defp options(:policy, person) do

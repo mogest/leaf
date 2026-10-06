@@ -87,9 +87,11 @@ defmodule LeafWeb.ApprovalsLive do
 
   # Both decisions submit the same form, so either of them carries whatever comment was typed.
   defp decide(socket, decision, id, comment) do
-    {:ok, request} = Leave.fetch_request(id)
+    written =
+      with {:ok, request} <- Leave.fetch_request(id),
+           do: decided_by(decision).(request, socket.assigns.current_person, blank(comment))
 
-    decided(socket, decided_by(decision).(request, socket.assigns.current_person, blank(comment)))
+    decided(socket, written)
   end
 
   defp decided_by("approve"), do: &Leave.approve/3
@@ -99,7 +101,7 @@ defmodule LeafWeb.ApprovalsLive do
     put_flash(socket, :info, "The request is #{request.status}.")
   end
 
-  defp decided(socket, {:error, :forbidden}) do
+  defp decided(socket, refused) when refused in [:error, {:error, :forbidden}] do
     put_flash(socket, :error, "That is not yours to decide.")
   end
 

@@ -20,17 +20,10 @@ defmodule LeafWeb.BalanceEntryLive do
 
   @impl Phoenix.LiveView
   def mount(%{"person_id" => id}, _session, socket) do
-    {:ok, person} = People.fetch_person(id)
-    today = People.today(socket.assigns.current_person)
-    opening = %{"kind" => "opening_balance", "date" => to_string(today)}
-
-    {:ok,
-     socket
-     |> assign(:page_title, "Record a balance")
-     |> assign(:person, person)
-     |> assign(:kinds, @kinds)
-     |> assign(:leave_types, leave_types(person))
-     |> assign(:form, to_form(Leave.change_balance_entry(person, opening)))}
+    case People.fetch_person(id) do
+      {:ok, person} -> {:ok, opened(socket, person)}
+      :error -> {:ok, unknown(socket)}
+    end
   end
 
   @impl Phoenix.LiveView
@@ -84,6 +77,22 @@ defmodule LeafWeb.BalanceEntryLive do
       </.form>
     </Layouts.app>
     """
+  end
+
+  defp opened(socket, person) do
+    today = People.today(socket.assigns.current_person)
+    opening = %{"kind" => "opening_balance", "date" => to_string(today)}
+
+    socket
+    |> assign(:page_title, "Record a balance")
+    |> assign(:person, person)
+    |> assign(:kinds, @kinds)
+    |> assign(:leave_types, leave_types(person))
+    |> assign(:form, to_form(Leave.change_balance_entry(person, opening)))
+  end
+
+  defp unknown(socket) do
+    socket |> put_flash(:error, "That person is not on record.") |> push_navigate(to: ~p"/people")
   end
 
   defp leave_types(person) do

@@ -16,18 +16,10 @@ defmodule LeafWeb.CalendarLive do
 
   @impl Phoenix.LiveView
   def mount(%{"id" => id}, _session, socket) do
-    {:ok, calendar} = Org.fetch_calendar(id)
-
-    {:ok,
-     socket
-     |> assign(:page_title, calendar.name)
-     |> assign(:calendar, calendar)
-     |> assign(:country, calendar.parent)
-     |> assign(:regions, calendar.regions)
-     |> assign(:form, to_form(Changeset.change(calendar, %{})))
-     |> assign(:time_zones, Org.time_zones((calendar.parent || calendar).country_code))
-     |> blank()
-     |> listed()}
+    case Org.fetch_calendar(id) do
+      {:ok, calendar} -> {:ok, opened(socket, calendar)}
+      :error -> {:ok, unknown(socket)}
+    end
   end
 
   @impl Phoenix.LiveView
@@ -186,6 +178,24 @@ defmodule LeafWeb.CalendarLive do
       </aside>
     </Layouts.app>
     """
+  end
+
+  defp opened(socket, calendar) do
+    socket
+    |> assign(:page_title, calendar.name)
+    |> assign(:calendar, calendar)
+    |> assign(:country, calendar.parent)
+    |> assign(:regions, calendar.regions)
+    |> assign(:form, to_form(Changeset.change(calendar, %{})))
+    |> assign(:time_zones, Org.time_zones((calendar.parent || calendar).country_code))
+    |> blank()
+    |> listed()
+  end
+
+  defp unknown(socket) do
+    socket
+    |> put_flash(:error, "That calendar is not on record.")
+    |> push_navigate(to: ~p"/settings/calendars")
   end
 
   defp listed(socket) do

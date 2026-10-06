@@ -16,19 +16,10 @@ defmodule LeafWeb.PersonFormLive do
 
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
-    {:ok, organisation} = Org.fetch_organisation(socket.assigns.current_person.organisation_id)
-    person = amending(socket.assigns.live_action, params)
-
-    {:ok,
-     socket
-     |> assign(:page_title, title(socket.assigns.live_action))
-     |> assign(:title, title(socket.assigns.live_action))
-     |> assign(:person, person)
-     |> assign(:organisation, organisation)
-     |> assign(:back, back(person))
-     |> assign(:roles, @roles)
-     |> assign(:managers, managers(organisation, person))
-     |> assign(:form, to_form(change(person, organisation, %{})))}
+    case amending(socket.assigns.live_action, params) do
+      {:ok, person} -> {:ok, opened(socket, person)}
+      :error -> {:ok, unknown(socket)}
+    end
   end
 
   @impl Phoenix.LiveView
@@ -88,12 +79,25 @@ defmodule LeafWeb.PersonFormLive do
     """
   end
 
-  defp amending(:new, _params), do: nil
+  defp amending(:new, _params), do: {:ok, nil}
+  defp amending(:edit, %{"person_id" => id}), do: People.fetch_person(id)
 
-  defp amending(:edit, %{"person_id" => id}) do
-    {:ok, person} = People.fetch_person(id)
+  defp opened(socket, person) do
+    {:ok, organisation} = Org.fetch_organisation(socket.assigns.current_person.organisation_id)
 
-    person
+    socket
+    |> assign(:page_title, title(socket.assigns.live_action))
+    |> assign(:title, title(socket.assigns.live_action))
+    |> assign(:person, person)
+    |> assign(:organisation, organisation)
+    |> assign(:back, back(person))
+    |> assign(:roles, @roles)
+    |> assign(:managers, managers(organisation, person))
+    |> assign(:form, to_form(change(person, organisation, %{})))
+  end
+
+  defp unknown(socket) do
+    socket |> put_flash(:error, "That person is not on record.") |> push_navigate(to: ~p"/people")
   end
 
   defp title(:new), do: "Add somebody"

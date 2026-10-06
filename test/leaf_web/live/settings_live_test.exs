@@ -186,9 +186,10 @@ defmodule LeafWeb.SettingsLiveTest do
     assert {:ok, %{country_code: nil}} =
              Org.update_calendar(region, nil, %{"country_code" => "AU"})
 
-    assert_raise MatchError, fn ->
-      live(context.conn, ~p"/settings/calendars/#{region}/regions/new")
-    end
+    assert {:error, {:live_redirect, %{to: "/settings/calendars", flash: flash}}} =
+             live(context.conn, ~p"/settings/calendars/#{region}/regions/new")
+
+    assert flash["error"] == "That is not a country's calendar."
 
     html =
       live

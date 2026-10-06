@@ -235,15 +235,17 @@ defmodule LeafWeb.Parts do
   """
   @spec cancel_request(Phoenix.LiveView.Socket.t(), String.t()) :: Phoenix.LiveView.Socket.t()
   def cancel_request(socket, id) do
-    {:ok, request} = Leave.fetch_request(id)
+    written =
+      with {:ok, request} <- Leave.fetch_request(id),
+           do: Leave.cancel(request, socket.assigns.current_person)
 
-    cancelled(socket, Leave.cancel(request, socket.assigns.current_person))
+    cancelled(socket, written)
   end
 
   defp cancelled(socket, {:ok, _request}),
     do: put_flash(socket, :info, "The request is cancelled.")
 
-  defp cancelled(socket, {:error, :forbidden}) do
+  defp cancelled(socket, refused) when refused in [:error, {:error, :forbidden}] do
     put_flash(socket, :error, "That is not yours to cancel.")
   end
 
