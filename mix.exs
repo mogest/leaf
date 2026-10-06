@@ -57,6 +57,7 @@ defmodule Leaf.MixProject do
       {:tz, "~> 0.28"},
       {:jason, "~> 1.2"},
       {:bandit, "~> 1.5"},
+      {:sentry, "~> 13.5"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end

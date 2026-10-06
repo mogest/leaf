@@ -61,7 +61,7 @@ defmodule LeafWeb.Router do
   scope "/", LeafWeb do
     pipe_through [:browser, :signed_in]
 
-    live_session :signed_in, on_mount: {LeafWeb.SignIn, :current_person} do
+    live_session :signed_in, on_mount: [Sentry.LiveViewHook, {LeafWeb.SignIn, :current_person}] do
       live "/people/new", PersonFormLive, :new
       live "/people/:person_id/edit", PersonFormLive, :edit
       live "/people/:person_id/work-patterns/new", WorkPatternLive, :new
