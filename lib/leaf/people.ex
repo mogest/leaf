@@ -75,7 +75,7 @@ defmodule Leaf.People do
   """
   @spec update_person(Person.t(), Person.t() | nil, map()) :: Audit.written(Person.t())
   def update_person(person, actor, attrs) do
-    person |> Person.changeset(attrs) |> Audit.write("person.updated", actor)
+    person |> Person.changeset(attrs) |> Audit.write("person.updated", actor, person.id)
   end
 
   @doc "The person, or `:error` where no such person exists."
