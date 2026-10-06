@@ -149,8 +149,8 @@ defmodule LeafWeb.PagesTest do
 
     {:ok, live, _html} = live(context.conn, ~p"/approvals")
 
-    assert render_submit(live, "decide", %{"request_id" => nothing, "decision" => "approve"}) =~
-             "That is not yours to decide."
+    decision = %{"request_id" => nothing, "decision" => "approve", "review" => %{"comment" => ""}}
+    assert render_submit(live, "decide", decision) =~ "That is not yours to decide."
   end
 
   test "the specimen sheet renders every part the pages are built from", context do

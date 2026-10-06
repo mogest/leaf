@@ -90,12 +90,22 @@ defmodule LeafWeb.ApprovalsLiveTest do
     assert [%{status: :approved}] = Leave.requests(context.person)
   end
 
+  test "the comment is a labelled textarea, so pressing Enter in it cannot decide", context do
+    {:ok, live, _html} = live(sign_in(context.conn, context.manager), ~p"/approvals")
+
+    assert has_element?(live, "form label", "Comment (optional)")
+    assert has_element?(live, "form label textarea[name='review[comment]']")
+    refute has_element?(live, "form input[type=text]")
+  end
+
   test "declining carries the comment the manager typed", context do
     {:ok, live, _html} = live(sign_in(context.conn, context.manager), ~p"/approvals")
 
     live
     |> element("form")
-    |> render_submit(%{"decision" => "decline", "comment" => "Three of you are away"})
+    |> render_change(%{"review" => %{"comment" => "Three of you are away"}})
+
+    live |> element("form") |> render_submit(%{"decision" => "decline"})
 
     assert [request] = Leave.requests(context.person)
     assert request.status == :declined

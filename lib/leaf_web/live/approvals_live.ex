@@ -13,13 +13,22 @@ defmodule LeafWeb.ApprovalsLive do
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
-    {:ok, socket |> assign(:page_title, "Approvals") |> queued()}
+    {:ok, socket |> assign(page_title: "Approvals", comments: %{}) |> queued()}
   end
 
   @impl Phoenix.LiveView
   @role :member
-  def handle_event("decide", %{"request_id" => id, "decision" => decision} = params, socket) do
-    {:noreply, socket |> decide(decision, id, params["comment"]) |> queued()}
+  def handle_event("comment", %{"request_id" => id, "review" => %{"comment" => comment}}, socket) do
+    {:noreply, update(socket, :comments, &Map.put(&1, id, comment))}
+  end
+
+  @role :member
+  def handle_event(
+        "decide",
+        %{"request_id" => id, "decision" => decision, "review" => %{"comment" => comment}},
+        socket
+      ) do
+    {:noreply, socket |> decide(decision, id, comment) |> queued()}
   end
 
   @impl Phoenix.LiveView
@@ -47,12 +56,20 @@ defmodule LeafWeb.ApprovalsLive do
           <p :if={request.overdrawn} data-tone="wrong">
             Taking leave in advance. It can still be approved.
           </p>
-          <form id={"decide-#{request.id}"} phx-submit="decide">
+          <.form
+            :let={form}
+            for={
+              to_form(%{"comment" => @comments[request.id]}, as: :review, id: "decide-#{request.id}")
+            }
+            id={"decide-#{request.id}"}
+            phx-change="comment"
+            phx-submit="decide"
+          >
             <input type="hidden" name="request_id" value={request.id} />
-            <input type="text" name="comment" placeholder="A comment, if you have one" />
+            <.input field={form[:comment]} type="textarea" label="Comment (optional)" />
             <button class="button" type="submit" name="decision" value="approve">Approve</button>
             <button type="submit" name="decision" value="decline">Decline</button>
-          </form>
+          </.form>
         </li>
       </ol>
       <p :if={@waiting == []}>Nothing is waiting on you.</p>
@@ -89,7 +106,7 @@ defmodule LeafWeb.ApprovalsLive do
   defp decide(socket, decision, id, comment) do
     written =
       with {:ok, request} <- Leave.fetch_request(id),
-           do: decided_by(decision).(request, socket.assigns.current_person, blank(comment))
+           do: decided_by(decision).(request, socket.assigns.current_person, comment)
 
     decided(socket, written)
   end
@@ -108,7 +125,4 @@ defmodule LeafWeb.ApprovalsLive do
   defp decided(socket, {:error, _changeset}) do
     put_flash(socket, :error, "The decision would not save.")
   end
-
-  defp blank(comment) when comment in [nil, ""], do: nil
-  defp blank(comment), do: comment
 end
