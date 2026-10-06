@@ -294,6 +294,39 @@ defmodule Leaf.PeopleTest do
            ]
   end
 
+  test "a manager oversees their reports, an administrator everyone, anybody else nobody",
+       context do
+    %{organisation: organisation, person: manager} = context
+    admin = Fixtures.person(%{organisation_id: organisation.id, name: "Kit Rua", role: :admin})
+
+    Fixtures.person(%{
+      organisation_id: organisation.id,
+      name: "Ines Vasquez",
+      manager_id: manager.id
+    })
+
+    report =
+      Fixtures.person(%{
+        organisation_id: organisation.id,
+        name: "Bo Ngata",
+        manager_id: manager.id
+      })
+
+    nobody =
+      Fixtures.person(%{
+        organisation_id: organisation.id,
+        name: "Ada Lindqvist",
+        manager_id: report.id
+      })
+
+    assert Enum.map(People.overseen(manager), & &1.name) == ["Bo Ngata", "Ines Vasquez"]
+
+    assert Enum.map(People.overseen(admin), & &1.name) ==
+             ["Ada Lindqvist", "Bo Ngata", "Ines Vasquez", "Kit Rua", "Rae Halloran"]
+
+    assert People.overseen(nobody) == []
+  end
+
   test "the holidays a person observes follow the calendar in force", context do
     nz = Fixtures.calendar(%{organisation_id: context.organisation.id})
 

@@ -60,7 +60,6 @@ defmodule LeafWeb.PagesTest do
   # The pages only the administrator may open, all of them.
   defp the_administrators(context) do
     [
-      ~p"/people",
       ~p"/people/new",
       ~p"/people/#{context.admin}/edit",
       ~p"/people/#{context.admin}/work-patterns/new",
@@ -85,7 +84,7 @@ defmodule LeafWeb.PagesTest do
   test "every page renders", context do
     paths =
       theirs(context, context.admin) ++
-        the_administrators(context) ++ [~p"/people/#{context.other}"]
+        the_administrators(context) ++ [~p"/people", ~p"/people/#{context.other}"]
 
     Enum.each(paths, fn path ->
       assert {:ok, _live, html} = live(context.conn, path)

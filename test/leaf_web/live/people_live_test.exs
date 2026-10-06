@@ -34,13 +34,32 @@ defmodule LeafWeb.PeopleLiveTest do
     assert html =~ "no work pattern"
   end
 
-  test "a member is not the one to browse the organisation", context do
-    other = Fixtures.person(%{organisation_id: context.organisation.id, name: "Ines Vasquez"})
+  test "a manager finds their reports under People, with nobody to add", context do
+    manager = Fixtures.person(%{organisation_id: context.organisation.id, name: "Ines Vasquez"})
 
-    assert {:error, {:redirect, %{to: "/", flash: flash}}} =
-             live(sign_in(context.conn, other), ~p"/people")
+    Fixtures.person(%{
+      organisation_id: context.organisation.id,
+      name: "Bo Ngata",
+      manager_id: manager.id
+    })
 
-    assert flash["error"] == "That page is the administrator's."
+    {:ok, _live, html} = live(sign_in(context.conn, manager), ~p"/people")
+
+    assert html =~ ~s(href="/people")
+    assert html =~ "Bo Ngata"
+    refute html =~ "Rae Halloran"
+    refute html =~ "Kit Rua"
+    refute html =~ ~s(href="/people/new")
+  end
+
+  test "somebody who oversees nobody has no People to open", context do
+    {:ok, _live, html} = live(sign_in(context.conn, context.person), ~p"/")
+    refute html =~ ~s(href="/people")
+
+    assert {:error, {:live_redirect, %{to: "/", flash: flash}}} =
+             live(sign_in(context.conn, context.person), ~p"/people")
+
+    assert flash["error"] == "Nobody reports to you."
   end
 
   test "somebody's record is not there for a colleague to read", context do
