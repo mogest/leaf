@@ -53,6 +53,7 @@ defmodule LeafWeb.BalancesLive do
       <header>
         <h1>Balances</h1>
         <.link :if={!@mine?} navigate={~p"/people/#{@person}"}>{@person.name}</.link>
+        <p>Employed {@employment}</p>
       </header>
 
       <.form id="as-at" for={@form} phx-change="as-at">
@@ -169,6 +170,7 @@ defmodule LeafWeb.BalancesLive do
     socket
     |> assign(:page_title, title(person, mine?))
     |> assign(:person, person)
+    |> assign(:employment, Wording.employment(person))
     |> assign(:mine?, mine?)
     |> assign(:selected, selected)
     |> assign(:form, to_form(%{"as_at" => to_string(as_at)}, as: :ledger))
