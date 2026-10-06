@@ -37,6 +37,7 @@ defmodule Leaf.Policies.LeaveType do
     leave_type
     |> cast(attrs, @fields)
     |> validate_required([:organisation_id, :name, :unit, :suspends_accrual, :position])
+    |> as_stored(:position)
     |> assoc_constraint(:organisation)
   end
 end
