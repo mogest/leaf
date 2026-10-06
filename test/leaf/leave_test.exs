@@ -86,7 +86,7 @@ defmodule Leaf.LeaveTest do
 
   # Public holidays are credited as a share of a leave type of their own, so this goes on the policy
   # the person is already on rather than replacing the terms their annual leave is offered under.
-  defp crediting_holidays(context) do
+  defp crediting_holidays(context, attrs \\ %{}) do
     leave_type =
       Fixtures.leave_type(%{
         organisation_id: context.organisation.id,
@@ -94,12 +94,17 @@ defmodule Leaf.LeaveTest do
         position: 3
       })
 
-    Fixtures.policy_entitlement(%{
-      leave_policy_id: context.entitlement.leave_policy_id,
-      leave_type_id: leave_type.id,
-      amount_source: :public_holidays,
-      grant_amount: nil
-    })
+    Fixtures.policy_entitlement(
+      Map.merge(
+        %{
+          leave_policy_id: context.entitlement.leave_policy_id,
+          leave_type_id: leave_type.id,
+          amount_source: :public_holidays,
+          grant_amount: nil
+        },
+        attrs
+      )
+    )
   end
 
   # Counts the queries `fun` makes, and only those: any test running alongside queries too.
@@ -161,6 +166,113 @@ defmodule Leaf.LeaveTest do
              [{@thursday, Decimal.new("8.00")}, {@friday, Decimal.new("8.00")}]
 
     assert {:ok, %{status: :pending}} = file(context, [@friday])
+  end
+
+  test "a public holiday is a day off again once the policy stops crediting it", context do
+    observes(context, @friday)
+    stopped = %{granted_to: @thursday, effective_to: @ahead}
+    week = Date.range(@thursday, @saturday)
+
+    # Accrued, the allowance credits nothing after the Thursday, so the Friday is neither credited
+    # nor charged for.
+    crediting_holidays(context, stopped)
+
+    assert Leave.working_days(context.person, week) == [{@thursday, Decimal.new("8.00")}]
+    assert {:error, _changeset} = file(context, [@friday])
+
+    # Granted as a block, the year's block landed in March with the Friday in it.
+    crediting_holidays(context, Map.put(stopped, :grant_timing, :period_start))
+
+    assert Leave.working_days(context.person, week) ==
+             [{@thursday, Decimal.new("8.00")}, {@friday, Decimal.new("8.00")}]
+  end
+
+  test "an allowance credits holidays from before leave was tracked", context do
+    started = ~D[2023-06-01]
+    allowance = Fixtures.leave_type(%{organisation_id: context.organisation.id, position: 3})
+    calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
+    Fixtures.public_holiday(%{calendar_id: calendar.id, date: ~D[2023-12-25]})
+    Fixtures.public_holiday(%{calendar_id: calendar.id, date: ~D[2024-02-06]})
+
+    # Tracking started in January, part-way through the year whose block landed in June. The opening
+    # balance accounts for what was credited before then, whichever way it was credited.
+    for timing <- [:daily, :period_start] do
+      person =
+        Fixtures.person(%{
+          organisation_id: context.organisation.id,
+          employment_start_date: started
+        })
+
+      policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+      dated = %{person_id: person.id, effective_from: started}
+
+      Fixtures.work_pattern(dated)
+      Fixtures.policy_assignment(Map.put(dated, :leave_policy_id, policy.id))
+      Fixtures.calendar_assignment(Map.put(dated, :calendar_id, calendar.id))
+
+      Fixtures.policy_entitlement(%{
+        leave_policy_id: policy.id,
+        leave_type_id: allowance.id,
+        amount_source: :public_holidays,
+        grant_amount: nil,
+        grant_timing: timing,
+        effective_from: started
+      })
+
+      worked = Map.new(Leave.working_days(person, Date.range(~D[2023-12-25], ~D[2024-02-06])))
+      eight = Decimal.new("8.00")
+
+      assert Map.take(worked, [~D[2023-12-25], ~D[2024-02-06]]) ==
+               %{~D[2023-12-25] => eight, ~D[2024-02-06] => eight}
+    end
+  end
+
+  test "a block allowance credits nothing in a period its policy reached part-way through",
+       context do
+    observes(context, @friday)
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+
+    allowance =
+      Fixtures.leave_type(%{
+        organisation_id: context.organisation.id,
+        name: "Public holidays",
+        position: 3
+      })
+
+    Fixtures.policy_entitlement(%{
+      leave_policy_id: policy.id,
+      leave_type_id: allowance.id,
+      amount_source: :public_holidays,
+      grant_amount: nil,
+      grant_timing: :period_start
+    })
+
+    Fixtures.policy_assignment(%{
+      person_id: context.person.id,
+      leave_policy_id: policy.id,
+      effective_from: ~D[2026-06-01]
+    })
+
+    # The year's block landed in March, before they were on the policy, so none lands for them
+    # until the next March: the Friday is neither credited nor a day to charge for.
+    assert Leave.working_days(context.person, Date.range(@thursday, @saturday)) ==
+             [{@thursday, Decimal.new("8.00")}]
+
+    assert {:ok, %{movements: []}} =
+             Ledger.fetch_statement(context.person, allowance.id, ~D[2026-08-31])
+  end
+
+  test "a block allowance credits nothing after it ends, though its period runs on", context do
+    observes(context, @friday)
+
+    allowance =
+      crediting_holidays(context, %{grant_timing: :period_start, effective_to: ~D[2026-07-31]})
+
+    assert Leave.working_days(context.person, Date.range(@thursday, @saturday)) ==
+             [{@thursday, Decimal.new("8.00")}]
+
+    assert {:ok, %{movements: []}} =
+             Ledger.fetch_statement(context.person, allowance.leave_type_id, ~D[2026-08-31])
   end
 
   test "leave cannot be filed on a date before the person's first work pattern", context do

@@ -2,13 +2,10 @@ defmodule Leaf.Ledger.Span do
   @moduledoc """
   A stretch of dates over which one entitlement, one grant period and one work pattern all hold.
 
-  Five windows have to agree before an entitlement grants anything on a date: the person's
-  employment, the policy they were on then, the entitlement's own grant window, the grant period
-  the date falls in, and the date the organisation started tracking leave. Intersecting them is
-  what makes a change part-way through a year split the year rather than replace it.
-
-  This is the only place that knows there are five. Everything downstream is handed a stretch of
-  dates, the period it sits in and the hours worked over it, and has only to measure them.
+  Which dates an entitlement covers a person for is `Leaf.Policies.grant_windows/3`, read from the
+  date the organisation started tracking leave; a span is one of those windows cut by the work
+  patterns over it, so that everything downstream is handed a stretch of dates, the period it sits
+  in and the hours worked over it, and has only to measure them.
 
   `dates` runs to the end of the entitlement's life and `granting` to the end of its grant window,
   which is the narrower of the two where a policy has stopped offering something people may still
@@ -18,14 +15,9 @@ defmodule Leaf.Ledger.Span do
   Both stop at the date being asked about, so neither says how long the person is there for.
   `employed_to` does, where their employment ends at all, for the one grant that is measured over
   a whole period rather than over the span.
-
-  An entitlement anchored to a birthday covers nothing where the organisation holds no birth date,
-  since there is no run of periods to place it in. That is deliberate and it is quiet: the person
-  is granted no birthday leave and nothing says so.
   """
 
   alias Leaf.Dates
-  alias Leaf.Ledger.GrantCycle
   alias Leaf.Org.Organisation
   alias Leaf.People
   alias Leaf.People.Person
@@ -49,19 +41,8 @@ defmodule Leaf.Ledger.Span do
   @spec all(Person.t(), Organisation.t(), Date.t()) :: [t()]
   def all(person, organisation, as_at) do
     case tracked_range(person, organisation, as_at) do
-      :error ->
-        []
-
-      {:ok, range} ->
-        context = %{
-          anchors: anchors(person, organisation),
-          employed_to: person.employment_end_date,
-          patterns: People.work_pattern_segments!(person, range)
-        }
-
-        person
-        |> People.leave_policy_segments(range)
-        |> Enum.flat_map(fn {assigned, policy} -> policy_spans(context, policy.id, assigned) end)
+      :error -> []
+      {:ok, range} -> spans(person, organisation, range)
     end
   end
 
@@ -79,77 +60,27 @@ defmodule Leaf.Ledger.Span do
     )
   end
 
-  defp anchors(person, organisation) do
-    %{
-      employment_start_date: person.employment_start_date,
-      birth_date: person.birth_date,
-      year_start_month: organisation.year_start_month
-    }
-  end
+  defp spans(person, organisation, range) do
+    patterns = People.work_pattern_segments!(person, range)
 
-  defp policy_spans(context, policy_id, assigned) do
-    policy_id
-    |> Policies.entitlements(assigned)
-    |> Enum.flat_map(&entitlement_spans(context, &1, assigned))
-  end
-
-  defp entitlement_spans(_context, %{amount_source: :none}, _assigned), do: []
-
-  defp entitlement_spans(context, entitlement, assigned) do
-    with {:ok, life} <-
-           Dates.intersect(assigned, entitlement.effective_from, entitlement.effective_to),
-         {:ok, cycle} <- cycle(context, entitlement) do
-      cycle
-      |> GrantCycle.periods_overlapping(life)
-      |> Enum.flat_map(&period_spans(context, entitlement, &1, life))
-    else
-      :error -> []
+    for window <- Policies.grant_windows(person, organisation, range),
+        {worked, pattern} <- patterns,
+        {:ok, dates} <- [Dates.intersect(window.covered, worked.first, worked.last)] do
+      %__MODULE__{
+        entitlement: window.entitlement,
+        period: window.period,
+        dates: dates,
+        granting: granting(window.granting, dates),
+        employed_to: person.employment_end_date,
+        work_pattern: pattern
+      }
     end
   end
 
-  defp cycle(context, entitlement) do
-    with {:ok, {month, day}} <- anchor(entitlement.grant_basis, context.anchors) do
-      {:ok, GrantCycle.new(month, day, entitlement.grant_period)}
-    end
-  end
+  defp granting(nil, _dates), do: nil
 
-  # A birth date is the one anchor an organisation genuinely may not hold; the others are columns
-  # that cannot be null, so a missing one is a coding error and crashes here rather than granting.
-  defp anchor(:employment_date, %{employment_start_date: date}), do: {:ok, {date.month, date.day}}
-  defp anchor(:birthday, %{birth_date: %Date{} = date}), do: {:ok, {date.month, date.day}}
-  defp anchor(:birthday, _anchors), do: :error
-  defp anchor(:calendar_year, _anchors), do: {:ok, {1, 1}}
-  defp anchor(:organisation_year, %{year_start_month: month}), do: {:ok, {month, 1}}
-
-  defp period_spans(context, entitlement, period, life) do
-    {:ok, covered} = Dates.intersect(life, period.first, period.last)
-
-    Enum.flat_map(context.patterns, fn {worked, pattern} ->
-      pattern_span(context, entitlement, period, covered, worked, pattern)
-    end)
-  end
-
-  defp pattern_span(context, entitlement, period, covered, worked, pattern) do
-    case Dates.intersect(covered, worked.first, worked.last) do
-      :error ->
-        []
-
-      {:ok, dates} ->
-        [
-          %__MODULE__{
-            entitlement: entitlement,
-            period: period,
-            dates: dates,
-            granting: granting(entitlement, dates),
-            employed_to: context.employed_to,
-            work_pattern: pattern
-          }
-        ]
-    end
-  end
-
-  defp granting(entitlement, dates) do
-    case Dates.intersect(dates, dates.first, entitlement.granted_to) do
+  defp granting(window, dates) do
+    case Dates.intersect(window, dates.first, dates.last) do
       :error -> nil
       {:ok, granting} -> granting
     end

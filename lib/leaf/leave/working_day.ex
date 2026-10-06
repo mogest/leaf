@@ -50,18 +50,12 @@ defmodule Leaf.Leave.WorkingDay do
   defp less_credited([], _person, _range), do: MapSet.new()
 
   defp less_credited(dates, person, range) do
-    credited = credited(person, range)
+    credited = Policies.crediting(person, range)
 
     dates |> Enum.reject(fn date -> Enum.any?(credited, &(date in &1)) end) |> MapSet.new()
   end
 
   defp observed(person, range) do
     person |> People.public_holidays(range) |> Enum.map(& &1.date)
-  end
-
-  defp credited(person, range) do
-    person
-    |> People.leave_policy_segments(range)
-    |> Enum.flat_map(fn {span, policy} -> Policies.crediting(policy, span) end)
   end
 end

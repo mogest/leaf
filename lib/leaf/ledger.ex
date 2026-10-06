@@ -47,9 +47,8 @@ defmodule Leaf.Ledger do
   """
   @spec statements(Person.t(), Date.t(), [Day.t()]) :: [Statement.t()]
   def statements(person, as_at, days \\ []) do
-    person = People.dated(person)
+    %{organisation: organisation} = person = People.dated(person)
     as_at = Enum.reduce(days, as_at, &Enum.max([&1.date, &2], Date))
-    {:ok, organisation} = Org.fetch_organisation(person.organisation_id)
     spans = Span.all(person, organisation, as_at)
     leave_types = Policies.leave_types(organisation.id)
     taken = Leave.days_approved(person) ++ days

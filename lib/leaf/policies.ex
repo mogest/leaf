@@ -16,6 +16,7 @@ defmodule Leaf.Policies do
   alias Leaf.Org.Organisation
   alias Leaf.People
   alias Leaf.People.Person
+  alias Leaf.Policies.Granting
   alias Leaf.Policies.LeavePolicy
   alias Leaf.Policies.LeaveType
   alias Leaf.Policies.PolicyEntitlement
@@ -264,18 +265,78 @@ defmodule Leaf.Policies do
     )
   end
 
-  @doc "What `crediting/2` reads of a policy, to load it for many policies at once."
-  @spec entitlements_preload() :: atom()
-  def entitlements_preload, do: :entitlements
+  @doc "What `grant_windows/3` reads of a policy, to load it for many policies at once."
+  @spec entitlements_preload() :: keyword()
+  def entitlements_preload do
+    [
+      entitlements:
+        from(entitlement in PolicyEntitlement,
+          order_by: entitlement.effective_from,
+          preload: :leave_type
+        )
+    ]
+  end
 
-  @doc "The stretches of `range` over which a policy credits public holidays rather than granting them off."
-  @spec crediting(LeavePolicy.t(), Date.Range.t()) :: [Date.Range.t()]
-  def crediting(policy, range) do
-    %{entitlements: entitlements} = Repo.preload(policy, entitlements_preload())
+  @doc """
+  Each grant period of each entitlement the person's policies grant over `range`, with its entitlement.
 
-    for %{amount_source: :public_holidays} = held <- entitlements,
-        {:ok, span} <- [Dates.intersect(range, held.effective_from, held.effective_to)],
-        do: span
+  `range` is the stretch of their history being asked about. Whether a block grant lands turns on
+  where its period opens, so a range starting part-way through a period has no block for it.
+  """
+  @spec grant_windows(Person.t(), Organisation.t(), Date.Range.t()) :: [Granting.window()]
+  def grant_windows(person, organisation, range) do
+    for {assigned, policy} <- People.leave_policy_segments(person, range),
+        entitlement <- Repo.preload(policy, entitlements_preload()).entitlements,
+        window <- Granting.windows(entitlement, person, organisation, assigned),
+        do: window
+  end
+
+  @doc """
+  The ranges a grant is measured over, or none where it grants nothing.
+
+  `granting` is the part of `period` it grants over. An accrual is measured over that. A block grant
+  is measured over its whole grant period, which can open before `granting` does and run past the
+  date being asked about, and only one whose `granting` starts when its period does lands at all —
+  which is what leaves someone who joined part-way through a period without one until the next
+  period starts. The one block measured in something other than dates — a share of the holiday
+  calendar — stops where the person's employment does.
+  """
+  @spec measured(PolicyEntitlement.t(), Date.Range.t(), Date.Range.t() | nil, Date.t() | nil) ::
+          [Date.Range.t()]
+  def measured(entitlement, period, granting, employed_to) do
+    Granting.measured(entitlement, period, granting, employed_to)
+  end
+
+  @doc """
+  The stretches of `range` over which the person's policy credits them public holidays instead of granting them off.
+
+  These are exactly the dates the allowance's grants are measured over, as `measured/4` gives them,
+  so a holiday counts as worked only where the allowance credits it. One outside them — after the
+  allowance stops granting, or in a period part-way through which it started, so no block landed —
+  is a day off like anybody else's rather than a working day with nothing to pay for it.
+
+  Grants are read from the start of the person's employment rather than from `range`, since whether
+  a block lands turns on where its period opens, which can be well before `range` does.
+  """
+  @spec crediting(Person.t(), Date.Range.t()) :: [Date.Range.t()]
+  def crediting(person, range) do
+    %{organisation: organisation} = person = People.dated(person)
+
+    case Dates.bounded(
+           person.employment_start_date,
+           Dates.earliest(range.last, person.employment_end_date)
+         ) do
+      :error -> []
+      {:ok, employed} -> crediting(person, organisation, employed, range)
+    end
+  end
+
+  defp crediting(person, organisation, employed, range) do
+    for %{entitlement: %{amount_source: :public_holidays} = held} = window <-
+          grant_windows(person, organisation, employed),
+        measured <- measured(held, window.period, window.granting, person.employment_end_date),
+        {:ok, credited} <- [Dates.intersect(range, measured.first, measured.last)],
+        do: credited
   end
 
   defp of_policy(leave_policy_id) do
