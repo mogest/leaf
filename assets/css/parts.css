@@ -281,16 +281,21 @@ li > button[popovertarget] {
   & td {
     inline-size: var(--day);
     block-size: var(--day);
-    /* A figure's ink stops at the baseline, so a centred line box leaves the room a descender
-       would have taken empty below it. The padding above answers for that room. */
-    padding-block: 0.375rem 0;
-    padding-inline: 0;
+    padding: 0;
     border: 0;
     border-radius: 0.4375rem;
     font-size: var(--size-sm);
     line-height: 1;
     font-variant-numeric: tabular-nums;
     text-align: center;
+    vertical-align: middle;
+    text-box: trim-both cap alphabetic;
+
+    /* Until text-box is widely available: a figure's ink stops at the baseline, so a centred line
+       box leaves the room a descender would have taken empty below it. */
+    @supports not (text-box: trim-both cap alphabetic) {
+      padding-block-start: 0.375rem;
+    }
   }
 
   & td[data-working="no"] {
