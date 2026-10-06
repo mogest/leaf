@@ -694,11 +694,6 @@ main.who-is-away {
     background: var(--green-mark);
   }
 
-  & td[data-leave="pending"] {
-    border: 1px dashed var(--green);
-    background: transparent;
-  }
-
   & td[data-holiday] {
     background: var(--ochre-wash);
   }
