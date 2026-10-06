@@ -1,6 +1,7 @@
 defmodule Leaf.SeedTest do
   use Leaf.DataCase, async: true
 
+  alias Leaf.Fixtures
   alias Leaf.Ledger
   alias Leaf.Org
   alias Leaf.People
@@ -50,6 +51,17 @@ defmodule Leaf.SeedTest do
     assert {:ok, %{organisation: organisation}} = Seed.run()
     assert Seed.run() == {:error, "#{organisation.name} is already seeded"}
     assert length(Org.organisations()) == 1
+  end
+
+  test "a seed that fails part way leaves no organisation behind" do
+    # A person nobody's organisation holds, taking an address the seed gives somebody, is the one
+    # clash the seed's guard cannot see. Only a replica may write a row its foreign key refuses.
+    Repo.query!("SET LOCAL session_replication_role = replica")
+    Fixtures.person(%{organisation_id: Ecto.UUID.generate(), email: "mog@example.test"})
+    Repo.query!("SET LOCAL session_replication_role = DEFAULT")
+
+    assert_raise MatchError, &Seed.run/0
+    assert Org.organisations() == []
   end
 
   test "quarterly leave grants the person's share of it at the start of the quarter" do
