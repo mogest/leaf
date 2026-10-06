@@ -296,6 +296,25 @@ defmodule LeafWeb.PeopleLiveTest do
     assert managers =~ "12.5"
   end
 
+  test "a balance entered by hand is archived from the person's page and shown no more",
+       context do
+    entry =
+      Fixtures.balance_entry(%{
+        person_id: context.person.id,
+        leave_type_id: context.leave_type.id,
+        kind: :adjustment,
+        amount: "12.5",
+        reason: "Keyed in twice"
+      })
+
+    {:ok, live, _html} = live(context.conn, ~p"/people/#{context.person}")
+    html = live |> element("button[phx-value-id='#{entry.id}']", "Archive") |> render_click()
+
+    refute html =~ "Keyed in twice"
+    assert html =~ "Nothing has been entered by hand."
+    assert Leave.balance_entries(context.person) == []
+  end
+
   test "an adjustment without a reason is refused", context do
     {:ok, live, _html} = live(context.conn, ~p"/people/#{context.person}/balance-entries/new")
 

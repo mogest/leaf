@@ -5,6 +5,7 @@ defmodule Leaf.LeaveTest do
   alias Leaf.Fixtures
   alias Leaf.Leave
   alias Leaf.Leave.Request
+  alias Leaf.Ledger
   alias Leaf.People
   alias Leaf.Policies
 
@@ -352,6 +353,26 @@ defmodule Leaf.LeaveTest do
 
     assert opening.created_by_id == context.admin.id
     assert [%{action: "balance_entry.created"}] = Repo.all(Entry)
+  end
+
+  test "an archived balance figure counts in nothing", context do
+    %{person: person, admin: admin} = context
+    attrs = %{leave_type_id: context.leave_type.id, date: @thursday, amount: "40"}
+
+    {:ok, opening} =
+      Leave.create_balance_entry(person, admin, Map.put(attrs, :kind, :opening_balance))
+
+    assert {:ok, archived} = Leave.archive_balance_entry(opening, admin)
+    assert archived.archived_at
+
+    assert Leave.balance_entries(person) == []
+    assert Leave.fetch_balance_entry(person, opening.id) == :error
+    assert Ledger.balances(person, @ahead) == []
+
+    assert [%{subject_person_id: subject}] =
+             Repo.all(from entry in Entry, where: entry.action == "balance_entry.archived")
+
+    assert subject == person.id
   end
 
   test "only approved leave counts as taken, whenever it falls", context do
