@@ -310,17 +310,8 @@ li > button[popovertarget] {
     font-weight: 600;
   }
 
-  & td[data-leave="approved"]:where([data-part]) {
+  & td[data-part] {
     background: linear-gradient(to bottom right, var(--green-wash) 50%, transparent 50%);
-  }
-
-  & td[data-leave="pending"]:where([data-part]) {
-    background: linear-gradient(
-      to bottom right,
-      transparent calc(50% - 0.5px),
-      var(--green) 50%,
-      transparent calc(50% + 0.5px)
-    );
   }
 
   & td[data-holiday] {
