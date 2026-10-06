@@ -37,6 +37,8 @@ mix phx.server
 
 `mix leaf.seed` refuses to run where an organisation already exists; `mix ecto.reset` first.
 
+To send notifications in Slack, see `docs/slack.md`.
+
 The development database is `leaf_dev`. Set `DEV_DATABASE` to use another, so a second checkout can
 run beside the first: `DEV_DATABASE=leaf_dev_other PORT=4001 mix phx.server`.
 
