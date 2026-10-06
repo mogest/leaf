@@ -22,10 +22,11 @@ defmodule Leaf.Ledger.Drawdown do
   @doc """
   The movements in the order they happened, and the lots still held on `as_at`.
 
-  `caps` gives the dates a cap falls due with the cap that applies. Up to `as_at` the whole ledger
-  happens; past it the only movements left are leave already approved for later, which draws on
-  what is held. Nothing arrives after `as_at`, nothing lapses and no cap falls, so a lot due to
-  lapse later is still held.
+  `caps` gives the dates a cap falls due with the cap that applies. A lapse or a cap falls at the
+  end of its day, so a lot is still held on the day it lapses, as it can still be drawn on then.
+  Before `as_at` the whole ledger happens; from it on the only movements left are what arrives on
+  `as_at` and leave already approved for later, which draws on what is held, and nothing lapses
+  and no cap falls.
   """
   @spec run([Movement.t()], [{Date.t(), Decimal.t()}], Date.t()) ::
           {[Movement.t()], [Lot.t()]}
@@ -47,16 +48,16 @@ defmodule Leaf.Ledger.Drawdown do
     {Enum.reverse(state.movements), state.lots}
   end
 
-  # Every date something happens on, split at `as_at`. A lapse or a cap due after it has not
+  # Every date something happens on, split at `as_at`. A lapse or a cap due on or after it has not
   # happened yet and so is left out altogether, rather than falling due at whatever later date the
   # walk happens to reach.
   defp dates(movements, caps, as_at) do
     losses = Enum.flat_map(movements, &lapse_date/1) ++ Enum.map(caps, &elem(&1, 0))
 
-    (Enum.map(movements, & &1.date) ++ Enum.reject(losses, &Date.after?(&1, as_at)))
+    (Enum.map(movements, & &1.date) ++ Enum.filter(losses, &Date.before?(&1, as_at)))
     |> Enum.uniq()
     |> Enum.sort(Date)
-    |> Enum.split_while(&(not Date.after?(&1, as_at)))
+    |> Enum.split_while(&Date.before?(&1, as_at))
   end
 
   defp lapse_date(%{expires_on: nil}), do: []

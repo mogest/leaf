@@ -289,15 +289,16 @@ defmodule Leaf.LedgerTest do
 
     take(person, carried, ~D[2024-05-01], "8", :hours)
 
-    before_lapse = statement(person, carried, ~D[2024-06-29])
-    after_lapse = statement(person, carried, ~D[2024-06-30])
+    # Still held on the day it lapses, since it can still be drawn on that day.
+    on_lapse = statement(person, carried, ~D[2024-06-30])
+    after_lapse = statement(person, carried, ~D[2024-07-01])
 
-    assert lots(before_lapse) == [
+    assert lots(on_lapse) == [
              {Decimal.new("2.00"), ~D[2024-06-30]},
              {Decimal.new("40.00"), nil}
            ]
 
-    assert Decimal.equal?(before_lapse.balance, "42.00")
+    assert Decimal.equal?(on_lapse.balance, "42.00")
 
     assert List.last(movements(after_lapse)) ==
              {:expiry, ~D[2024-06-30], Decimal.new("-2.00"), nil}
@@ -451,22 +452,24 @@ defmodule Leaf.LedgerTest do
 
     take(person, sick, ~D[2024-05-01], "1", :days)
 
-    statement = statement(person, sick, ~D[2026-03-03])
+    statement = statement(person, sick, ~D[2026-03-04])
 
     assert movements(statement) == [
              {:grant, @started, Decimal.new("20.00"), nil},
              {:taken, ~D[2024-05-01], Decimal.new("-1.00"), nil},
              {:grant, ~D[2025-03-04], Decimal.new("20.00"), nil},
              {:adjustment, ~D[2025-06-01], Decimal.new("5.00"), ~D[2026-06-30]},
-             {:rollover_cap, ~D[2026-03-03], Decimal.new("-19.00"), nil}
+             {:rollover_cap, ~D[2026-03-03], Decimal.new("-19.00"), nil},
+             {:grant, ~D[2026-03-04], Decimal.new("20.00"), nil}
            ]
 
     assert lots(statement) == [
              {Decimal.new("5.00"), ~D[2026-06-30]},
+             {Decimal.new("20.00"), nil},
              {Decimal.new("20.00"), nil}
            ]
 
-    assert Decimal.equal?(statement.balance, "25.00")
+    assert Decimal.equal?(statement.balance, "45.00")
   end
 
   test "birthday leave lapses a window after the birthday, and needs a birth date", context do
@@ -483,8 +486,8 @@ defmodule Leaf.LedgerTest do
       expiry_window_days: 14
     })
 
-    unlapsed = statement(person, birthday, ~D[2024-08-23])
-    lapsed = statement(person, birthday, ~D[2024-08-24])
+    unlapsed = statement(person, birthday, ~D[2024-08-24])
+    lapsed = statement(person, birthday, ~D[2024-08-25])
 
     assert lots(unlapsed) == [{Decimal.new("1.00"), ~D[2024-08-24]}]
 
@@ -827,8 +830,8 @@ defmodule Leaf.LedgerTest do
       effective_to: ~D[2025-03-31]
     })
 
-    wound_down = statement(person, quarterly, ~D[2025-03-30])
-    ended = statement(person, quarterly, ~D[2025-03-31])
+    wound_down = statement(person, quarterly, ~D[2025-03-31])
+    ended = statement(person, quarterly, ~D[2025-04-01])
 
     assert lots(wound_down) == [
              {Decimal.new("8.00"), ~D[2025-03-31]},
@@ -1032,17 +1035,18 @@ defmodule Leaf.LedgerTest do
 
     Fixtures.balance_entry(%{person_id: person.id, leave_type_id: sick.id, amount: "30"})
 
-    statement = statement(person, sick, ~D[2026-03-03])
+    statement = statement(person, sick, ~D[2026-03-04])
 
     assert movements(statement) == [
              {:opening_balance, ~D[2024-01-01], Decimal.new("30.00"), nil},
              {:grant, @started, Decimal.new("20.00"), nil},
              {:rollover_cap, ~D[2025-03-03], Decimal.new("-10.00"), nil},
              {:grant, ~D[2025-03-04], Decimal.new("20.00"), nil},
-             {:rollover_cap, ~D[2026-03-03], Decimal.new("-55.00"), nil}
+             {:rollover_cap, ~D[2026-03-03], Decimal.new("-55.00"), nil},
+             {:grant, ~D[2026-03-04], Decimal.new("20.00"), nil}
            ]
 
-    assert Decimal.equal?(statement.balance, "5.00")
+    assert Decimal.equal?(statement.balance, "25.00")
   end
 
   test "the cap keeps falling due after granting has stopped", context do
