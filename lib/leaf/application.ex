@@ -5,6 +5,8 @@ defmodule Leaf.Application do
 
   @impl true
   def start(_type, _args) do
+    :ok = :logger.add_handler(:sentry, Sentry.LoggerHandler, %{})
+
     children = [
       Leaf.Repo,
       {Phoenix.PubSub, name: Leaf.PubSub},

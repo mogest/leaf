@@ -95,8 +95,12 @@ defmodule LeafWeb.SignIn do
 
   defp named(id) do
     case People.fetch_person(id) do
-      {:ok, person} -> person
-      :error -> nil
+      {:ok, person} ->
+        Sentry.Context.set_user_context(%{id: person.id, email: person.email})
+        person
+
+      :error ->
+        nil
     end
   end
 end
