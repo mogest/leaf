@@ -14,7 +14,7 @@ defmodule LeafWeb.Layouts do
 
   @rail [
     {"At a glance", "/", ~w(at-a-glance request-leave)},
-    {"Balances", "/balances", ~w(balances)},
+    {"Your balances", "/balances", ~w(balances)},
     {"Your requests", "/leave", ~w(your-requests)},
     {"Who's away", "/away", ~w(who-is-away)},
     @approvals
@@ -28,7 +28,8 @@ defmodule LeafWeb.Layouts do
   @doc """
   Renders the frame every page sits in: the rail down the side, the page beside it.
 
-  `page` names the page, and becomes the class the page's own rules are scoped under.
+  `page` names the page, and becomes the class the page's own rules are scoped under. It also
+  lights the rail entry the page stands under, unless `rail` names another page to light instead.
 
   ## Examples
 
@@ -39,6 +40,7 @@ defmodule LeafWeb.Layouts do
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :page, :string, required: true, doc: "which page this is, in kebab case"
+  attr :rail, :string, default: nil, doc: "the page whose rail entry to light, where not `page`"
 
   attr :viewer, :map,
     default: nil,
@@ -68,7 +70,7 @@ defmodule LeafWeb.Layouts do
       </.link>
       <ul id="pages" popover>
         <li :for={{label, path, pages} <- rail(@viewer)}>
-          <.link navigate={path} aria-current={current(@page, pages)}>{label}</.link>
+          <.link navigate={path} aria-current={current(@rail || @page, pages)}>{label}</.link>
         </li>
       </ul>
       <div :if={@viewer}>
