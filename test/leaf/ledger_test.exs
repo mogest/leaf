@@ -344,6 +344,87 @@ defmodule Leaf.LedgerTest do
     assert Decimal.equal?(statement.balance, "42.00")
   end
 
+  test "leave draws on what an accrual has earned by its date, and no more", context do
+    person = context.person
+    full_time(person)
+    quarterly = leave_type(context, %{name: "Quarterly leave", position: 2})
+
+    entitlement(context, quarterly, %{
+      grant_amount: "8",
+      grant_basis: :calendar_year,
+      grant_period: :quarter,
+      expiry_rule: :grant_period_end
+    })
+
+    Fixtures.balance_entry(%{
+      person_id: person.id,
+      leave_type_id: quarterly.id,
+      date: ~D[2024-04-01],
+      kind: :adjustment,
+      amount: "5",
+      reason: "Carried over by agreement"
+    })
+
+    take(person, quarterly, ~D[2024-05-15], "4", :hours)
+
+    # 45 of the quarter's 91 days have accrued 3.96 by the 15th, which lapses at the quarter's end
+    # and so is spent first. Only the 0.04 left over comes out of the 5 that never lapse.
+    expected = [{Decimal.new("0.09"), ~D[2024-09-30]}, {Decimal.new("4.96"), nil}]
+    statement = statement(person, quarterly, ~D[2024-07-01])
+
+    assert lots(statement) == expected
+    assert Decimal.equal?(statement.balance, "5.04")
+
+    # The same hours recorded afresh from May split the quarter's accrual without changing it.
+    weekdays(person, ~D[2024-05-01], "8")
+    statement = statement(person, quarterly, ~D[2024-07-01])
+
+    assert lots(statement) == expected
+    assert Decimal.equal?(statement.balance, "5.04")
+
+    # Nor does June spent on unpaid leave reach back to what had accrued by the 15th of May.
+    unpaid = leave_type(context, %{name: "Unpaid leave", position: 3, suspends_accrual: true})
+
+    Fixtures.leave_request(%{
+      person_id: person.id,
+      days:
+        for(
+          date <- Date.range(~D[2024-06-03], ~D[2024-06-28]),
+          Date.day_of_week(date) < 6,
+          do: %{leave_type_id: unpaid.id, date: date, amount: "1", unit: :days}
+        )
+    })
+
+    assert lots(statement(person, quarterly, ~D[2024-07-01])) == expected
+  end
+
+  test "taking leave out of an accrual does not bring its lapse forward", context do
+    person = context.person
+    full_time(person)
+    quarterly = leave_type(context, %{name: "Quarterly leave", position: 2})
+
+    entitlement(context, quarterly, %{
+      grant_amount: "8",
+      grant_basis: :calendar_year,
+      grant_period: :quarter,
+      expiry_rule: :window,
+      expiry_window_days: 20
+    })
+
+    take(person, quarterly, ~D[2024-04-10], "1", :hours)
+
+    # The hour comes out of March's accrual, lapsing on the 20th of April. April to June's accrual
+    # lapses 20 days after June, the part cut off on the 10th included.
+    statement = statement(person, quarterly, ~D[2024-06-30])
+
+    assert lots(statement) == [
+             {Decimal.new("7.12"), ~D[2024-07-20]},
+             {Decimal.new("0.88"), ~D[2024-07-20]}
+           ]
+
+    assert Decimal.equal?(statement.balance, "8.00")
+  end
+
   test "a capped leave type is trimmed to the cap, taking from the lots with longest to run",
        context do
     person = context.person
