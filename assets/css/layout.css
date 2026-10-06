@@ -3,7 +3,7 @@
 body {
   display: flex;
   align-items: stretch;
-  min-block-size: 100vh;
+  min-block-size: 100dvh;
 
   @media (width < 48rem) {
     flex-direction: column;
@@ -136,7 +136,8 @@ body > div[data-phx-main] {
   @media (width >= 48rem) {
     position: sticky;
     inset-block-start: 0;
-    block-size: 100vh;
+    block-size: 100dvh;
+    overflow-y: auto;
 
     & > ul {
       position: static;
