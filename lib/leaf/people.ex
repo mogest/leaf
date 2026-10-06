@@ -21,6 +21,7 @@ defmodule Leaf.People do
 
   import Ecto.Query
 
+  alias Ecto.Changeset
   alias Leaf.Audit
   alias Leaf.Org
   alias Leaf.Org.Organisation
@@ -80,7 +81,10 @@ defmodule Leaf.People do
   """
   @spec update_person(Person.t(), Person.t() | nil, map()) :: Audit.written(Person.t())
   def update_person(person, actor, attrs) do
-    person |> Person.changeset(attrs) |> Audit.write("person.updated", actor, person.id)
+    person
+    |> Person.changeset(attrs)
+    |> validate_reporting_line()
+    |> Audit.write("person.updated", actor, person.id)
   end
 
   @doc "The person, or `:error` where no such person exists."
@@ -431,6 +435,21 @@ defmodule Leaf.People do
       where: person.employment_start_date <= ^range.last,
       where: is_nil(person.employment_end_date) or person.employment_end_date >= ^range.first,
       order_by: person.name
+  end
+
+  defp validate_reporting_line(changeset) do
+    case above?(changeset.data, Changeset.get_change(changeset, :manager_id)) do
+      true -> Changeset.add_error(changeset, :manager_id, "already reports to them")
+      false -> changeset
+    end
+  end
+
+  defp above?(_person, nil), do: false
+  defp above?(%{id: id}, id), do: true
+
+  defp above?(person, id) do
+    manager_id = Repo.one(from other in Person, where: other.id == ^id, select: other.manager_id)
+    above?(person, manager_id)
   end
 
   defp branches(people, reports) do
