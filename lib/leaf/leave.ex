@@ -67,7 +67,7 @@ defmodule Leaf.Leave do
   @spec request(Person.t(), Person.t(), map()) ::
           {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden}
   def request(person, actor, attrs) do
-    serialised(person.id, fn ->
+    serialised([person.id], fn ->
       with :ok <- permit(person.id == actor.id or approver?(person, actor)) do
         %Request{person_id: person.id, submitted_by_id: actor.id, status: :pending}
         |> Request.changeset(measured(person, attrs))
@@ -370,6 +370,25 @@ defmodule Leaf.Leave do
   def taken?(person, leave_type_id, range), do: Booked.any?(person, leave_type_id, range)
 
   @doc """
+  Runs `fun` in a transaction during which no leave of the people named can be filed or changed.
+
+  Everything filed against one person's dates has to agree about what those dates already hold, so
+  every write against them takes the person's row first and they happen one at a time. Nothing
+  else would stop two requests filed at once from each finding the same day free. A write elsewhere
+  that turns on what leave they hold takes the same rows, so that it stays true until it is done.
+  """
+  @spec serialised([Ecto.UUID.t()], (-> {:ok, result} | {:error, reason})) ::
+          {:ok, result} | {:error, reason}
+        when result: term(), reason: term()
+  def serialised(person_ids, fun) do
+    Repo.transact(fn ->
+      Repo.all(locked(person_ids))
+
+      fun.()
+    end)
+  end
+
+  @doc """
   Whether `actor` may amend or cancel `request` as it stands.
 
   Its person must be loaded. This is the rule §5.4 states, asked rather than repeated: a page
@@ -417,26 +436,19 @@ defmodule Leaf.Leave do
   # record a before-value that never was. Reading it again inside the lock is what makes the check
   # and the entry about the row as it stands.
   defp as_it_stands(request, fun) do
-    serialised(request.person_id, fn ->
+    serialised([request.person_id], fn ->
       {:ok, request} = fetch_request(request.id)
 
       fun.(request)
     end)
   end
 
-  # Everything filed against one person's dates has to agree about what those dates already hold,
-  # so every write against them takes the person's row first and they happen one at a time. Nothing
-  # else would stop two requests filed at once from each finding the same day free.
-  defp serialised(person_id, fun) do
-    Repo.transact(fn ->
-      Repo.one!(locked(person_id))
-
-      fun.()
-    end)
-  end
-
-  defp locked(person_id) do
-    from person in Person, where: person.id == ^person_id, select: 1, lock: "FOR UPDATE"
+  defp locked(person_ids) do
+    from person in Person,
+      where: person.id in ^person_ids,
+      order_by: person.id,
+      select: 1,
+      lock: "FOR UPDATE"
   end
 
   defp review(request, actor, status, comment) do
