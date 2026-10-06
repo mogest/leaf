@@ -1173,3 +1173,20 @@ main.settings section > ol > li {
     color: var(--ink-soft);
   }
 }
+
+main.reports {
+  & > form {
+    flex-flow: row wrap;
+    align-items: start;
+    gap: var(--step-4);
+
+    & div:has(> label) {
+      flex: 0 1 13rem;
+    }
+  }
+
+  & > section > p {
+    font-size: var(--size-base);
+    color: var(--ink-soft);
+  }
+}

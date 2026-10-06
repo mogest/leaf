@@ -71,6 +71,7 @@ defmodule LeafWeb.LeaveTypesLive do
               <th scope="col">Order</th>
               <th scope="col">Name</th>
               <th scope="col">Counted in</th>
+              <th scope="col">Payroll code</th>
               <th scope="col">Standing</th>
             </tr>
           </thead>
@@ -79,6 +80,7 @@ defmodule LeafWeb.LeaveTypesLive do
               <td>{leave_type.position}</td>
               <th scope="row"><.link navigate={leave_type.path}>{leave_type.name}</.link></th>
               <td>{leave_type.unit}</td>
+              <td>{leave_type.payroll_code}</td>
               <td>{leave_type.standing}</td>
             </tr>
           </tbody>
@@ -95,6 +97,7 @@ defmodule LeafWeb.LeaveTypesLive do
           <.input field={@form[:unit]} type="select" label="Counted in" options={@units} />
           <.input field={@form[:suspends_accrual]} type="checkbox" label="Suspends accrual" />
           <.input field={@form[:position]} type="number" label="Order" />
+          <.input field={@form[:payroll_code]} type="text" label="Payroll code" />
         </section>
 
         <footer>
@@ -129,6 +132,7 @@ defmodule LeafWeb.LeaveTypesLive do
       name: leave_type.name,
       unit: to_string(leave_type.unit),
       position: leave_type.position,
+      payroll_code: leave_type.payroll_code,
       path: ~p"/settings/leave-types/#{leave_type}",
       standing: Wording.standing(leave_type),
       tone: Wording.tone(leave_type)

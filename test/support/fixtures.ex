@@ -182,7 +182,7 @@ defmodule Leaf.Fixtures do
   end
 
   @doc """
-  An approved request, whose `:days` are `t:Leaf.Leave.entry/0` maps.
+  An approved request, whose `:days` are `t:Leaf.Leave.entry/0` maps, with an optional `:note`.
 
   Who a request belongs to is not cast, so it is set on the struct here as `Leaf.Leave` does. Each
   day falls on a full day of the default pattern unless it says otherwise.
@@ -193,7 +193,7 @@ defmodule Leaf.Fixtures do
 
     %Request{status: :approved, submitted_by_id: identity[:person_id]}
     |> struct!(identity)
-    |> Request.changeset(%{days: Enum.map(attrs.days, &worked/1)})
+    |> Request.changeset(%{days: Enum.map(attrs.days, &worked/1), note: attrs[:note]})
     |> Repo.insert!()
   end
 

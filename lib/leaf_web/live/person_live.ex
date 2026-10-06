@@ -94,6 +94,8 @@ defmodule LeafWeb.PersonLive do
             <dd>{@born}</dd>
             <dt>Manager</dt>
             <dd>{@manager}</dd>
+            <dt :if={@person.employee_number}>Employee number</dt>
+            <dd :if={@person.employee_number}>{@person.employee_number}</dd>
           </dl>
         </section>
 

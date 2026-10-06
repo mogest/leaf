@@ -22,6 +22,7 @@ defmodule Leaf.Leave do
 
   alias Leaf.Audit
   alias Leaf.Dates
+  alias Leaf.Decimals
   alias Leaf.Leave.BalanceEntry
   alias Leaf.Leave.Booked
   alias Leaf.Leave.Day
@@ -177,6 +178,26 @@ defmodule Leaf.Leave do
   defdelegate in_unit(day, unit, hours), to: Day
 
   @doc """
+  What some of a person's days of leave come to in hours and in days, each as worth on its date.
+
+  Exact: rounding is for wherever the figures are shown. `:error` where no work pattern is in
+  force on the first of them, since hours nobody knows cannot be counted; a pattern runs on until
+  the next supersedes it, so one in force then is in force over all of them.
+  """
+  @spec worth(Person.t(), [Day.t()]) :: {:ok, %{hours: Decimal.t(), days: Decimal.t()}} | :error
+  def worth(person, days) do
+    span = Dates.spanning(Enum.map(days, & &1.date))
+
+    with {:ok, _pattern} <- People.fetch_work_pattern_on(person, span.first) do
+      hours = person |> hours_per_day!(span) |> Map.new()
+
+      {:ok, %{hours: total_in(days, :hours, hours), days: total_in(days, :days, hours)}}
+    end
+  end
+
+  defp total_in(days, unit, hours), do: Decimals.total(days, &in_unit(&1, unit, hours[&1.date]))
+
+  @doc """
   Every day of leave a person has in requests standing at `status`, oldest first.
 
   Bounded at neither end. Approved leave somebody is already going on is spent whether they have
@@ -260,6 +281,26 @@ defmodule Leaf.Leave do
     approved = Booked.approved(people, range)
 
     Enum.map(people, &{&1, Diary.over(&1, range, Map.get(approved, &1.id, []))})
+  end
+
+  @doc """
+  The organisation's approved requests whose first day falls in `range`, the earliest first.
+
+  Each is the whole request, its days after `range` included, so ranges laid end to end take in
+  every request exactly once. They come with their person and their days, each with its leave type.
+  """
+  @spec approved_starting(Ecto.UUID.t(), Date.Range.t()) :: [Request.t()]
+  def approved_starting(organisation_id, range) do
+    Repo.all(
+      from request in Request,
+        join: person in assoc(request, :person),
+        join: day in assoc(request, :days),
+        where: person.organisation_id == ^organisation_id and request.status == :approved,
+        group_by: [request.id, person.id],
+        having: min(day.date) >= ^range.first and min(day.date) <= ^range.last,
+        order_by: [min(day.date), person.name],
+        preload: [:person, days: :leave_type]
+    )
   end
 
   @doc """

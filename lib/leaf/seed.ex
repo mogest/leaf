@@ -38,15 +38,16 @@ defmodule Leaf.Seed do
   @policy_from ~D[2024-01-01]
 
   # A leave type's unit is what every amount below it is counted in, and its place in this list is
-  # its place in the organisation's own list of types.
+  # its place in the organisation's own list of types. The organisation's own kinds of leave have no
+  # code: payroll has nothing to file them under, so they are not exported to it.
   @leave_types [
-    {"Annual leave", :hours},
-    {"Sick leave", :days},
-    {"Quarterly leave", :hours},
-    {"Birthday leave", :days},
-    {"Longevity leave", :days},
-    {"Public holiday allowance", :hours},
-    {"Bereavement leave", :days}
+    {"Annual leave", :hours, "AL"},
+    {"Sick leave", :days, "SICK"},
+    {"Quarterly leave", :hours, nil},
+    {"Birthday leave", :days, nil},
+    {"Longevity leave", :days, nil},
+    {"Public holiday allowance", :hours, nil},
+    {"Bereavement leave", :days, "BL"}
   ]
 
   @annual %{
@@ -139,6 +140,7 @@ defmodule Leaf.Seed do
     %{
       name: "Mog",
       email: "mog@example.test",
+      employee_number: "1001",
       role: :admin,
       employment_start_date: ~D[2024-12-15],
       birth_date: ~D[1990-08-10],
@@ -158,6 +160,7 @@ defmodule Leaf.Seed do
     %{
       name: "Ari Kelburn",
       email: "ari@example.test",
+      employee_number: "1002",
       role: :member,
       employment_start_date: ~D[2025-01-01],
       birth_date: ~D[1985-03-22],
@@ -303,12 +306,13 @@ defmodule Leaf.Seed do
   defp add_leave_types(organisation) do
     @leave_types
     |> Enum.with_index(1)
-    |> Map.new(fn {{name, unit}, position} ->
+    |> Map.new(fn {{name, unit, payroll_code}, position} ->
       {:ok, leave_type} =
         Policies.create_leave_type(organisation, @system, %{
           name: name,
           unit: unit,
-          position: position
+          position: position,
+          payroll_code: payroll_code
         })
 
       {name, leave_type}

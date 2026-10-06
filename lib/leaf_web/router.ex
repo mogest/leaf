@@ -33,6 +33,10 @@ defmodule LeafWeb.Router do
     plug :require_person
   end
 
+  pipeline :admin do
+    plug :require_admin
+  end
+
   scope "/", LeafWeb do
     get "/healthz", HealthController, :show
     get "/healthz/ready", HealthController, :ready
@@ -44,6 +48,12 @@ defmodule LeafWeb.Router do
     get "/sign-in", SignInController, :index
     post "/sign-in/:id", SignInController, :create
     delete "/sign-out", SignInController, :delete
+  end
+
+  scope "/", LeafWeb do
+    pipe_through [:browser, :signed_in, :admin]
+
+    get "/reports/:report/download", ReportsController, :download
   end
 
   # One live session, so moving between any two pages keeps the socket. The administrator's pages
@@ -71,6 +81,8 @@ defmodule LeafWeb.Router do
       live "/settings/calendars/:id", CalendarLive
       live "/settings/calendars/:calendar_id/regions/new", RegionLive
       live "/settings/audit", AuditLive
+      live "/reports", ReportsLive
+      live "/reports/:report", ReportsLive
 
       live "/", AtAGlanceLive
       live "/leave", YourRequestsLive

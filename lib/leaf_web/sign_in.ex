@@ -74,6 +74,14 @@ defmodule LeafWeb.SignIn do
 
   def require_person(conn, _opts), do: conn
 
+  @doc "Turns away anybody but an administrator, as `on_mount(:admin, …)` does a page."
+  @spec require_admin(Plug.Conn.t(), keyword()) :: Plug.Conn.t()
+  def require_admin(%{assigns: %{current_person: %{role: :admin}}} = conn, _opts), do: conn
+
+  def require_admin(conn, _opts) do
+    conn |> put_flash(:error, refused()) |> redirect(to: "/") |> halt()
+  end
+
   defp refused, do: "That page is the administrator's."
 
   defp viewing(socket, person) do

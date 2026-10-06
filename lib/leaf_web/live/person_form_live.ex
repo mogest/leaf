@@ -61,6 +61,7 @@ defmodule LeafWeb.PersonFormLive do
             prompt="Nobody, so an administrator decides"
             options={@managers}
           />
+          <.input field={@form[:employee_number]} type="text" label="Employee number" />
         </section>
 
         <section>

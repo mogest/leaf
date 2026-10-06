@@ -52,6 +52,17 @@ defmodule Leaf.PeopleTest do
     assert errors_on(changeset).email == ["has already been taken"]
   end
 
+  test "an employee number names one person in an organisation", context do
+    %{organisation: organisation, person: person} = context
+    other = Fixtures.person(%{organisation_id: organisation.id})
+    elsewhere = Fixtures.person(%{organisation_id: Fixtures.organisation().id})
+
+    assert {:ok, _person} = People.update_person(person, nil, %{employee_number: "1001"})
+    assert {:ok, _person} = People.update_person(elsewhere, nil, %{employee_number: "1001"})
+    assert {:error, changeset} = People.update_person(other, nil, %{employee_number: "1001"})
+    assert errors_on(changeset).employee_number == ["has already been taken"]
+  end
+
   test "a work pattern applies until the next one supersedes it", %{person: person} do
     full_time = Fixtures.work_pattern(%{person_id: person.id})
     part_time = part_time(person)
