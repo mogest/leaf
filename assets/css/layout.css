@@ -527,7 +527,7 @@ main.balances {
       font-variant-numeric: tabular-nums;
 
       /* A long name wraps; the figure it is read against never does. */
-      & > span:last-child {
+      & > span + span {
         white-space: nowrap;
       }
 

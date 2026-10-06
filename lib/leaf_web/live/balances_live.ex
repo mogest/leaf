@@ -8,9 +8,8 @@ defmodule LeafWeb.BalancesLive do
 
   A type nothing is held in is listed all the same, along with one their policy offers but grants
   nothing for: what somebody may ask for is as much part of this page as what they have, and
-  nothing held is an answer. One they have never been granted anything in reads as recorded only
-  rather than as a figure, at any date, since the only figure it has is the leave taken with a
-  minus in front.
+  nothing held is an answer. One they have never been granted anything in shows no figure, at any
+  date, since the only figure it has is the leave taken with a minus in front.
   """
 
   use LeafWeb, :live_view
@@ -67,7 +66,7 @@ defmodule LeafWeb.BalancesLive do
           <li :for={account <- @accounts}>
             <.link patch={account.path} aria-current={account.current? && "page"}>
               <span>{account.name}</span>
-              <span>{account.amount}</span>
+              <span :if={account.amount}>{account.amount}</span>
             </.link>
           </li>
         </ul>
@@ -78,11 +77,13 @@ defmodule LeafWeb.BalancesLive do
           <header>
             <h2>{@account.name} <small>as at {@account.as_at}</small></h2>
           </header>
-          <dl>
+          <dl :if={@account.accrued}>
             <dt>Accrued</dt>
             <dd>{@account.accrued}</dd>
             <dd :if={@account.awaiting} data-awaiting>{@account.awaiting}</dd>
           </dl>
+          <p :if={!@account.accrued}>Recorded as it is taken; nothing accrues.</p>
+          <p :if={!@account.accrued && @account.awaiting} data-awaiting>{@account.awaiting}</p>
         </section>
 
         <section>
@@ -252,7 +253,7 @@ defmodule LeafWeb.BalancesLive do
   defp listing({leave_type, statement}, granted, person, mine?, as_at, selected) do
     %{
       name: leave_type.name,
-      amount: figure(statement, leave_type, granted),
+      amount: accrued(statement, leave_type, granted),
       path: path(person, mine?, leave_type.id, to_string(as_at)),
       current?: leave_type.id == selected
     }
@@ -264,16 +265,16 @@ defmodule LeafWeb.BalancesLive do
     %{
       name: leave_type.name,
       as_at: Wording.date(as_at),
-      accrued: figure(statement, leave_type, granted),
+      accrued: accrued(statement, leave_type, granted),
       awaiting: Wording.asked(Ledger.awaiting(person)[leave_type.id], leave_type.unit),
       lots: lots(statement, leave_type),
       movements: movements(statement, leave_type)
     }
   end
 
-  defp figure(statement, leave_type, granted) do
+  defp accrued(statement, leave_type, granted) do
     case {MapSet.member?(granted, leave_type.id), statement} do
-      {false, _statement} -> "recorded only"
+      {false, _statement} -> nil
       {true, nil} -> Wording.figure(Decimal.new(0), leave_type.unit)
       {true, statement} -> Wording.figure(statement.balance, leave_type.unit)
     end

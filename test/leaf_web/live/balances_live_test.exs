@@ -97,33 +97,43 @@ defmodule LeafWeb.BalancesLiveTest do
     assert flash["error"] == "Those balances are not yours to read."
   end
 
-  test "a type that is offered but grants nothing is listed as recorded only, never as a figure",
+  test "a type that is offered but grants nothing is listed bare, and says it is recorded only",
        context do
     bereavement = recorded_only(context)
+    link = ~s(a[href^="/balances/#{bereavement.id}"])
 
-    {:ok, live, html} = live(context.conn, ~p"/balances")
+    {:ok, live, _html} = live(context.conn, ~p"/balances")
 
-    assert html =~ "Bereavement leave"
-    assert html =~ "recorded only"
+    assert has_element?(live, link, "Bereavement leave")
+    refute has_element?(live, link <> " > span + span")
 
-    html = live |> element(~s(a[href^="/balances/#{bereavement.id}"])) |> render_click()
+    html = live |> element(link) |> render_click()
 
+    assert html =~ "Recorded as it is taken; nothing accrues."
+    refute html =~ "<dt>Accrued</dt>"
     assert html =~ "Nothing held."
     assert html =~ "Nothing has happened to it yet."
-
-    {:ok, _live, html} = live(context.conn, ~p"/balances/#{bereavement}?as_at=2023-06-01")
-
-    assert html =~ "<dd>recorded only</dd>"
 
     Fixtures.leave_request(%{
       person_id: context.person.id,
       days: [%{leave_type_id: bereavement.id, date: ~D[2024-07-01], amount: "1", unit: :days}]
     })
 
+    Fixtures.leave_request(%{
+      person_id: context.person.id,
+      status: :pending,
+      days: [%{leave_type_id: bereavement.id, date: ~D[2024-07-02], amount: "1", unit: :days}]
+    })
+
     {:ok, _live, html} = live(context.conn, ~p"/balances/#{bereavement}")
 
-    assert html =~ "<dd>recorded only</dd>"
+    assert html =~ "Recorded as it is taken; nothing accrues."
     assert html =~ "Taken"
+    assert html =~ "1 day awaiting approval"
+
+    {:ok, _live, html} = live(context.conn, ~p"/balances/#{bereavement}?as_at=2023-06-01")
+
+    assert html =~ "Recorded as it is taken; nothing accrues."
   end
 
   test "a type granted by policy reads as a figure before tracking started, leave or none",
@@ -157,7 +167,7 @@ defmodule LeafWeb.BalancesLiveTest do
 
     assert html =~ "Annual leave"
     assert html =~ "<dd>0 hours</dd>"
-    refute html =~ "recorded only"
+    refute html =~ "nothing accrues"
 
     Fixtures.leave_request(%{
       person_id: person.id,
@@ -169,7 +179,7 @@ defmodule LeafWeb.BalancesLiveTest do
     {:ok, _live, html} = live(conn, ~p"/balances?as_at=2023-12-01")
 
     assert html =~ "<dd>-8 hours</dd>"
-    refute html =~ "recorded only"
+    refute html =~ "nothing accrues"
   end
 
   test "leave left with no work pattern behind it reads as not set up rather than failing",
