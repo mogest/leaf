@@ -416,6 +416,19 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert Leave.requests(context.person) == []
   end
 
+  test "the form says who decides the request", context do
+    {:ok, _live, html} = live(context.conn, ~p"/leave/new")
+    assert html =~ "Your leave will be reviewed by an administrator"
+
+    manager =
+      Fixtures.person(%{organisation_id: context.person.organisation_id, name: "Ines Vasquez"})
+
+    {:ok, _person} = People.update_person(context.person, nil, %{manager_id: manager.id})
+
+    {:ok, _live, html} = live(context.conn, ~p"/leave/new")
+    assert html =~ "Your leave will be reviewed by Ines Vasquez"
+  end
+
   test "a request that is no longer open to change is not there to edit", context do
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
     live |> form("form", request: asking(context, %{})) |> render_submit()
@@ -438,6 +451,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     {:ok, amend, html} = live(context.conn, ~p"/leave/#{request}/amend")
 
     assert html =~ "Edit a request"
+    assert html =~ "Your leave will be reviewed by an administrator"
 
     amend
     |> form("form", request: asking(context, %{"to" => to_string(@sunday)}))
@@ -466,8 +480,9 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     {:ok, page, _html} = live(conn, ~p"/people/#{person}")
     assert has_element?(page, ~s(th a[href="/leave/#{request.id}/amend"]))
 
-    {:ok, amend, _html} = live(conn, ~p"/leave/#{request}/amend")
+    {:ok, amend, html} = live(conn, ~p"/leave/#{request}/amend")
     assert has_element?(amend, ~s(a[href="/people/#{person.id}"]), "Cancel")
+    refute html =~ "Your leave will be reviewed by"
 
     assert dating(amend, context, %{"from" => to_string(@saturday), "to" => to_string(@saturday)}) =~
              "Saturday 7 March is not a working day."

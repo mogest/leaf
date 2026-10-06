@@ -54,6 +54,7 @@ defmodule LeafWeb.RequestLeaveLive do
     <Layouts.app flash={@flash} page="request-leave" viewer={@viewer}>
       <header>
         <h1>{@title}</h1>
+        <p :if={@decider}>{@decider}</p>
       </header>
 
       <.form id="request" for={@form} phx-change="validate" phx-submit="save">
@@ -158,6 +159,7 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:done, "Your request is filed.")
     |> assign(:request, nil)
     |> assign(:replaced, false)
+    |> assign(:decider, decider(nil, socket.assigns.current_person))
     |> holding(socket.assigns.current_person)
     |> filled(%{})
   end
@@ -186,6 +188,7 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:done, "The request is changed.")
     |> assign(:request, request)
     |> assign(:replaced, replaced)
+    |> assign(:decider, decider(request, request.person))
     |> holding(request.person)
     |> filled(params)
   end
@@ -202,6 +205,12 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:back, back(socket.assigns.current_person, person))
     |> assign(:held, held(person, today, Ledger.ready?(person, today)))
   end
+
+  # Amending an approved request leaves it approved, so there is nobody left to decide it.
+  defp decider(%{status: :approved}, _person), do: nil
+
+  defp decider(_request, person),
+    do: "Your leave will be reviewed by #{People.manager_name(person) || "an administrator"}"
 
   defp back(%{id: id}, %{id: id}), do: ~p"/leave"
   defp back(_viewer, person), do: ~p"/people/#{person}"
