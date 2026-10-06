@@ -31,7 +31,8 @@ defmodule Leaf.Audit do
 
   `subject_person_id` is whose record the change was about, and is what survives the row being
   deleted; leave it out where the change was about nobody in particular, such as editing a leave
-  type. The entry holds a before and an after for each field the changeset touched.
+  type. The entry holds a before and an after for each field the changeset touched, and for a new
+  row, the ids naming what it belongs to.
   """
   @spec write(Changeset.t(), String.t(), Person.t() | nil, Ecto.UUID.t() | nil) ::
           written(struct())
@@ -115,10 +116,23 @@ defmodule Leaf.Audit do
   # What a field became is read off the written row rather than off the changeset, so that rows
   # created alongside it are named by the ids they were given.
   defp changes(changeset, record) do
-    Map.new(changeset.changes, fn {field, _value} ->
+    Map.new(changed(changeset), fn field ->
       {field, %{from: previous(changeset.data, field), to: recorded(Map.get(record, field))}}
     end)
   end
+
+  # What a new row belongs to is set on its struct rather than cast, so it is not among the changes.
+  defp changed(%Changeset{data: %module{__meta__: %{state: :built}} = data, changes: changes}) do
+    owners =
+      for field <- module.__schema__(:fields),
+          String.ends_with?(to_string(field), "_id"),
+          Map.get(data, field),
+          do: field
+
+    Map.keys(changes) ++ owners
+  end
+
+  defp changed(changeset), do: Map.keys(changeset.changes)
 
   # A row that does not exist yet has nothing to have been, which is not the same as an
   # association nobody bothered to load.
