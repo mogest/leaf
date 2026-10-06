@@ -1,24 +1,14 @@
 defmodule LeafWeb.PeopleLive do
-  @moduledoc "Everyone the organisation tracks leave for, and how much of a week each of them works."
+  @moduledoc "Everyone the viewer oversees, and how much of a week each of them works."
 
   use LeafWeb, :live_view
-
-  on_mount {LeafWeb.SignIn, :admin}
 
   alias Leaf.Org
   alias Leaf.People
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
-    {:ok, organisation} = Org.fetch_organisation(socket.assigns.current_person.organisation_id)
-    today = People.today(socket.assigns.current_person)
-    people = People.people(organisation.id)
-    names = Map.new(people, &{&1.id, &1.name})
-
-    {:ok,
-     socket
-     |> assign(:page_title, "People")
-     |> assign(:people, Enum.map(people, &row(&1, organisation, names, today)))}
+    {:ok, listed(socket, People.overseen(socket.assigns.current_person))}
   end
 
   @impl Phoenix.LiveView
@@ -27,7 +17,7 @@ defmodule LeafWeb.PeopleLive do
     <Layouts.app flash={@flash} page="people" viewer={@viewer}>
       <header>
         <h1>People</h1>
-        <.link class="button" navigate={~p"/people/new"}>Add</.link>
+        <.link :if={@viewer.admin?} class="button" navigate={~p"/people/new"}>Add</.link>
       </header>
 
       <div>
@@ -57,6 +47,20 @@ defmodule LeafWeb.PeopleLive do
       </div>
     </Layouts.app>
     """
+  end
+
+  defp listed(socket, []) do
+    socket |> put_flash(:error, "Nobody reports to you.") |> push_navigate(to: ~p"/")
+  end
+
+  defp listed(socket, people) do
+    {:ok, organisation} = Org.fetch_organisation(socket.assigns.current_person.organisation_id)
+    today = People.today(socket.assigns.current_person)
+    names = Map.new(People.people(organisation.id), &{&1.id, &1.name})
+
+    socket
+    |> assign(:page_title, "People")
+    |> assign(:people, Enum.map(people, &row(&1, organisation, names, today)))
   end
 
   defp row(person, organisation, names, today) do

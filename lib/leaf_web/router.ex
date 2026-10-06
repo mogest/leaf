@@ -52,7 +52,6 @@ defmodule LeafWeb.Router do
     pipe_through [:browser, :signed_in]
 
     live_session :signed_in, on_mount: {LeafWeb.SignIn, :current_person} do
-      live "/people", PeopleLive
       live "/people/new", PersonFormLive, :new
       live "/people/:person_id/edit", PersonFormLive, :edit
       live "/people/:person_id/work-patterns/new", WorkPatternLive, :new
@@ -81,6 +80,7 @@ defmodule LeafWeb.Router do
       live "/away", WhoIsAwayLive
       live "/balances", BalancesLive
       live "/balances/:leave_type_id", BalancesLive
+      live "/people", PeopleLive
       live "/people/:person_id", PersonLive
       live "/people/:person_id/balances", BalancesLive
       live "/people/:person_id/balances/:leave_type_id", BalancesLive

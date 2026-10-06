@@ -238,6 +238,14 @@ defmodule Leaf.People do
     actor.id == person.id or person.manager_id == actor.id or actor.role == :admin
   end
 
+  @doc "The people `actor` oversees, by name: the whole organisation for an administrator, else their reports."
+  @spec overseen(Person.t()) :: [Person.t()]
+  def overseen(%Person{role: :admin} = actor), do: people(actor.organisation_id)
+
+  def overseen(actor) do
+    Repo.all(from person in Person, where: person.manager_id == ^actor.id, order_by: person.name)
+  end
+
   @doc "Each work pattern the person is on over part of `range`, with the span it covers."
   @spec work_pattern_segments(Person.t(), Date.Range.t()) :: [segment(WorkPattern.t())]
   def work_pattern_segments(person, range) do
