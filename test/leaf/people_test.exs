@@ -241,6 +241,42 @@ defmodule Leaf.PeopleTest do
     assert Enum.map(People.public_holidays(person, january), & &1.name) == ["Day after"]
   end
 
+  test "a second pattern, policy or calendar from the same date is refused on the date",
+       context do
+    %{person: person, organisation: organisation} = context
+    policy = Fixtures.leave_policy(%{organisation_id: organisation.id})
+    calendar = Fixtures.calendar(%{organisation_id: organisation.id})
+    part_time(person)
+    Fixtures.policy_assignment(%{person_id: person.id, leave_policy_id: policy.id})
+    Fixtures.calendar_assignment(%{person_id: person.id, calendar_id: calendar.id})
+
+    hours =
+      Map.new(~w(monday tuesday wednesday thursday friday saturday sunday), &{"#{&1}_hours", "8"})
+
+    assert {:error, patterned} =
+             People.create_work_pattern(
+               person,
+               nil,
+               Map.put(hours, "effective_from", "2026-01-01")
+             )
+
+    assert {:error, assigned} =
+             People.create_policy_assignment(person, nil, %{
+               "leave_policy_id" => policy.id,
+               "effective_from" => "2024-03-04"
+             })
+
+    assert {:error, placed} =
+             People.create_calendar_assignment(person, nil, %{
+               "calendar_id" => calendar.id,
+               "effective_from" => "2024-03-04"
+             })
+
+    for changeset <- [patterned, assigned, placed] do
+      assert errors_on(changeset).effective_from == ["has already been taken"]
+    end
+  end
+
   test "everyone in an organisation comes back by name", context do
     Fixtures.person(%{organisation_id: context.organisation.id, name: "Bo Ngata"})
     elsewhere = Fixtures.organisation(%{name: "Kowhai Works"})

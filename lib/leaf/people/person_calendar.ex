@@ -26,6 +26,6 @@ defmodule Leaf.People.PersonCalendar do
     |> validate_required([:person_id | @fields])
     |> assoc_constraint(:person)
     |> assoc_constraint(:calendar)
-    |> unique_constraint([:person_id, :effective_from])
+    |> unique_constraint([:person_id, :effective_from], error_key: :effective_from)
   end
 end

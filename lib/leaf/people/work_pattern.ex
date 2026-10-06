@@ -46,7 +46,7 @@ defmodule Leaf.People.WorkPattern do
     |> validate_required([:person_id | @fields])
     |> validate_hours()
     |> assoc_constraint(:person)
-    |> unique_constraint([:person_id, :effective_from])
+    |> unique_constraint([:person_id, :effective_from], error_key: :effective_from)
   end
 
   @doc "The hours worked over a full week under this pattern."
