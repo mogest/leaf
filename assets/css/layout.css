@@ -30,19 +30,29 @@ body > div[data-phx-main] {
 
   & > a {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: var(--step-2);
     padding-inline-start: 0.625rem;
-    font-family: var(--font-title);
-    font-size: 1.1875rem;
+    font-family: var(--font-mark);
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--ink-quiet);
 
     &:hover {
-      color: inherit;
+      color: var(--ink-quiet);
       text-decoration: none;
     }
 
+    /* Stands on the baseline, then drops by half of what it is taller than Sora's 0.738em l, to centre on it. */
     & svg {
+      inline-size: 1.3em;
+      block-size: 1.3em;
+      position: relative;
+      inset-block-start: 0.281em;
       color: var(--green);
+      fill: var(--ink-quiet);
     }
   }
 
