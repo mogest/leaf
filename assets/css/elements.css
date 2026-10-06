@@ -20,19 +20,21 @@ body {
   line-height: 1.5;
 }
 
-h1 {
+h1,
+h2 {
   margin: 0;
-  font-family: var(--font-title);
+  font-family: var(--font-mark);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+h1 {
   font-size: var(--size-title);
-  font-weight: 400;
   line-height: 1;
-  letter-spacing: -0.008em;
 }
 
 h2 {
-  margin: 0;
   font-size: var(--size-lg);
-  font-weight: 600;
 }
 
 p {

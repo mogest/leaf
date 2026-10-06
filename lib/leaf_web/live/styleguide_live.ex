@@ -165,11 +165,11 @@ defmodule LeafWeb.StyleguideLive do
           <dt>
             <h1>At a glance</h1>
           </dt>
-          <dd>Newsreader 400, page title</dd>
+          <dd>Sora 500, page title</dd>
           <dt>
             <h2>Balances</h2>
           </dt>
-          <dd>Figtree 600, a section</dd>
+          <dd>Sora 500, a section</dd>
           <dt>Leave dated while the entitlement was still offered can still be filed.</dt>
           <dd>Figtree 400, reading text</dd>
           <dt><small>Recorded only, no balance</small></dt>
