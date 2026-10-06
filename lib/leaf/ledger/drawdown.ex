@@ -16,6 +16,7 @@ defmodule Leaf.Ledger.Drawdown do
   next, which is what accruing back from a negative balance amounts to.
   """
 
+  alias Leaf.Decimals
   alias Leaf.Ledger.Lot
   alias Leaf.Ledger.Movement
 
@@ -126,7 +127,7 @@ defmodule Leaf.Ledger.Drawdown do
   end
 
   defp trim_to(state, date, cap) do
-    excess = Decimal.sub(Lot.total(state.lots), cap)
+    excess = Decimal.sub(Decimals.total(state.lots, & &1.amount), cap)
 
     case Decimal.positive?(excess) do
       false ->

@@ -21,6 +21,7 @@ defmodule Leaf.Ledger.Grant do
   """
 
   alias Leaf.Dates
+  alias Leaf.Decimals
   alias Leaf.Ledger.Movement
   alias Leaf.Ledger.Span
   alias Leaf.Org.Organisation
@@ -154,21 +155,19 @@ defmodule Leaf.Ledger.Grant do
          num,
          den
        ) do
-    lost = total(for {date, hours} <- suspended, date in measured, do: hours)
+    lost = Decimals.total(for {date, hours} <- suspended, date in measured, do: hours)
 
     case Decimal.positive?(lost) do
       false ->
         {num, den}
 
       true ->
-        scheduled = total(Enum.map(measured, &People.hours_on(span.work_pattern, &1)))
+        scheduled = Decimals.total(measured, &People.hours_on(span.work_pattern, &1))
         {Decimal.mult(num, Decimal.sub(scheduled, lost)), Decimal.mult(den, scheduled)}
     end
   end
 
   defp by_time_suspended(_span, _measured, _suspended, num, den), do: {num, den}
-
-  defp total(hours), do: Enum.reduce(hours, Decimal.new(0), &Decimal.add/2)
 
   defp expires_on(entitlement, period, granted_on) do
     Dates.earliest(lapses_on(entitlement, period, granted_on), entitlement.effective_to)

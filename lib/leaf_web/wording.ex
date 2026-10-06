@@ -105,14 +105,26 @@ defmodule LeafWeb.Wording do
   @doc """
   What the leave asked for would leave behind: "18 days left", or what it would go over by.
 
-  `statements` is `Leaf.Ledger.projected/2`. A balance under nothing is said as what it is
-  overdrawn by rather than as a minus sign, which is read twice beside a figure it is measured
-  against. Nothing at all where there is nothing to say, which is a record too incomplete to work
-  a balance out of.
+  `statements` is `Leaf.Ledger.projected/2`, each said as `left/1` says it. Nothing at all where
+  there is nothing to say, which is a record too incomplete to work a balance out of.
   """
   @spec remaining([Statement.t()]) :: String.t() | nil
   def remaining([]), do: nil
-  def remaining(statements), do: joined(Enum.map(statements, &left_in/1))
+  def remaining(statements), do: joined(Enum.map(statements, &left/1))
+
+  @doc """
+  What one account holds: "18 days left", or what it is overdrawn by.
+
+  Overdrawn is said as what it is overdrawn by rather than as a minus sign, which is read twice
+  beside a figure it is measured against.
+  """
+  @spec left(Statement.t()) :: String.t()
+  def left(%{balance: balance, leave_type: %{unit: unit}}) do
+    case Decimal.negative?(balance) do
+      true -> "#{figure(Decimal.abs(balance), unit)} overdrawn"
+      false -> "#{figure(balance, unit)} left"
+    end
+  end
 
   @doc """
   Why somebody has no balance to show, `who` being "you" or "they".
@@ -129,13 +141,6 @@ defmodule LeafWeb.Wording do
   @doc "Whether approving would take any balance it draws on under nothing."
   @spec overdrawn?([Statement.t()]) :: boolean()
   def overdrawn?(statements), do: Enum.any?(statements, &Decimal.negative?(&1.balance))
-
-  defp left_in(%{balance: balance, leave_type: %{unit: unit}}) do
-    case Decimal.negative?(balance) do
-      true -> "#{figure(Decimal.abs(balance), unit)} overdrawn"
-      false -> "#{figure(balance, unit)} left"
-    end
-  end
 
   @doc "The span a request's days cover, as one date or as two."
   @spec dates(Request.t()) :: String.t()

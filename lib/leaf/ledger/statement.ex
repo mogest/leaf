@@ -13,6 +13,7 @@ defmodule Leaf.Ledger.Statement do
   shows it.
   """
 
+  alias Leaf.Decimals
   alias Leaf.Ledger.Lot
   alias Leaf.Ledger.Movement
   alias Leaf.Policies.LeaveType
@@ -36,7 +37,7 @@ defmodule Leaf.Ledger.Statement do
       as_at: as_at,
       movements: movements,
       lots: Lot.soonest_first(lots),
-      balance: movements |> Movement.total() |> Decimal.round(2)
+      balance: movements |> Decimals.total(& &1.amount) |> Decimal.round(2)
     }
   end
 end

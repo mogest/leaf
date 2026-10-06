@@ -40,9 +40,9 @@ defmodule Leaf.People.Person do
 
     belongs_to :organisation, Organisation
     belongs_to :manager, __MODULE__
-    has_many :work_patterns, WorkPattern
-    has_many :policy_assignments, PersonPolicyAssignment
-    has_many :calendar_assignments, PersonCalendar
+    has_many :work_patterns, WorkPattern, preload_order: [:effective_from]
+    has_many :policy_assignments, PersonPolicyAssignment, preload_order: [:effective_from]
+    has_many :calendar_assignments, PersonCalendar, preload_order: [:effective_from]
 
     timestamps()
   end
