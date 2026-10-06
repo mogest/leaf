@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+if [ $# -ne 1 ]; then
+  echo "usage: $0 <version>" >&2
+  exit 1
+fi
+
+cd -P -- "$(dirname -- "$0")"
+exec ./leaf eval "Leaf.Release.rollback($1)"
