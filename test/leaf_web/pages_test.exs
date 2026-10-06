@@ -6,7 +6,7 @@ defmodule LeafWeb.PagesTest do
   calendar, people on both — so it is what catches a page that only works against a fixture with
   nothing in it.
 
-  The member's pass is the other half: every page the administrator's live session holds turns them
+  The member's pass is the other half: every page only the administrator may open turns them
   away, and every page that is theirs still renders. What they may *do* on a page they may open is
   `LeafWeb.AuthorizedEvents`' to say, and it will not compile an event that does not say it.
   """
@@ -57,7 +57,7 @@ defmodule LeafWeb.PagesTest do
     ]
   end
 
-  # The pages the administrator's live session holds, all of them.
+  # The pages only the administrator may open, all of them.
   defp the_administrators(context) do
     [
       ~p"/people",
@@ -77,6 +77,7 @@ defmodule LeafWeb.PagesTest do
       ~p"/settings/policies/#{context.policy}/entitlements/#{context.entitlement}",
       ~p"/settings/calendars",
       ~p"/settings/calendars/#{context.calendar}",
+      ~p"/settings/calendars/#{context.calendar}/regions/new",
       ~p"/settings/audit"
     ]
   end
@@ -109,7 +110,7 @@ defmodule LeafWeb.PagesTest do
     end)
   end
 
-  test "a member is turned away from every page in the administrator's live session", context do
+  test "a member is turned away from every page only the administrator may open", context do
     conn = sign_in(build_conn(), context.other)
 
     Enum.each(the_administrators(context), fn path ->

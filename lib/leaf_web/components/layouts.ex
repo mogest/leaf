@@ -49,7 +49,7 @@ defmodule LeafWeb.Layouts do
   def app(assigns) do
     ~H"""
     <nav>
-      <a href="/">
+      <.link navigate="/">
         <svg
           width="19"
           height="19"
@@ -65,10 +65,10 @@ defmodule LeafWeb.Layouts do
           <path d="M4.5 19.5C8 16 12 13 17 11" />
         </svg>
         <span>Leaf</span>
-      </a>
+      </.link>
       <ul id="pages" popover>
         <li :for={{label, path, pages} <- rail(@viewer)}>
-          <a href={path} aria-current={current(@page, pages)}>{label}</a>
+          <.link navigate={path} aria-current={current(@page, pages)}>{label}</.link>
         </li>
       </ul>
       <div :if={@viewer}>

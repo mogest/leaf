@@ -9,6 +9,8 @@ defmodule LeafWeb.AuditLive do
 
   use LeafWeb, :live_view
 
+  on_mount {LeafWeb.SignIn, :admin}
+
   alias Leaf.Audit
   alias Leaf.People
 
