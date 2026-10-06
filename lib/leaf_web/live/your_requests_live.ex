@@ -51,13 +51,6 @@ defmodule LeafWeb.YourRequestsLive do
   end
 
   defp shown(request, person, today, manager) do
-    revisable? = Leave.revisable?(request, person)
-
-    request
-    |> Wording.filed(today, manager)
-    |> Map.merge(%{path: amend_path(request, revisable?), cancellable?: revisable?})
+    request |> Wording.filed(today, manager) |> Parts.revisable(request, person)
   end
-
-  defp amend_path(request, true), do: ~p"/leave/#{request.id}/amend"
-  defp amend_path(_request, false), do: nil
 end

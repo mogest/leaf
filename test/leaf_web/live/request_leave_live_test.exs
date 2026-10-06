@@ -5,6 +5,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
   alias Leaf.Fixtures
   alias Leaf.Leave
+  alias Leaf.People
   alias Leaf.Policies
 
   @week Date.range(~D[2026-03-02], ~D[2026-03-06])
@@ -280,7 +281,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
       )
       |> render_change()
 
-    assert html =~ "You do not work on Sunday 8 March."
+    assert html =~ "Sunday 8 March is not a working day."
 
     html =
       live
@@ -289,7 +290,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
       )
       |> render_change()
 
-    assert html =~ "You do not work on any of those days."
+    assert html =~ "None of those days is a working day."
   end
 
   test "an unfilled form is not reported back to whoever has not filled it in", context do
@@ -382,7 +383,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     html = again |> form("form", request: asking(context, friday)) |> render_change()
 
-    assert html =~ "You already have leave on Friday 6 March."
+    assert html =~ "Friday 6 March already has leave on it."
     assert [_first] = Leave.requests(context.person)
   end
 
@@ -445,6 +446,42 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert [%{id: same, days: days}] = Leave.requests(context.person)
     assert same == request.id
     assert length(days) == 5
+  end
+
+  test "a manager amends a report's approved request from their page and lands back there",
+       context do
+    manager =
+      Fixtures.person(%{organisation_id: context.person.organisation_id, name: "Ines Vasquez"})
+
+    {:ok, person} = People.update_person(context.person, nil, %{manager_id: manager.id})
+    conn = sign_in(context.conn, manager)
+
+    {:ok, request} =
+      Leave.request(person, person, %{
+        days: [%{leave_type_id: context.leave_type.id, date: @monday, amount: "8", unit: :hours}]
+      })
+
+    {:ok, _approved} = Leave.approve(request, manager)
+
+    {:ok, page, _html} = live(conn, ~p"/people/#{person}")
+    assert has_element?(page, ~s(th a[href="/leave/#{request.id}/amend"]))
+
+    {:ok, amend, _html} = live(conn, ~p"/leave/#{request}/amend")
+    assert has_element?(amend, ~s(a[href="/people/#{person.id}"]), "Cancel")
+
+    assert dating(amend, context, %{"from" => to_string(@saturday), "to" => to_string(@saturday)}) =~
+             "Saturday 7 March is not a working day."
+
+    assert {:error, {:live_redirect, %{to: to}}} =
+             amend
+             |> form("form",
+               request:
+                 asking(context, %{"from" => to_string(@friday), "to" => to_string(@friday)})
+             )
+             |> render_submit()
+
+    assert to == "/people/#{person.id}"
+    assert [%{status: :approved, days: [%{date: @friday}]}] = Leave.requests(person)
   end
 
   test "amending days this cannot say says what would replace them", context do

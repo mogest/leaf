@@ -7,6 +7,7 @@ defmodule LeafWeb.Parts do
   """
 
   use Phoenix.Component
+  use LeafWeb, :verified_routes
 
   import Phoenix.LiveView, only: [put_flash: 3]
 
@@ -240,6 +241,19 @@ defmodule LeafWeb.Parts do
            do: Leave.cancel(request, socket.assigns.current_person)
 
     cancelled(socket, written)
+  end
+
+  @doc """
+  Puts on `row` what `viewer` may do to `request`: amend it by its `path`, and cancel it.
+
+  `Leaf.Leave.revisable?/2` answers both, so a row offers the two together or neither.
+  """
+  @spec revisable(map(), Leave.Request.t(), Leaf.People.Person.t()) :: map()
+  def revisable(row, request, viewer) do
+    case Leave.revisable?(request, viewer) do
+      true -> Map.merge(row, %{path: ~p"/leave/#{request}/amend", cancellable?: true})
+      false -> Map.merge(row, %{path: nil, cancellable?: false})
+    end
   end
 
   defp cancelled(socket, {:ok, _request}),
