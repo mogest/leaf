@@ -105,6 +105,13 @@ defmodule Leaf.ReportsTest do
                   "Ines Vasquez has no employee number, so the Id on their rows is blank.",
                   "Tui Hemara's work pattern does not cover their leave, so it is left out."
                 ]}
+
+      another = Fixtures.person(%{organisation_id: organisation.id, name: "Rangi Whitcombe"})
+      Fixtures.work_pattern(%{person_id: another.id})
+      take(another, leave_type, [{~D[2026-10-12], "8", :hours}])
+
+      {_csv, notes} = ipayroll(person, "2026-10-01", "2026-10-31")
+      assert "2 people have no employee number, so the Id on their rows is blank." in notes
     end
   end
 

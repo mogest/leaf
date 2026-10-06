@@ -17,9 +17,6 @@ defmodule LeafWeb.ReportsLive do
 
   # Each report, what it says, and the options it reads.
   @tabs [
-    {"iPayroll export", "ipayroll",
-     "Approved requests whose first day falls in the period, each whole, as iPayroll's Leave " <>
-       "Requests upload takes them.", [:from, :to]},
     {"Leave taken", "taken",
      "Approved leave taken in the period, counting only its days that fall in it.",
      [:from, :to, :country_id, :leave_type_id]},
@@ -29,7 +26,10 @@ defmodule LeafWeb.ReportsLive do
     {"Balances", "balances", "What everyone employed holds, each leave type in its own unit.",
      [:as_at]},
     {"Expiring soon", "expiring", "Leave that lapses within so many days unless it is taken.",
-     [:as_at, :within]}
+     [:as_at, :within]},
+    {"iPayroll export", "ipayroll",
+     "Approved requests whose first day falls in the period, each whole, as iPayroll's Leave " <>
+       "Requests upload takes them.", [:from, :to]}
   ]
 
   @impl Phoenix.LiveView
@@ -70,7 +70,6 @@ defmodule LeafWeb.ReportsLive do
     <Layouts.app flash={@flash} page="reports" viewer={@viewer}>
       <header>
         <h1>Reports</h1>
-        <.link :if={@table} class="button" href={@download}>Download CSV</.link>
       </header>
 
       <nav class="tabs">
@@ -112,10 +111,27 @@ defmodule LeafWeb.ReportsLive do
         />
         <.input :if={:as_at in @fields} field={@form[:as_at]} type="date" label="As at" />
         <.input :if={:within in @fields} field={@form[:within]} type="number" label="Days ahead" />
+        <.link :if={@table} class="button" href={@download}>Download CSV</.link>
       </.form>
 
       <section :if={@table}>
-        <p :for={note <- @table.notes}>{note}</p>
+        <p :for={note <- @table.notes}>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-label="Warning"
+            role="img"
+          >
+            <path d="M8 2L1.5 13.5h13L8 2zM8 6.5v3.5M8 12v.01" />
+          </svg>
+          {note}
+        </p>
         <div :if={@table.rows != []}>
           <table>
             <thead>
