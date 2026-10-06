@@ -67,7 +67,11 @@ defmodule LeafWeb.StyleguideLive do
   @today ~D[2026-08-22]
 
   # Standing enough to be shown every entry the rail has.
-  @viewer %Viewer{person: %Person{name: "Rae Halloran"}, admin?: true, approver?: true}
+  @viewer %Viewer{
+    person: %Person{id: Ecto.UUID.generate(), name: "Rae Halloran"},
+    admin?: true,
+    approver?: true
+  }
 
   # Where a part that steps through something steps to: nowhere but here. The route is only in
   # development, so it is not one verified routes can be asked about.
