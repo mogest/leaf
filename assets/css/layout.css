@@ -134,6 +134,10 @@ body > div[data-phx-main] {
 
   /* The pages are a menu only on a screen too narrow for the rail. Beside the page, it is always open. */
   @media (width >= 48rem) {
+    position: sticky;
+    inset-block-start: 0;
+    block-size: 100vh;
+
     & > ul {
       position: static;
       flex-grow: 1;
