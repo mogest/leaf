@@ -67,6 +67,23 @@ defmodule LeafWeb.BalancesLiveTest do
     assert html =~ "Employed from 4 March 2024"
   end
 
+  test "the balance reads as accrued, and what accrued it as earned", context do
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+
+    Fixtures.policy_entitlement(%{
+      leave_policy_id: policy.id,
+      leave_type_id: context.leave_type.id
+    })
+
+    Fixtures.policy_assignment(%{person_id: context.person.id, leave_policy_id: policy.id})
+
+    {:ok, _live, html} = live(context.conn, ~p"/balances?as_at=2025-01-01")
+
+    assert html =~ "<dt>Accrued</dt>"
+    assert html =~ "<td>Earned</td>"
+    assert [_before, _after] = String.split(html, "Accrued")
+  end
+
   test "a date that is not a date reads as today", context do
     {:ok, _live, html} = live(context.conn, ~p"/balances?as_at[x]=1")
 
