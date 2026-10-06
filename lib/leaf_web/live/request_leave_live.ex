@@ -26,9 +26,7 @@ defmodule LeafWeb.RequestLeaveLive do
 
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
-    today = People.today(socket.assigns.current_person)
-
-    {:ok, socket |> assign(:today, today) |> opened(socket.assigns.live_action, params, today)}
+    {:ok, opened(socket, socket.assigns.live_action, params)}
   end
 
   @impl Phoenix.LiveView
@@ -61,7 +59,7 @@ defmodule LeafWeb.RequestLeaveLive do
       <.form id="request" for={@form} phx-change="validate" phx-submit="save">
         <section>
           <header>
-            <h2>Your request</h2>
+            <h2>The request</h2>
           </header>
           <.input
             field={@form[:leave_type_id]}
@@ -145,14 +143,14 @@ defmodule LeafWeb.RequestLeaveLive do
             <li :for={problem <- @problems}>{problem}</li>
           </ul>
           <button class="button" type="submit" disabled={@entries == []}>{@action}</button>
-          <.link navigate={~p"/leave"}>Cancel</.link>
+          <.link navigate={@back}>Cancel</.link>
         </footer>
       </.form>
     </Layouts.app>
     """
   end
 
-  defp opened(socket, :new, _params, today) do
+  defp opened(socket, :new, _params) do
     socket
     |> assign(:page_title, "Request leave")
     |> assign(:title, "Request leave")
@@ -160,16 +158,16 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:done, "Your request is filed.")
     |> assign(:request, nil)
     |> assign(:replaced, false)
-    |> holding(socket.assigns.current_person, today)
+    |> holding(socket.assigns.current_person)
     |> filled(%{})
   end
 
   # A request that is not there and one that has been decided since the link was followed answer
   # the same: there is nothing here to change.
-  defp opened(socket, :amend, %{"id" => id}, today) do
+  defp opened(socket, :amend, %{"id" => id}) do
     with {:ok, request} <- Leave.fetch_request(id),
          true <- Leave.revisable?(request, socket.assigns.current_person) do
-      amending(socket, request, today)
+      amending(socket, request)
     else
       _refused ->
         socket
@@ -178,7 +176,7 @@ defmodule LeafWeb.RequestLeaveLive do
     end
   end
 
-  defp amending(socket, request, today) do
+  defp amending(socket, request) do
     {params, replaced} = asked_again(request)
 
     socket
@@ -188,17 +186,25 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:done, "The request is changed.")
     |> assign(:request, request)
     |> assign(:replaced, replaced)
-    |> holding(request.person, today)
+    |> holding(request.person)
     |> filled(params)
   end
 
   # What the person holds now, read once: the balance a type is offered with does not turn on what
-  # is typed into the form.
-  defp holding(socket, person, today) do
+  # is typed into the form. Their own today, and their own page to go back to, whoever is filling it
+  # in.
+  defp holding(socket, person) do
+    today = People.today(person)
+
     socket
     |> assign(:person, person)
+    |> assign(:today, today)
+    |> assign(:back, back(socket.assigns.current_person, person))
     |> assign(:held, held(person, today, Ledger.ready?(person, today)))
   end
+
+  defp back(%{id: id}, %{id: id}), do: ~p"/leave"
+  defp back(_viewer, person), do: ~p"/people/#{person}"
 
   defp held(_person, _today, false), do: %{}
 
@@ -387,10 +393,10 @@ defmodule LeafWeb.RequestLeaveLive do
   defp unworked(%{span: nil}), do: []
 
   defp unworked(%{span: %Date.Range{first: date, last: date}}) do
-    ["You do not work on #{Wording.weekday(date)}."]
+    ["#{Wording.weekday(date)} is not a working day."]
   end
 
-  defp unworked(_order), do: ["You do not work on any of those days."]
+  defp unworked(_order), do: ["None of those days is a working day."]
 
   # A day off is at most what is left of the day: the hours worked on it, less the leave already
   # filed into it. Every date that will not fit is named, because fixing the first would otherwise
@@ -404,7 +410,7 @@ defmodule LeafWeb.RequestLeaveLive do
   defp spoken_for({date, free}) do
     case Decimal.positive?(free) do
       true -> "#{Wording.weekday(date)} has only #{Wording.figure(free, :hours)} free."
-      false -> "You already have leave on #{Wording.weekday(date)}."
+      false -> "#{Wording.weekday(date)} already has leave on it."
     end
   end
 
@@ -434,7 +440,7 @@ defmodule LeafWeb.RequestLeaveLive do
   end
 
   defp saved(socket, {:ok, _request}) do
-    socket |> put_flash(:info, socket.assigns.done) |> push_navigate(to: ~p"/leave")
+    socket |> put_flash(:info, socket.assigns.done) |> push_navigate(to: socket.assigns.back)
   end
 
   defp saved(socket, {:error, :forbidden}) do

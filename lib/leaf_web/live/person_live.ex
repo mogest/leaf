@@ -271,7 +271,7 @@ defmodule LeafWeb.PersonLive do
   end
 
   defp filed(request, viewer, today) do
-    request |> Wording.filed(today) |> Map.put(:cancellable?, Leave.revisable?(request, viewer))
+    request |> Wording.filed(today) |> Parts.revisable(request, viewer)
   end
 
   defp actor(socket), do: socket.assigns.current_person
