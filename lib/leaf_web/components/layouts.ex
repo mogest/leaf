@@ -54,21 +54,13 @@ defmodule LeafWeb.Layouts do
     ~H"""
     <nav>
       <.link navigate="/">
-        <svg
-          width="19"
-          height="19"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.6"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M4 20c0-8 5-14 16-16 0 11-6 16-13 16H4z" />
-          <path d="M4.5 19.5C8 16 12 13 17 11" />
+        <svg viewBox="4 4 40 40" aria-hidden="true">
+          <rect x="4" y="4" width="18" height="18" rx="4" />
+          <rect x="4" y="26" width="18" height="18" rx="4" />
+          <rect x="26" y="26" width="18" height="18" rx="4" />
+          <path d="M44 4A18 18 0 0 1 26 22A18 18 0 0 1 44 4Z" fill="currentColor" />
         </svg>
-        <span>Leaf</span>
+        <span>leaf</span>
       </.link>
       <ul id="pages" popover>
         <li :for={{label, path, pages} <- rail(@viewer)}>
