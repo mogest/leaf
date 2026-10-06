@@ -279,7 +279,7 @@ defmodule LeafWeb.PersonLive do
     |> assign(:born, Wording.date(person.birth_date) || "not on record")
     |> assign(:manager, People.manager_name(person) || "nobody, so an administrator decides")
     |> assign(:balances, balances(person, today))
-    |> assign(:nothing_held, nothing_held(person, today))
+    |> assign(:nothing_held, Wording.no_balance(Ledger.ready?(person, today), "they"))
     |> assign(
       :patterns,
       Enum.map(People.work_patterns(person), &pattern(&1, person, organisation))
@@ -304,13 +304,8 @@ defmodule LeafWeb.PersonLive do
   defp role(_person), do: "Member"
 
   defp balances(person, today) do
-    case Ledger.ready?(person, today) do
-      true -> held(person, today, Ledger.awaiting(person))
-      false -> []
-    end
-  end
+    awaiting = Ledger.awaiting(person)
 
-  defp held(person, today, awaiting) do
     person |> Ledger.balances(today) |> Enum.map(&balance(&1, person, awaiting))
   end
 
@@ -320,13 +315,6 @@ defmodule LeafWeb.PersonLive do
       :path,
       ~p"/people/#{person}/balances/#{statement.leave_type}"
     )
-  end
-
-  defp nothing_held(person, today) do
-    case Ledger.ready?(person, today) do
-      true -> "They hold no balance in anything."
-      false -> "No balance can be worked out until they are on a work pattern throughout."
-    end
   end
 
   defp pattern(pattern, person, organisation) do

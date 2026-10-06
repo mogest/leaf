@@ -80,22 +80,15 @@ defmodule LeafWeb.AtAGlanceLive do
     ~p"/?from=#{named}"
   end
 
-  # A balance is worked out from the whole of somebody's record, so half a record has none to show.
   # A type they hold nothing in and are waiting on nothing from is not their business, and is
   # left off.
   defp balances(person, today) do
-    case Ledger.ready?(person, today) do
-      true ->
-        awaiting = Ledger.awaiting(person)
+    awaiting = Ledger.awaiting(person)
 
-        person
-        |> Ledger.balances(today)
-        |> Enum.reject(&nothing?(&1, awaiting))
-        |> Enum.map(&balance(&1, awaiting))
-
-      false ->
-        []
-    end
+    person
+    |> Ledger.balances(today)
+    |> Enum.reject(&nothing?(&1, awaiting))
+    |> Enum.map(&balance(&1, awaiting))
   end
 
   defp nothing?(statement, awaiting) do

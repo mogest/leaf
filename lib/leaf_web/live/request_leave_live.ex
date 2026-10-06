@@ -203,7 +203,7 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:person, person)
     |> assign(:today, today)
     |> assign(:back, back(socket.assigns.current_person, person))
-    |> assign(:held, held(person, today, Ledger.ready?(person, today)))
+    |> assign(:held, held(person, today))
   end
 
   # Amending an approved request leaves it approved, so there is nobody left to decide it.
@@ -215,9 +215,7 @@ defmodule LeafWeb.RequestLeaveLive do
   defp back(%{id: id}, %{id: id}), do: ~p"/leave"
   defp back(_viewer, person), do: ~p"/people/#{person}"
 
-  defp held(_person, _today, false), do: %{}
-
-  defp held(person, today, true) do
+  defp held(person, today) do
     person |> Ledger.balances(today) |> Map.new(&{&1.leave_type.id, &1})
   end
 
