@@ -189,10 +189,8 @@ defmodule Leaf.PeopleTest do
            ]
   end
 
-  test "a policy assignment is corrected in place, and removing one lets the previous run on",
-       context do
+  test "removing a policy assignment lets the previous one run on", context do
     %{person: person, organisation: organisation} = context
-    colleague = Fixtures.person(%{organisation_id: organisation.id})
     first = Fixtures.leave_policy(%{organisation_id: organisation.id})
     second = Fixtures.leave_policy(%{organisation_id: organisation.id, name: "Hybrid contractor"})
     Fixtures.policy_assignment(%{person_id: person.id, leave_policy_id: first.id})
@@ -201,23 +199,10 @@ defmodule Leaf.PeopleTest do
       Fixtures.policy_assignment(%{
         person_id: person.id,
         leave_policy_id: second.id,
-        effective_from: ~D[2026-01-01]
+        effective_from: ~D[2026-02-01]
       })
 
-    assert {:ok, corrected} =
-             People.update_policy_assignment(moved, nil, %{
-               effective_from: ~D[2026-02-01],
-               person_id: colleague.id
-             })
-
-    assert corrected.person_id == person.id
-
-    assert policy_ids(person, Date.range(~D[2026-01-15], ~D[2026-02-15])) == [
-             {Date.range(~D[2026-01-15], ~D[2026-01-31]), first.id},
-             {Date.range(~D[2026-02-01], ~D[2026-02-15]), second.id}
-           ]
-
-    assert {:ok, _removed} = People.delete_policy_assignment(corrected, nil)
+    assert {:ok, _removed} = People.delete_policy_assignment(moved, nil)
 
     assert policy_ids(person, Date.range(~D[2026-02-01], ~D[2026-02-15])) == [
              {Date.range(~D[2026-02-01], ~D[2026-02-15]), first.id}

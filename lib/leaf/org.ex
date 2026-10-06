@@ -140,15 +140,6 @@ defmodule Leaf.Org do
     |> Audit.write("public_holiday.created", actor)
   end
 
-  @doc "Amends one public holiday."
-  @spec update_public_holiday(PublicHoliday.t(), Person.t() | nil, map()) ::
-          Audit.written(PublicHoliday.t())
-  def update_public_holiday(holiday, actor, attrs) do
-    holiday
-    |> PublicHoliday.changeset(attrs)
-    |> Audit.write("public_holiday.updated", actor)
-  end
-
   @doc """
   Removes one public holiday from a calendar.
 

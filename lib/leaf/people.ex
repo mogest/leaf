@@ -11,9 +11,9 @@ defmodule Leaf.People do
   belong to other areas, so what those answer is what the person's record says of them — which
   holidays they observe, what zone they are in — rather than the assignment rows themselves.
 
-  Everything effective-dated here can be amended or removed after the fact (§4.4). A superseding
-  row is how a change from a date is recorded; amending and deleting are how a row that should
-  never have been written is put right, and every balance that leant on it follows.
+  Everything effective-dated here can be removed after the fact (§4.4), and a work pattern amended
+  too. A superseding row is how a change from a date is recorded; removing one is how a row that
+  should never have been written is put right, and every balance that leant on it follows.
 
   Every change is recorded against the person it is about, bar a person's own creation: until they
   exist there is nobody for it to be about.
@@ -142,15 +142,6 @@ defmodule Leaf.People do
     |> Audit.write("policy_assignment.created", actor, person.id)
   end
 
-  @doc "Corrects which policy a person was on, or from when."
-  @spec update_policy_assignment(PersonPolicyAssignment.t(), Person.t() | nil, map()) ::
-          Audit.written(PersonPolicyAssignment.t())
-  def update_policy_assignment(assignment, actor, attrs) do
-    assignment
-    |> PersonPolicyAssignment.changeset(attrs)
-    |> Audit.write("policy_assignment.updated", actor, assignment.person_id)
-  end
-
   @doc "Removes a policy assignment, letting whatever preceded it run on."
   @spec delete_policy_assignment(PersonPolicyAssignment.t(), Person.t() | nil) ::
           Audit.written(PersonPolicyAssignment.t())
@@ -165,15 +156,6 @@ defmodule Leaf.People do
     %PersonCalendar{person_id: person.id}
     |> PersonCalendar.changeset(attrs)
     |> Audit.write("calendar_assignment.created", actor, person.id)
-  end
-
-  @doc "Corrects which calendar a person was on, or from when."
-  @spec update_calendar_assignment(PersonCalendar.t(), Person.t() | nil, map()) ::
-          Audit.written(PersonCalendar.t())
-  def update_calendar_assignment(assignment, actor, attrs) do
-    assignment
-    |> PersonCalendar.changeset(attrs)
-    |> Audit.write("calendar_assignment.updated", actor, assignment.person_id)
   end
 
   @doc "Removes a calendar assignment, letting whatever preceded it run on."
