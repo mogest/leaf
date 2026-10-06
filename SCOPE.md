@@ -291,8 +291,14 @@ configurable delegate in v1.
 - Manager approves or declines, with an optional comment.
 - Pending requests are visible to the approver as a queue and appear on calendars as
   tentative.
-- The system surfaces what needs attention; how people are told about it (email, Slack, in-app)
-  is a delivery decision outside this scope.
+- People are told by Slack direct message, outgoing only: nobody replies to Leaf in Slack. Email
+  may follow as a second channel.
+  - A new request, or a pending one amended, goes to whoever is to decide it: the manager, or
+    every administrator where there is no manager still employed. Whoever made the change is not
+    sent it. An amendment rewrites the earlier messages to say what it asks for now.
+  - Once the request is decided or cancelled, those messages are rewritten to say so and by whom.
+  - The requester is told whenever somebody else changes their request — approves, declines,
+    amends or cancels it — whether it is pending or approved.
 
 ### 5.4 Cancellation and amendment
 - The requester may cancel or amend a request **while it is still pending**.
@@ -412,4 +418,6 @@ assertions, mobile app.
   credited — a pure contractor who simply does not bill them — cannot be configured.
 - **No payroll integration.** Admins re-key from exports.
 - **No statutory validation.** The system will happily be configured below a legal minimum.
-- **Notification delivery** (email, Slack, in-app) is deliberately unspecified here.
+- **Notification delivery** is Slack direct messages only, outgoing only. A person is found in
+  Slack by their email; one whose Slack email differs is not messaged, and nothing tells them so.
+  A message Slack fails to take is logged and lost, never retried.

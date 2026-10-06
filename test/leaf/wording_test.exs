@@ -1,7 +1,7 @@
-defmodule LeafWeb.WordingTest do
+defmodule Leaf.WordingTest do
   use ExUnit.Case, async: true
 
-  alias LeafWeb.Wording
+  alias Leaf.Wording
 
   describe "moment/2" do
     test "an instant is read where whoever is reading it is" do

@@ -1,11 +1,11 @@
-defmodule LeafWeb.Wording do
+defmodule Leaf.Wording do
   @moduledoc """
-  How the pages say things.
+  How Leaf says things, on its pages and in the messages it sends.
 
   Every page works its strings out before rendering them, so that no markup decides anything. The
-  ones more than one page says are here, and the rules they follow are the ones the design settled:
-  units in full, no trailing zeros, plain words over mechanism, and nothing at all where there is
-  nothing to say.
+  ones more than one page or message says are here, and the rules they follow are the ones the
+  design settled: units in full, no trailing zeros, plain words over mechanism, and nothing at all
+  where there is nothing to say.
   """
 
   alias Leaf.Leave.Day

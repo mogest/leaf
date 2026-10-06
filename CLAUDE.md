@@ -43,6 +43,8 @@ Every write follows this. One that doesn't is a bug, not a variation.
 - **Everything goes through `Audit.write/4` or `Audit.delete/4`**, which write the change and its
   entry in one transaction. Return type is `Audit.written(record)`. An `actor` of `nil` is the
   system — a seed or an import — and is the only way to name no one.
+  The one exception is `Leaf.Messaging`'s `message_deliveries`: a record of what was sent, not a
+  change to anything a person owns, so it is written directly.
 - **Delete only where there is no other undo.** Archive (`archived_at`) or close (`effective_to`)
   anything whose past still has to make sense.
 

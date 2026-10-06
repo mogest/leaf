@@ -11,7 +11,8 @@ defmodule Leaf.Leave do
   administrator may, so that nobody can quietly remove leave they have already taken. Where a
   person has no manager, an administrator stands in. A refusal comes back as `{:error, :forbidden}`
   rather than a changeset — nothing about it is a matter of what was filled in — and a write that
-  goes through records itself in the audit log.
+  goes through records itself in the audit log. Once it has, `Leaf.Leave.Notice` tells whoever has
+  to hear about it.
 
   Every write against one person's leave happens one at a time, and reads what it is about inside
   that: two of them cannot each find the same day free, nor each decide a request the other has
@@ -28,10 +29,12 @@ defmodule Leaf.Leave do
   alias Leaf.Leave.Day
   alias Leaf.Leave.Diary
   alias Leaf.Leave.Month
+  alias Leaf.Leave.Notice
   alias Leaf.Leave.Offer
   alias Leaf.Leave.Order
   alias Leaf.Leave.Request
   alias Leaf.Leave.WorkingDay
+  alias Leaf.Messaging
   alias Leaf.People
   alias Leaf.People.Person
   alias Leaf.Policies.LeaveType
@@ -89,6 +92,7 @@ defmodule Leaf.Leave do
         |> Audit.write("leave_request.requested", actor, person.id)
       end
     end)
+    |> notify(&Notice.filed(&1, actor))
   end
 
   @doc """
@@ -108,6 +112,7 @@ defmodule Leaf.Leave do
         |> Audit.write("leave_request.amended", actor, request.person_id)
       end
     end)
+    |> notify(&Notice.amended(&1, actor))
   end
 
   @doc "Approves a pending request."
@@ -134,6 +139,7 @@ defmodule Leaf.Leave do
         review(request, actor, :cancelled, nil)
       end
     end)
+    |> notify(&Notice.cancelled(&1, actor))
   end
 
   @doc """
@@ -541,6 +547,7 @@ defmodule Leaf.Leave do
         review(request, actor, status, comment)
       end
     end)
+    |> notify(&Notice.decided/1)
   end
 
   # A request is decided or amended from a struct somebody has been holding, which by then may say
@@ -574,6 +581,15 @@ defmodule Leaf.Leave do
     })
     |> Audit.write("leave_request.#{status}", actor, request.person_id)
   end
+
+  # Told only once the write has committed, so that nobody hears of one that did not happen.
+  defp notify({:ok, request} = written, notice) do
+    Messaging.async(fn -> notice.(request) end)
+
+    written
+  end
+
+  defp notify(refused, _notice), do: refused
 
   defp approver?(person, actor), do: person.manager_id == actor.id or actor.role == :admin
 

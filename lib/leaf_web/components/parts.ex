@@ -12,7 +12,7 @@ defmodule LeafWeb.Parts do
   import Phoenix.LiveView, only: [put_flash: 3]
 
   alias Leaf.Leave
-  alias LeafWeb.Wording
+  alias Leaf.Wording
 
   @weekdays [
     {"M", "Monday"},
@@ -59,7 +59,7 @@ defmodule LeafWeb.Parts do
   @doc """
   What somebody holds, a leave type at a time, as at today.
 
-  Each one is a `t:LeafWeb.Wording.held/0` with the ledger it opens onto, worked out before it
+  Each one is a `t:Leaf.Wording.held/0` with the ledger it opens onto, worked out before it
   arrives here.
 
   ## Examples
@@ -151,7 +151,7 @@ defmodule LeafWeb.Parts do
   @doc """
   Requests as a record of them: a row each, a column for every part of one.
 
-  Each one is a `t:LeafWeb.Wording.filed/0`, worked out before it arrives here. One carrying a
+  Each one is a `t:Leaf.Wording.filed/0`, worked out before it arrives here. One carrying a
   `path` is opened by its row. With `cancel`, one carrying `cancellable?` offers cancelling it in
   its menu, which sends `"cancel-request"` for the page to answer with `cancel_request/2`.
 
