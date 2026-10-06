@@ -491,13 +491,18 @@ defmodule Leaf.LeaveTest do
     assert second.id == decided.id
   end
 
-  test "a calendar lays a month out in weeks and marks what is on each day", context do
+  test "a calendar lays a month out in weeks and marks what is on each day, and how much of it",
+       context do
     observes(context, ~D[2026-08-26], "Labour Day")
     {:ok, _pending} = file(context, [@friday])
     {:ok, approving} = file(context, [@thursday])
     {:ok, _approved} = approving |> reload() |> Leave.approve(context.manager)
     {:ok, cancelling} = file(context, [~D[2026-08-24]])
     {:ok, _cancelled} = cancelling |> reload() |> Leave.cancel(context.manager)
+    {:ok, _part} = file(context, [~D[2026-08-27]], %{amount: "4"})
+    {:ok, half} = file(context, [~D[2026-08-28]], %{amount: "4"})
+    {:ok, _approved} = half |> reload() |> Leave.approve(context.manager)
+    {:ok, _other_half} = file(context, [~D[2026-08-28]], %{amount: "4"})
 
     assert [august] = Leave.calendar(context.person, Date.range(~D[2026-08-01], ~D[2026-08-31]))
     assert august.starts_on == ~D[2026-08-01]
@@ -506,8 +511,10 @@ defmodule Leaf.LeaveTest do
 
     days = august.weeks |> List.flatten() |> Enum.reject(&is_nil/1) |> Map.new(&{&1.date, &1})
 
-    assert %{leave: :pending, working?: true} = days[@friday]
-    assert %{leave: :approved, working?: true} = days[@thursday]
+    assert %{leave: :pending, part?: false, working?: true} = days[@friday]
+    assert %{leave: :approved, part?: false, working?: true} = days[@thursday]
+    assert %{leave: :pending, part?: true} = days[~D[2026-08-27]]
+    assert %{leave: :approved, part?: true} = days[~D[2026-08-28]]
     assert %{leave: nil, working?: true} = days[~D[2026-08-24]]
     assert %{holiday: "Labour Day", working?: false} = days[~D[2026-08-26]]
     assert %{leave: nil, holiday: nil, working?: false} = days[@saturday]

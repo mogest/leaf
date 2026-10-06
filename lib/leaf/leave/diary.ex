@@ -12,11 +12,16 @@ defmodule Leaf.Leave.Diary do
   alias Leaf.People
   alias Leaf.People.Person
 
-  @typedoc "One date, and what is on it."
+  @typedoc """
+  One date, and what is on it.
+
+  `part?` is whether the leave shown covers less than the hours the day is worked.
+  """
   @type day :: %{
           date: Date.t(),
           working?: boolean(),
           leave: :approved | :pending | nil,
+          part?: boolean(),
           holiday: String.t() | nil
         }
 
@@ -33,29 +38,36 @@ defmodule Leaf.Leave.Diary do
     marks = %{
       hours: person |> WorkingDay.hours_per_day(range) |> Map.new(),
       holidays: person |> People.public_holidays(range) |> Map.new(&{&1.date, &1.name}),
-      filed: filed_by_date(filed)
+      filed: Enum.group_by(filed, & &1.date)
     }
 
     Enum.map(range, &day(&1, marks))
   end
 
-  # A date can hold leave of more than one type, and of more than one request. What shows is the
-  # furthest along: an approved day is settled whatever else has been asked for on it.
-  defp filed_by_date(days) do
-    days
-    |> Enum.group_by(& &1.date, & &1.leave_request.status)
-    |> Map.new(fn {date, statuses} -> {date, settled(:approved in statuses)} end)
-  end
-
-  defp settled(true), do: :approved
-  defp settled(false), do: :pending
-
   defp day(date, marks) do
+    hours = Map.get(marks.hours, date, @none)
+    {leave, part?} = leave(Map.get(marks.filed, date, []), hours)
+
     %{
       date: date,
-      working?: Decimal.positive?(Map.get(marks.hours, date, @none)),
-      leave: marks.filed[date],
+      working?: Decimal.positive?(hours),
+      leave: leave,
+      part?: part?,
       holiday: marks.holidays[date]
     }
   end
+
+  defp leave([], _hours), do: {nil, false}
+
+  defp leave(days, hours) do
+    {status, shown} = days |> Enum.group_by(& &1.leave_request.status) |> furthest()
+    taken = Enum.reduce(shown, @none, &Decimal.add(&2, Day.in_unit(&1, :hours, hours)))
+
+    {status, Decimal.lt?(taken, hours)}
+  end
+
+  # A date can hold leave of more than one type, and of more than one request. What shows is the
+  # furthest along: an approved day is settled whatever else has been asked for on it.
+  defp furthest(%{approved: days}), do: {:approved, days}
+  defp furthest(%{pending: days}), do: {:pending, days}
 end

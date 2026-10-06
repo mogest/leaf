@@ -307,6 +307,7 @@ defmodule LeafWeb.Parts do
                 :for={day <- week}
                 data-working={working(day)}
                 data-leave={leave(day)}
+                data-part={part?(day)}
                 data-holiday={holiday(day)}
                 data-today={today?(day, @today)}
                 aria-current={today?(day, @today) && "date"}
@@ -320,6 +321,7 @@ defmodule LeafWeb.Parts do
       <ul class="legend">
         <li data-leave="approved">Approved</li>
         <li data-leave="pending">Waiting</li>
+        <li data-leave="approved" data-part>Part of the day</li>
         <li data-holiday>Public holiday</li>
         <li data-today>Today</li>
       </ul>
@@ -377,6 +379,9 @@ defmodule LeafWeb.Parts do
 
   defp leave(%{leave: leave}), do: leave
   defp leave(nil), do: nil
+
+  defp part?(%{part?: part?}), do: part?
+  defp part?(nil), do: false
 
   defp holiday(%{holiday: holiday}), do: holiday
   defp holiday(nil), do: nil
