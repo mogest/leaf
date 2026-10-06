@@ -152,6 +152,8 @@ defmodule LeafWeb.RequestLeaveLive do
   end
 
   defp opened(socket, :new, _params) do
+    person = socket.assigns.current_person
+
     socket
     |> assign(:page_title, "Request leave")
     |> assign(:title, "Request leave")
@@ -159,8 +161,8 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:done, "Your request is filed.")
     |> assign(:request, nil)
     |> assign(:replaced, false)
-    |> assign(:decider, decider(nil, socket.assigns.current_person))
-    |> holding(socket.assigns.current_person)
+    |> assign(:decider, decider(nil, person, person))
+    |> holding(person)
     |> filled(%{})
   end
 
@@ -188,7 +190,7 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:done, "The request is changed.")
     |> assign(:request, request)
     |> assign(:replaced, replaced)
-    |> assign(:decider, decider(request, request.person))
+    |> assign(:decider, decider(request, request.person, socket.assigns.current_person))
     |> holding(request.person)
     |> filled(params)
   end
@@ -207,10 +209,15 @@ defmodule LeafWeb.RequestLeaveLive do
   end
 
   # Amending an approved request leaves it approved, so there is nobody left to decide it.
-  defp decider(%{status: :approved}, _person), do: nil
+  defp decider(%{status: :approved}, _person, _viewer), do: nil
 
-  defp decider(_request, person),
-    do: "Your leave will be reviewed by #{People.manager_name(person) || "an administrator"}"
+  defp decider(_request, person, viewer) do
+    reviewer = People.manager_name(person) || "an administrator"
+    "#{whose(person, viewer)} leave will be reviewed by #{reviewer}"
+  end
+
+  defp whose(%{id: id}, %{id: id}), do: "Your"
+  defp whose(person, _viewer), do: "#{person.name}'s"
 
   defp back(%{id: id}, %{id: id}), do: ~p"/leave"
   defp back(_viewer, person), do: ~p"/people/#{person}"
