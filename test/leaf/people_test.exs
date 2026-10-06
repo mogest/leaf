@@ -26,6 +26,8 @@ defmodule Leaf.PeopleTest do
 
   defp ids(segments), do: Enum.map(segments, fn {span, row} -> {span, row.id} end)
 
+  defp names(tree), do: Enum.map(tree, fn {person, reports} -> {person.name, names(reports)} end)
+
   test "an email address is the same address whatever case it was typed in", context do
     %{organisation: organisation} = context
 
@@ -325,6 +327,33 @@ defmodule Leaf.PeopleTest do
              ["Ada Lindqvist", "Bo Ngata", "Ines Vasquez", "Kit Rua", "Rae Halloran"]
 
     assert People.overseen(nobody) == []
+  end
+
+  test "the chart puts everyone employed under their manager, once each", context do
+    %{organisation: organisation, person: rae} = context
+
+    gone =
+      Fixtures.person(%{
+        organisation_id: organisation.id,
+        name: "Tama Reti",
+        employment_end_date: ~D[2025-06-30]
+      })
+
+    Fixtures.person(%{
+      organisation_id: organisation.id,
+      name: "Ines Vasquez",
+      manager_id: gone.id
+    })
+
+    bo =
+      Fixtures.person(%{organisation_id: organisation.id, name: "Bo Ngata", manager_id: rae.id})
+
+    Fixtures.person(%{organisation_id: organisation.id, name: "Ada Lindqvist", manager_id: bo.id})
+
+    assert names(People.chart(organisation.id, ~D[2026-06-01])) == [
+             {"Ines Vasquez", []},
+             {"Rae Halloran", [{"Bo Ngata", [{"Ada Lindqvist", []}]}]}
+           ]
   end
 
   test "the holidays a person observes follow the calendar in force", context do
