@@ -205,6 +205,17 @@ defmodule Leaf.Leave do
     )
   end
 
+  @doc "The earliest date a person has leave approved or awaiting a decision on, or nil."
+  @spec first_filed_on(Person.t()) :: Date.t() | nil
+  def first_filed_on(person) do
+    Repo.one(
+      from day in Day,
+        join: request in assoc(day, :leave_request),
+        where: request.person_id == ^person.id and request.status in [:pending, :approved],
+        select: min(day.date)
+    )
+  end
+
   @doc """
   A person's requests, the leave furthest ahead first, each with its days and whoever decided it.
 

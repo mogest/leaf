@@ -170,17 +170,30 @@ defmodule Leaf.Ledger do
   @doc """
   Whether everything a balance is worked out from is on record for the person.
 
-  `statements/3` refuses a stretch of somebody's history with no work pattern behind it, because
-  hours nobody knows cannot be pro-rated and reading them as none would be a wrong figure rather
-  than a small one. A page asks here first, so that somebody half set up reads as half set up.
+  `statements/3` and `awaiting/1` refuse a stretch of somebody's history with no work pattern
+  behind it, because hours nobody knows cannot be pro-rated and reading them as none would be a
+  wrong figure rather than a small one. A page asks here first, so that somebody half set up reads
+  as half set up.
+
+  That stretch runs from the first date tracked or the first day of leave filed, whichever is
+  earlier: leave dated before tracking started is filed on a pattern reaching back over it, and
+  removing that pattern leaves the leave with nothing to be measured against. A pattern runs on
+  until the next supersedes it, so one in force on that first date is in force on every date after.
   """
   @spec ready?(Person.t(), Date.t()) :: boolean()
   def ready?(person, as_at) do
     {:ok, organisation} = Org.fetch_organisation(person.organisation_id)
 
+    case Dates.earliest(tracked_from(person, organisation, as_at), Leave.first_filed_on(person)) do
+      nil -> true
+      from -> People.fetch_work_pattern_on(person, from) != :error
+    end
+  end
+
+  defp tracked_from(person, organisation, as_at) do
     case Span.tracked_range(person, organisation, as_at) do
-      :error -> true
-      {:ok, range} -> People.fetch_work_pattern_on(person, range.first) != :error
+      :error -> nil
+      {:ok, range} -> range.first
     end
   end
 
@@ -232,7 +245,8 @@ defmodule Leaf.Ledger do
 
   # The hours the request and the calendar are measured against, public holidays granted off
   # included, so a day off one draws what it is worth on the date now rather than when it was filed.
-  # Nothing is filed that cannot be measured, so every day has hours on record to ask for.
+  # Every day is filed with hours on record, and `ready?/2` says where a pattern removed since has
+  # left one without.
   defp hours_taken_against(_person, []), do: %{}
 
   defp hours_taken_against(person, days) do

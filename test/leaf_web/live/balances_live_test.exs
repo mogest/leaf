@@ -152,6 +152,22 @@ defmodule LeafWeb.BalancesLiveTest do
     refute html =~ "recorded only"
   end
 
+  test "leave left with no work pattern behind it reads as not set up rather than failing",
+       context do
+    # Asked for on a pattern reaching back before tracking started, which has since been removed.
+    Fixtures.leave_request(%{
+      person_id: context.person.id,
+      status: :pending,
+      days: [
+        %{leave_type_id: context.leave_type.id, date: ~D[2023-11-01], amount: "8", unit: :hours}
+      ]
+    })
+
+    {:ok, _live, html} = live(context.conn, ~p"/balances")
+
+    assert html =~ "No balance can be worked out until you are on a work pattern throughout."
+  end
+
   test "the date at the top is the whole page's question", context do
     {:ok, live, html} = live(context.conn, ~p"/balances")
 
