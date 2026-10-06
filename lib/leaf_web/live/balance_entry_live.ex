@@ -107,10 +107,6 @@ defmodule LeafWeb.BalanceEntryLive do
     |> push_navigate(to: ~p"/people/#{socket.assigns.person}")
   end
 
-  defp saved(socket, {:error, :forbidden}) do
-    put_flash(socket, :error, "Only an administrator may record a balance.")
-  end
-
   defp saved(socket, {:error, changeset}) do
     assign(socket, :form, to_form(changeset, action: :validate))
   end

@@ -338,21 +338,22 @@ defmodule Leaf.LeaveTest do
     refute Enum.any?(Repo.all(Entry), &(&1.action == "leave_request.approved"))
   end
 
-  test "only an administrator may enter a balance figure", context do
-    attrs = %{leave_type_id: context.leave_type.id, date: @thursday, amount: "40"}
+  test "a balance figure records who entered it, and nobody where the system did", context do
+    attrs = %{
+      leave_type_id: context.leave_type.id,
+      date: @thursday,
+      amount: "40",
+      kind: :opening_balance
+    }
 
-    assert Leave.create_balance_entry(context.person, context.manager, attrs) ==
-             {:error, :forbidden}
-
-    assert {:ok, opening} =
-             Leave.create_balance_entry(
-               context.person,
-               context.admin,
-               Map.put(attrs, :kind, :opening_balance)
-             )
-
+    assert {:ok, opening} = Leave.create_balance_entry(context.person, context.admin, attrs)
     assert opening.created_by_id == context.admin.id
-    assert [%{action: "balance_entry.created"}] = Repo.all(Entry)
+
+    assert {:ok, imported} = Leave.create_balance_entry(context.person, nil, attrs)
+    assert imported.created_by_id == nil
+
+    assert [%{action: "balance_entry.created"}, %{action: "balance_entry.created"}] =
+             Repo.all(Entry)
   end
 
   test "an archived balance figure counts in nothing", context do

@@ -124,18 +124,16 @@ defmodule Leaf.Leave do
   end
 
   @doc """
-  Records an opening balance or an adjustment, which only an administrator may do.
+  Records an opening balance or an adjustment.
 
   An adjustment needs a reason; an opening balance is its own explanation.
   """
-  @spec create_balance_entry(Person.t(), Person.t(), map()) ::
-          {:ok, BalanceEntry.t()} | {:error, Ecto.Changeset.t() | :forbidden}
+  @spec create_balance_entry(Person.t(), Person.t() | nil, map()) ::
+          Audit.written(BalanceEntry.t())
   def create_balance_entry(person, actor, attrs) do
-    with :ok <- permit(actor.role == :admin) do
-      %BalanceEntry{person_id: person.id, created_by_id: actor.id}
-      |> BalanceEntry.changeset(attrs)
-      |> Audit.write("balance_entry.created", actor, person.id)
-    end
+    %BalanceEntry{person_id: person.id, created_by_id: actor && actor.id}
+    |> BalanceEntry.changeset(attrs)
+    |> Audit.write("balance_entry.created", actor, person.id)
   end
 
   @doc "Archives a balance entry, after which it counts in nothing and shows nowhere."
