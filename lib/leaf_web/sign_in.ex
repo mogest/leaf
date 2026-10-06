@@ -37,8 +37,7 @@ defmodule LeafWeb.SignIn do
   The requirement is not a hook of its own: every live session needs `:current_person`, so a page
   cannot be mounted by a stranger through having forgotten one.
 
-  `:admin` runs after `:current_person`, so the pages only an administrator may open say so in the
-  router rather than each checking for themselves.
+  `:admin` runs after `:current_person`, on each page only an administrator may open.
   """
   @spec on_mount(atom(), map(), map(), LiveView.Socket.t()) ::
           {:cont, LiveView.Socket.t()} | {:halt, LiveView.Socket.t()}

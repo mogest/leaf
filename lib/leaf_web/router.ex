@@ -46,12 +46,12 @@ defmodule LeafWeb.Router do
     delete "/sign-out", SignInController, :delete
   end
 
-  # The administrator's pages come first, so that a literal segment wins over `/people/:id`.
+  # One live session, so moving between any two pages keeps the socket. The administrator's pages
+  # come first, so that a literal segment wins over `/people/:id`.
   scope "/", LeafWeb do
     pipe_through [:browser, :signed_in]
 
-    live_session :admin,
-      on_mount: [{LeafWeb.SignIn, :current_person}, {LeafWeb.SignIn, :admin}] do
+    live_session :signed_in, on_mount: {LeafWeb.SignIn, :current_person} do
       live "/people", PeopleLive
       live "/people/new", PersonFormLive, :new
       live "/people/:person_id/edit", PersonFormLive, :edit
@@ -72,9 +72,7 @@ defmodule LeafWeb.Router do
       live "/settings/calendars/:id", CalendarLive
       live "/settings/calendars/:calendar_id/regions/new", RegionLive
       live "/settings/audit", AuditLive
-    end
 
-    live_session :signed_in, on_mount: {LeafWeb.SignIn, :current_person} do
       live "/", AtAGlanceLive
       live "/leave", YourRequestsLive
       live "/leave/new", RequestLeaveLive, :new

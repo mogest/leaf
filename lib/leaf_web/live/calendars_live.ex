@@ -8,6 +8,8 @@ defmodule LeafWeb.CalendarsLive do
 
   use LeafWeb, :live_view
 
+  on_mount {LeafWeb.SignIn, :admin}
+
   alias Leaf.Org
 
   @impl Phoenix.LiveView

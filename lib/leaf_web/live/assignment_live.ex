@@ -9,6 +9,8 @@ defmodule LeafWeb.AssignmentLive do
 
   use LeafWeb, :live_view
 
+  on_mount {LeafWeb.SignIn, :admin}
+
   alias Leaf.Org
   alias Leaf.People
   alias Leaf.Policies

@@ -3,6 +3,8 @@ defmodule LeafWeb.PeopleLive do
 
   use LeafWeb, :live_view
 
+  on_mount {LeafWeb.SignIn, :admin}
+
   alias Leaf.Org
   alias Leaf.People
 

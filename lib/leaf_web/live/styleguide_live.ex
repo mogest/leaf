@@ -142,7 +142,7 @@ defmodule LeafWeb.StyleguideLive do
     <Layouts.app flash={@flash} page="styleguide" viewer={@viewer}>
       <header>
         <h1>Specimen sheet</h1>
-        <a class="button" href="/">Back to the app</a>
+        <.link class="button" navigate="/">Back to the app</.link>
       </header>
 
       <section>
@@ -231,7 +231,7 @@ defmodule LeafWeb.StyleguideLive do
           </section>
           <footer>
             <button class="button" type="button">Save</button>
-            <a href={@here}>Cancel</a>
+            <.link navigate={@here}>Cancel</.link>
           </footer>
         </.form>
       </section>
@@ -251,7 +251,7 @@ defmodule LeafWeb.StyleguideLive do
           </thead>
           <tbody>
             <tr>
-              <th scope="row"><a href={@here}>Annual leave</a></th>
+              <th scope="row"><.link navigate={@here}>Annual leave</.link></th>
               <td>hours</td>
               <td>offered</td>
               <td>
@@ -262,7 +262,7 @@ defmodule LeafWeb.StyleguideLive do
               </td>
             </tr>
             <tr data-tone="past">
-              <th scope="row"><a href={@here}>Quarterly leave</a></th>
+              <th scope="row"><.link navigate={@here}>Quarterly leave</.link></th>
               <td>hours</td>
               <td>withdrawn 1 January 2026</td>
               <td>
@@ -296,7 +296,9 @@ defmodule LeafWeb.StyleguideLive do
         </header>
         <Parts.requests requests={@requests}>
           <:empty>You have not asked for any leave yet.</:empty>
-          <:footer>Showing your three most recent. <a href={@here}>See all 23</a>.</:footer>
+          <:footer>
+            Showing your three most recent. <.link navigate={@here}>See all 23</.link>.
+          </:footer>
         </Parts.requests>
       </section>
     </Layouts.app>
