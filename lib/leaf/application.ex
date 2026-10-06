@@ -10,6 +10,7 @@ defmodule Leaf.Application do
     children = [
       Leaf.Repo,
       {Phoenix.PubSub, name: Leaf.PubSub},
+      {Task.Supervisor, name: Leaf.Messaging.Tasks},
       LeafWeb.Endpoint
     ]
 

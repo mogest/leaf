@@ -104,6 +104,14 @@ defmodule Leaf.People do
   defp fetch_manager(%{manager_id: nil}), do: :error
   defp fetch_manager(person), do: fetch_person(person.manager_id)
 
+  @doc "The person's manager, or `:error` where they have none employed on `date`."
+  @spec fetch_manager(Person.t(), Date.t()) :: {:ok, Person.t()} | :error
+  def fetch_manager(%{manager_id: nil}, _date), do: :error
+
+  def fetch_manager(person, date) do
+    Repo.fetch(employing(person.organisation_id, Date.range(date, date)), person.manager_id)
+  end
+
   @doc "Puts a person on a work pattern from a date, superseding whatever they were on."
   @spec create_work_pattern(Person.t(), Person.t() | nil, map()) :: Audit.written(WorkPattern.t())
   def create_work_pattern(person, actor, attrs) do
@@ -355,6 +363,15 @@ defmodule Leaf.People do
       from person in Person,
         where: person.organisation_id == ^organisation_id,
         order_by: person.name
+    )
+  end
+
+  @doc "Everyone employed to administer an organisation on `date`, by name."
+  @spec administrators(Ecto.UUID.t(), Date.t()) :: [Person.t()]
+  def administrators(organisation_id, date) do
+    Repo.all(
+      from person in employing(organisation_id, Date.range(date, date)),
+        where: person.role == :admin
     )
   end
 

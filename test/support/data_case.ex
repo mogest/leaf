@@ -37,6 +37,27 @@ defmodule Leaf.DataCase do
   def setup_sandbox(tags) do
     pid = Sandbox.start_owner!(Leaf.Repo, shared: not tags[:async])
     on_exit(fn -> Sandbox.stop_owner(pid) end)
+    on_exit(&await_messages/0)
+  end
+
+  @doc """
+  Waits for every message Leaf is sending to have been sent.
+
+  A write sends its messages from a task of its own, which reads and writes through the test's
+  sandbox, so it has to be done before anything is asserted of them or the sandbox goes.
+  """
+  def await_messages do
+    for pid <- Task.Supervisor.children(Leaf.Messaging.Tasks) do
+      ref = Process.monitor(pid)
+
+      receive do
+        {:DOWN, ^ref, :process, _pid, _reason} -> :ok
+      after
+        1_000 -> raise "a message was still being sent after a second"
+      end
+    end
+
+    :ok
   end
 
   @doc """

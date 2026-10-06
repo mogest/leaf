@@ -74,6 +74,11 @@ if config_env() == :prod do
       For example: leaf.example.com
       """
 
+  # Production only, so that nothing done in development messages real colleagues.
+  if slack_bot_token = System.get_env("SLACK_BOT_TOKEN") do
+    config :leaf, Leaf.Messaging.Slack, token: slack_bot_token
+  end
+
   config :leaf, LeafWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [

@@ -14,6 +14,9 @@ config :leaf,
 # Every calendar carries a time zone, and dates are read in the zone of whoever is reading (§4.11).
 config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 
+# Tried in order. A channel with no configuration of its own is not used.
+config :leaf, Leaf.Messaging, channels: [Leaf.Messaging.Slack]
+
 # Configure the endpoint
 config :leaf, LeafWeb.Endpoint,
   url: [host: "localhost"],
