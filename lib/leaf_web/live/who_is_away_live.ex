@@ -75,10 +75,10 @@ defmodule LeafWeb.WhoIsAwayLive do
         </div>
 
         <ul class="legend">
+          <li data-working="yes">Working</li>
           <li data-leave="approved">Away</li>
           <li data-leave="approved" data-part>Away part of the day</li>
           <li data-holiday>Public holiday</li>
-          <li>Faded days are ones they do not work</li>
         </ul>
       </section>
     </Layouts.app>

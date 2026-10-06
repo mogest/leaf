@@ -688,6 +688,10 @@ main.who-is-away {
     background: transparent;
   }
 
+  & .legend > li[data-working]::before {
+    background: var(--ground);
+  }
+
   /* A chart is read across a room, so a day away is a mark rather than a tint. */
   & td[data-leave="approved"],
   & .legend > li[data-leave="approved"]::before {
