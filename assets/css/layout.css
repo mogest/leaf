@@ -944,8 +944,9 @@ main.approvals > ol > li {
     gap: var(--step-3);
     margin-block-start: var(--step-3);
 
-    & > input {
-      max-inline-size: 18rem;
+    & > div {
+      flex-basis: 100%;
+      max-inline-size: none;
     }
 
     & > button.button {
