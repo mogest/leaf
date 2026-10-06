@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.Leaf.Seed do
-  @shortdoc "Seed an example organisation, New Zealand leave policy and person"
+  @shortdoc "Seed an example organisation, its two New Zealand leave policies and somebody on each"
   @moduledoc """
   Seed an example organisation into an empty database.
 

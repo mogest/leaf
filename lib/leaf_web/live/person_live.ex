@@ -1,10 +1,10 @@
 defmodule LeafWeb.PersonLive do
   @moduledoc """
-  One person's whole record: their dates, the effective-dated facts that follow them, and what
-  they hold.
+  One person's whole record.
 
-  Everything effective-dated here can be put right after the fact (§4.4), so each succession is
-  shown as its own list, a row opening onto its edit where it has one and removed from its menu.
+  Their dates, the effective-dated facts that follow them, and what they hold. Everything
+  effective-dated here can be put right after the fact (§4.4), so each succession is shown as its
+  own list, a row opening onto its edit where it has one and removed from its menu.
   Only an administrator sees those; a manager reading their report's page sees the record, with
   nothing to change on it but the report's leave, nor why a balance was ever put right by hand.
   """

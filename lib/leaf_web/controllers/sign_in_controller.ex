@@ -1,5 +1,9 @@
 defmodule LeafWeb.SignInController do
-  @moduledoc "Picking who you are, until there is real authentication. See `LeafWeb.SignIn`."
+  @moduledoc """
+  Picking who you are, until there is real authentication.
+
+  See `LeafWeb.SignIn`.
+  """
 
   use LeafWeb, :controller
 

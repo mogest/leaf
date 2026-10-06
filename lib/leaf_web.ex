@@ -1,7 +1,6 @@
 defmodule LeafWeb do
   @moduledoc """
-  The entrypoint for defining your web interface, such
-  as controllers, components, and so on.
+  The entrypoint for defining the web interface: controllers, components and so on.
 
   This can be used in your application as:
 

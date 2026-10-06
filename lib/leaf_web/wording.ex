@@ -27,11 +27,11 @@ defmodule LeafWeb.Wording do
         }
 
   @doc """
-  A request said in five parts: when it is, what it draws on, what it comes to, where it got to,
-  and how it got there.
+  A request said in five parts.
 
-  It is read a row at a time against others, so the dates are the short form, and how it got there
-  leaves out the word its standing already says.
+  When it is, what it draws on, what it comes to, where it got to, and how it got there. It is read
+  a row at a time against others, so the dates are the short form, and how it got there leaves out
+  the word its standing already says.
 
   `awaiting` is who a pending one is with, and is left out where a page is not saying.
   """
@@ -60,11 +60,11 @@ defmodule LeafWeb.Wording do
         }
 
   @doc """
-  What somebody holds in one leave type: the figure, what is waiting on an answer, and what is
-  about to lapse.
+  What somebody holds in one leave type.
 
-  `awaiting` is `Leaf.Ledger.awaiting/1`, keyed by leave type. Nothing waiting and nothing lapsing
-  each say nothing at all.
+  The figure, what is waiting on an answer, and what is about to lapse. `awaiting` is
+  `Leaf.Ledger.awaiting/1`, keyed by leave type. Nothing waiting and nothing lapsing each say
+  nothing at all.
   """
   @spec held(Statement.t(), %{Ecto.UUID.t() => Decimal.t()}) :: held()
   def held(statement, awaiting) do

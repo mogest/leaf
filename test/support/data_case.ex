@@ -1,7 +1,6 @@
 defmodule Leaf.DataCase do
   @moduledoc """
-  This module defines the setup for tests requiring
-  access to the application's data layer.
+  The test case for tests requiring access to the application's data layer.
 
   You may define functions here to be used as helpers in
   your tests.
@@ -34,9 +33,7 @@ defmodule Leaf.DataCase do
     :ok
   end
 
-  @doc """
-  Sets up the sandbox based on the test tags.
-  """
+  @doc "Sets up the sandbox based on the test tags."
   def setup_sandbox(tags) do
     pid = Sandbox.start_owner!(Leaf.Repo, shared: not tags[:async])
     on_exit(fn -> Sandbox.stop_owner(pid) end)
@@ -45,9 +42,8 @@ defmodule Leaf.DataCase do
   @doc """
   A helper that transforms changeset errors into a map of messages.
 
-      assert {:error, changeset} = Accounts.create_user(%{password: "short"})
-      assert "password is too short" in errors_on(changeset).password
-      assert %{password: ["password is too short"]} = errors_on(changeset)
+      assert {:error, changeset} = Leave.create_balance_entry(person, nil, %{amount: nil})
+      assert "can't be blank" in errors_on(changeset).amount
 
   """
   def errors_on(changeset) do
