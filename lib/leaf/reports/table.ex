@@ -8,18 +8,22 @@ defmodule Leaf.Reports.Table do
 
   alias Leaf.People.Person
 
-  @type cell :: String.t() | Date.t() | Decimal.t() | nil
+  @type cell :: String.t() | Date.t() | DateTime.t() | Decimal.t() | nil
   @type t :: %__MODULE__{columns: [String.t()], rows: [[cell()]], notes: [String.t()]}
 
   @enforce_keys [:columns, :rows]
   defstruct [:columns, :rows, notes: []]
 
-  @doc "The table as CSV: the headings, then a line a row, dates day first and figures to 2dp."
-  @spec csv(t()) :: String.t()
-  def csv(table) do
+  @doc """
+  The table as CSV: the headings, then a line a row, dates day first and figures to 2dp.
+
+  A moment is said as it was in `zone`.
+  """
+  @spec csv(t(), String.t()) :: String.t()
+  def csv(table, zone) do
     Enum.map_join(
       [table.columns | table.rows],
-      &[Enum.map_join(&1, ",", fn cell -> field(cell) end), "\r\n"]
+      &[Enum.map_join(&1, ",", fn cell -> field(cell, zone) end), "\r\n"]
     )
   end
 
@@ -31,12 +35,18 @@ defmodule Leaf.Reports.Table do
     end
   end
 
-  defp field(cell), do: cell |> text() |> quoted()
+  defp field(cell, zone), do: cell |> text(zone) |> quoted()
 
-  defp text(nil), do: ""
-  defp text(%Date{} = date), do: Calendar.strftime(date, "%d/%m/%Y")
-  defp text(%Decimal{} = amount), do: amount |> Decimal.round(2) |> Decimal.to_string(:normal)
-  defp text(string), do: string
+  defp text(nil, _zone), do: ""
+  defp text(%Date{} = date, _zone), do: Calendar.strftime(date, "%d/%m/%Y")
+
+  defp text(%DateTime{} = at, zone),
+    do: at |> DateTime.shift_zone!(zone) |> Calendar.strftime("%d/%m/%Y %H:%M")
+
+  defp text(%Decimal{} = amount, _zone),
+    do: amount |> Decimal.round(2) |> Decimal.to_string(:normal)
+
+  defp text(string, _zone), do: string
 
   defp quoted(text) do
     case String.contains?(text, [",", "\"", "\r", "\n"]) do

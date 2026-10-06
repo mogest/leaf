@@ -10,13 +10,39 @@ defmodule LeafWeb.ReportsLive do
 
   on_mount {LeafWeb.SignIn, :admin}
 
+  alias Leaf.Org
+  alias Leaf.People
+  alias Leaf.Policies
   alias Leaf.Reports
 
-  @tabs [{"iPayroll export", "ipayroll"}]
+  # Each report, what it says, and the options it reads.
+  @tabs [
+    {"iPayroll export", "ipayroll",
+     "Approved requests whose first day falls in the period, each whole, as iPayroll's Leave " <>
+       "Requests upload takes them.", [:from, :to]},
+    {"Leave taken", "taken",
+     "Approved leave taken in the period, counting only its days that fall in it.",
+     [:from, :to, :country_id, :leave_type_id]},
+    {"Payroll reconciliation", "reconciliation",
+     "Leave in the pay period filed, amended, approved or cancelled after the cut-off date.",
+     [:from, :to, :cut_off]},
+    {"Balances", "balances", "What everyone employed holds, each leave type in its own unit.",
+     [:as_at]},
+    {"Expiring soon", "expiring", "Leave that lapses within so many days unless it is taken.",
+     [:as_at, :within]}
+  ]
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
-    {:ok, socket |> assign(:page_title, "Reports") |> assign(:tabs, @tabs)}
+    organisation_id = socket.assigns.current_person.organisation_id
+
+    {:ok,
+     socket
+     |> assign(:page_title, "Reports")
+     |> assign(:zone, People.time_zone(socket.assigns.current_person))
+     |> assign(:tabs, Enum.map(@tabs, fn {label, report, _says, _fields} -> {label, report} end))
+     |> assign(:countries, Enum.map(Org.countries(organisation_id), &{&1.name, &1.id}))
+     |> assign(:leave_types, Enum.map(Policies.leave_types(organisation_id), &{&1.name, &1.id}))}
   end
 
   @impl Phoenix.LiveView
@@ -57,9 +83,35 @@ defmodule LeafWeb.ReportsLive do
         </ul>
       </nav>
 
+      <p>{@says}</p>
+
       <.form id="options" for={@form} phx-change="options">
-        <.input field={@form[:from]} type="date" label="Requests starting from" />
-        <.input field={@form[:to]} type="date" label="To" />
+        <.input :if={:from in @fields} field={@form[:from]} type="date" label="From" />
+        <.input :if={:to in @fields} field={@form[:to]} type="date" label="To" />
+        <.input
+          :if={:cut_off in @fields}
+          field={@form[:cut_off]}
+          type="date"
+          label="Changed after"
+        />
+        <.input
+          :if={:country_id in @fields}
+          field={@form[:country_id]}
+          type="select"
+          label="Country"
+          prompt="Every country"
+          options={@countries}
+        />
+        <.input
+          :if={:leave_type_id in @fields}
+          field={@form[:leave_type_id]}
+          type="select"
+          label="Leave type"
+          prompt="Every leave type"
+          options={@leave_types}
+        />
+        <.input :if={:as_at in @fields} field={@form[:as_at]} type="date" label="As at" />
+        <.input :if={:within in @fields} field={@form[:within]} type="number" label="Days ahead" />
       </.form>
 
       <section :if={@table}>
@@ -86,11 +138,14 @@ defmodule LeafWeb.ReportsLive do
 
   defp shown(socket, changeset, ran, params) do
     report = to_string(Ecto.Changeset.get_field(changeset, :report))
+    {_label, _report, says, fields} = List.keyfind(@tabs, report, 1)
 
     socket
     |> assign(:report, report)
+    |> assign(:says, says)
+    |> assign(:fields, fields)
     |> assign(:form, to_form(changeset, as: :options, action: :validate))
-    |> assign(:table, said(ran))
+    |> assign(:table, said(ran, socket.assigns.zone))
     |> assign(:download, ~p"/reports/#{report}/download?#{Map.delete(params, "report")}")
   end
 
@@ -98,12 +153,14 @@ defmodule LeafWeb.ReportsLive do
     socket |> put_flash(:error, "There is no such report.") |> push_navigate(to: ~p"/reports")
   end
 
-  defp said({:ok, table}),
-    do: %{table | rows: Enum.map(table.rows, &Enum.map(&1, fn cell -> cell(cell) end))}
+  defp said({:ok, table}, zone) do
+    %{table | rows: Enum.map(table.rows, &Enum.map(&1, fn cell -> cell(cell, zone) end))}
+  end
 
-  defp said({:error, _changeset}), do: nil
+  defp said({:error, _changeset}, _zone), do: nil
 
-  defp cell(%Date{} = date), do: Wording.brief_date(date)
-  defp cell(%Decimal{} = amount), do: Wording.number(amount)
-  defp cell(text), do: text
+  defp cell(%Date{} = date, _zone), do: Wording.brief_date(date)
+  defp cell(%DateTime{} = at, zone), do: Wording.moment(at, zone)
+  defp cell(%Decimal{} = amount, _zone), do: Wording.number(amount)
+  defp cell(text, _zone), do: text
 end
