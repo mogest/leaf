@@ -105,7 +105,7 @@ defmodule LeafWeb.PoliciesLive do
       id: policy.id,
       name: policy.name,
       path: ~p"/settings/policies/#{policy}",
-      entitlements: counted(Policies.entitlements(policy.id)),
+      entitlements: counted(policy.entitlements),
       standing: Wording.standing(policy),
       tone: Wording.tone(policy)
     }
