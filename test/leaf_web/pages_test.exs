@@ -107,13 +107,17 @@ defmodule LeafWeb.PagesTest do
     assert policy =~ "font-src https://fonts.gstatic.com"
   end
 
-  test "every page that is a member's own renders for them", context do
+  test "every page that is a member's own renders for them, their record linked from their name",
+       context do
     conn = sign_in(build_conn(), context.other)
 
     Enum.each(theirs(context, context.other), fn path ->
       assert {:ok, _live, html} = live(conn, path)
       assert html =~ "<h1>"
     end)
+
+    {:ok, live, _html} = live(conn, ~p"/")
+    assert has_element?(live, ~s|#account a[href="/people/#{context.other.id}"]|)
   end
 
   test "a member is turned away from every page only the administrator may open", context do

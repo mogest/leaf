@@ -68,7 +68,7 @@ defmodule LeafWeb.StyleguideLive do
 
   # Standing enough to be shown every entry the rail has.
   @viewer %Viewer{
-    person: %Person{id: Ecto.UUID.generate(), name: "Rae Halloran"},
+    person: %Person{id: "00000000-0000-0000-0000-000000000000", name: "Rae Halloran"},
     admin?: true,
     approver?: true
   }
