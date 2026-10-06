@@ -266,9 +266,12 @@ configurable delegate in v1.
 
 ### 5.2 Requesting leave
 - Choose leave type, dates, and amount.
-- Amount can be entered in **hours or days**, whichever suits — the system converts using the
-  person's work pattern for those dates and shows both. A person on 5×8h picks "1 day"; a
-  person on a 9-hour day picks "9 hours".
+- A stretch of dates is asked for in **whole days**, each worth what the person's work pattern
+  says that day is; part of a single day is asked for in **hours**. A person on 5×8h taking
+  Monday off asks for the day and draws 8 hours; one leaving three hours early asks for 3 hours.
+- Balances are shown in the leave type's own unit — hours for time-based types, days for
+  day-based ones — and not converted to the other. A balance has no date, so a day of it has no
+  fixed worth in hours.
 - **Arbitrary fractional amounts are allowed.** No half-day-only constraint: quarterly leave
   might grant 7.2 hours, and the person needs 1.8 hours of annual leave on top to take a
   9-hour day off.
@@ -353,7 +356,7 @@ not an afterthought.
 2. **Block grants are first-class**, not a workaround, because sick leave and similar
    entitlements are granted that way by law.
 3. **Hours are the underlying unit where the leave type is time-based**; days where the leave
-   type is day-based (sick, birthday, longevity). Display in both; let people enter in either.
+   type is day-based (sick, birthday, longevity). A balance is shown in its own unit (§5.2).
 4. **Arbitrary fractions of an hour are valid**, and one day can be covered by several leave
    types.
 5. **Negative balances are allowed, not blocked.** Advance leave is a real thing.
