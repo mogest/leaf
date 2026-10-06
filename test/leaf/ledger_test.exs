@@ -983,15 +983,21 @@ defmodule Leaf.LedgerTest do
     assert Decimal.equal?(statement(person, annual, ~D[2025-03-03]).balance, "192.00")
   end
 
-  test "entitlement is not worked out where the hours are unknown", context do
+  test "nothing is worked out where the hours are unknown", context do
     person = context.person
     weekdays(person, ~D[2024-04-01], "8")
     annual = leave_type(context, %{})
     entitlement(context, annual, %{grant_amount: "200"})
 
-    assert_raise RuntimeError, ~r/no work pattern in force on 2024-03-04/, fn ->
-      Ledger.statements(person, ~D[2025-03-03])
-    end
+    Fixtures.leave_request(%{
+      person_id: person.id,
+      status: :pending,
+      days: [%{leave_type_id: annual.id, date: ~D[2024-05-06], amount: "8", unit: :hours}]
+    })
+
+    refute Ledger.ready?(person, ~D[2025-03-03])
+    assert Ledger.statements(person, ~D[2025-03-03]) == []
+    assert Ledger.awaiting(person) == %{}
   end
 
   test "an accrual of nothing is not a movement", context do

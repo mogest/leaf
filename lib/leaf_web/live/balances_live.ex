@@ -149,10 +149,16 @@ defmodule LeafWeb.BalancesLive do
   defp shown(socket, person, params) do
     as_at = as_at(params["as_at"], socket.assigns.current_person)
     mine? = person.id == socket.assigns.current_person.id
+    ready? = Ledger.ready?(person, as_at)
 
-    case accounts(person, as_at, params["leave_type_id"]) do
-      {:ok, accounts, chosen} -> listed(socket, person, mine?, as_at, accounts, chosen)
-      :error -> missing(socket, person, mine?, as_at)
+    case accounts(person, as_at, ready?, params["leave_type_id"]) do
+      {:ok, accounts, chosen} ->
+        socket
+        |> listed(person, mine?, as_at, accounts, chosen)
+        |> assign(:nothing, nothing(accounts, ready?, mine?))
+
+      :error ->
+        missing(socket, person, mine?, as_at)
     end
   end
 
@@ -178,7 +184,6 @@ defmodule LeafWeb.BalancesLive do
     |> assign(:form, to_form(%{"as_at" => to_string(as_at)}, as: :ledger))
     |> assign(:accounts, listings)
     |> assign(:account, account(chosen, granted, person, as_at))
-    |> assign(:nothing, nothing(accounts, person, mine?, as_at))
   end
 
   defp title(_person, true), do: "Your balances"
@@ -190,12 +195,10 @@ defmodule LeafWeb.BalancesLive do
   defp rail(true), do: nil
   defp rail(false), do: "people"
 
-  defp accounts(person, as_at, id) do
-    case Ledger.ready?(person, as_at) do
-      true -> chosen(held(person, as_at), person, id)
-      false -> {:ok, [], nil}
-    end
-  end
+  # A record too incomplete to work balances out of lists nothing rather than what is offered at
+  # nothing, which would read as a balance.
+  defp accounts(_person, _as_at, false, _id), do: {:ok, [], nil}
+  defp accounts(person, as_at, true, id), do: chosen(held(person, as_at), person, id)
 
   # Every type the person holds an account in, and every one their policy offers them. The two
   # overlap in all but the extremes: a type granting nothing holds no account until there is leave
@@ -308,23 +311,9 @@ defmodule LeafWeb.BalancesLive do
     end
   end
 
-  defp nothing([_account | _rest], _person, _mine?, _as_at), do: nil
-
-  defp nothing([], person, mine?, as_at) do
-    case {Ledger.ready?(person, as_at), mine?} do
-      {true, true} ->
-        "You hold no balance in anything."
-
-      {true, false} ->
-        "They hold no balance in anything."
-
-      {false, true} ->
-        "No balance can be worked out until you are on a work pattern throughout."
-
-      {false, false} ->
-        "No balance can be worked out until they are on a work pattern throughout."
-    end
-  end
+  defp nothing([], ready?, true), do: Wording.no_balance(ready?, "you")
+  defp nothing([], ready?, false), do: Wording.no_balance(ready?, "they")
+  defp nothing(_accounts, _ready?, _mine?), do: nil
 
   defp path(_person, true, nil, as_at), do: ~p"/balances?as_at=#{as_at}"
   defp path(person, false, nil, as_at), do: ~p"/people/#{person}/balances?as_at=#{as_at}"

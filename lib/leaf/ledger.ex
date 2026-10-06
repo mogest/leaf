@@ -44,11 +44,21 @@ defmodule Leaf.Ledger do
   `as_at`, since leave is affordable out of what will have been accrued by the time it is taken.
   What is already approved stays counted either way, so projecting an *amendment* means leaving
   that request's own days out of `days`.
+
+  None at all for somebody not `ready?/2`.
   """
   @spec statements(Person.t(), Date.t(), [Day.t()]) :: [Statement.t()]
   def statements(person, as_at, days \\ []) do
-    %{organisation: organisation} = person = People.dated(person)
     as_at = Enum.reduce(days, as_at, &Enum.max([&1.date, &2], Date))
+
+    case ready?(person, as_at) do
+      true -> worked_out(person, as_at, days)
+      false -> []
+    end
+  end
+
+  defp worked_out(person, as_at, days) do
+    %{organisation: organisation} = person = People.dated(person)
     spans = Span.all(person, organisation, as_at)
     leave_types = Policies.leave_types(organisation.id)
     taken = Leave.days_approved(person) ++ days
@@ -176,19 +186,10 @@ defmodule Leaf.Ledger do
   """
   @spec projected(Person.t(), [Day.t()]) :: [Statement.t()]
   def projected(person, days) do
-    today = People.today(person)
-
-    case ready?(person, today) do
-      false -> []
-      true -> drawing_on(person, today, days)
-    end
-  end
-
-  defp drawing_on(person, today, days) do
     drawn = MapSet.new(days, & &1.leave_type_id)
 
     person
-    |> balances(today, days)
+    |> balances(People.today(person), days)
     |> Enum.filter(&MapSet.member?(drawn, &1.leave_type.id))
   end
 
@@ -197,9 +198,17 @@ defmodule Leaf.Ledger do
 
   A leave type nothing is waiting on is left out, so the map says what it has to say and nothing
   more. This draws no balance down: undecided leave is neither held nor spent until somebody says.
+  Nothing at all for somebody not `ready?/2`.
   """
   @spec awaiting(Person.t()) :: %{Ecto.UUID.t() => Decimal.t()}
   def awaiting(person) do
+    case ready?(person, People.today(person)) do
+      true -> undecided(person)
+      false -> %{}
+    end
+  end
+
+  defp undecided(person) do
     days = Leave.days_awaiting(person)
     leave_types = Policies.leave_types(person.organisation_id)
     units = Map.new(leave_types, &{&1.id, &1.unit})
@@ -215,10 +224,10 @@ defmodule Leaf.Ledger do
   @doc """
   Whether everything a balance is worked out from is on record for the person.
 
-  `statements/3` and `awaiting/1` refuse a stretch of somebody's history with no work pattern
-  behind it, because hours nobody knows cannot be pro-rated and reading them as none would be a
-  wrong figure rather than a small one. A page asks here first, so that somebody half set up reads
-  as half set up.
+  `statements/3` and `awaiting/1` come back empty over a stretch of somebody's history with no work
+  pattern behind it, because hours nobody knows cannot be pro-rated and reading them as none would
+  be a wrong figure rather than a small one. A page asks here to say why there is nothing, so that
+  somebody half set up reads as half set up.
 
   That stretch runs from the first date tracked or the first day of leave filed, whichever is
   earlier: leave dated before tracking started is filed on a pattern reaching back over it, and
