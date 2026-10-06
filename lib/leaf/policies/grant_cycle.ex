@@ -54,10 +54,10 @@ defmodule Leaf.Policies.GrantCycle do
     first = starts_on(cycle, date.year, index)
     last = Date.add(starts_on(cycle, date.year, index + 1), -1)
 
-    cond do
-      Date.before?(date, first) -> locate(cycle, date, index - 1)
-      Date.after?(date, last) -> locate(cycle, date, index + 1)
-      true -> Date.range(first, last)
+    case {Date.compare(date, first), Date.compare(date, last)} do
+      {:lt, _last} -> locate(cycle, date, index - 1)
+      {_first, :gt} -> locate(cycle, date, index + 1)
+      _within -> Date.range(first, last)
     end
   end
 

@@ -29,12 +29,12 @@ defmodule Leaf.Ledger do
   @forever ~D[9999-12-31]
 
   @doc """
-  An account for each leave type the person holds one in, as at `as_at`, in the organisation's
-  order.
+  An account for each leave type the person holds one in, as at `as_at`.
 
-  `as_at` says how far the person has accrued, and nothing about which of their leave counts: every
-  day of approved leave draws the balance down whether they have been on it yet or not, since leave
-  they are already going on is spent whatever the calendar says.
+  They come in the organisation's order. `as_at` says how far the person has accrued, and nothing
+  about which of their leave counts: every day of approved leave draws the balance down whether they
+  have been on it yet or not, since leave they are already going on is spent whatever the calendar
+  says.
 
   A leave type appears where the person holds a balance in it — something granted to them, entered
   by hand, or filed against it. A type that grants nothing and is recorded only appears once there

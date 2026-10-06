@@ -1,4 +1,6 @@
 defmodule Leaf.Repo do
+  @moduledoc "The Postgres repository, with the lookups every context shares."
+
   use Ecto.Repo,
     otp_app: :leaf,
     adapter: Ecto.Adapters.Postgres

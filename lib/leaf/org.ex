@@ -33,7 +33,7 @@ defmodule Leaf.Org do
     Calendar.changeset(%Calendar{organisation_id: organisation.id}, attrs)
   end
 
-  @doc "The changeset a new region's form binds to, opening on its country's country and zone."
+  @doc "The changeset a new region's form binds to, opening on its country's zone."
   @spec change_region(Calendar.t(), map()) :: Ecto.Changeset.t()
   def change_region(%Calendar{} = country, attrs),
     do: Calendar.changeset(region_of(country), attrs)

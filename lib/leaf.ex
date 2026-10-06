@@ -1,9 +1,7 @@
 defmodule Leaf do
   @moduledoc """
-  Leaf keeps the contexts that define your domain
-  and business logic.
+  Leave management for employees and contractors.
 
-  Contexts are also responsible for managing your data, regardless
-  if it comes from the database, an external API or others.
+  The contexts under it hold the domain and its data, and are the only way into either.
   """
 end
