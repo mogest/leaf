@@ -214,6 +214,7 @@ li > button[popovertarget] {
     gap: 0.375rem;
   }
 
+  & > li[data-working]::before,
   & > li[data-leave]::before,
   & > li[data-holiday]::before,
   & > li[data-today]::before {
