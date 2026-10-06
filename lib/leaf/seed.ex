@@ -19,6 +19,7 @@ defmodule Leaf.Seed do
   alias Leaf.People.Person
   alias Leaf.Policies
   alias Leaf.Policies.LeavePolicy
+  alias Leaf.Repo
 
   # Nobody is seeding this: there is no administrator yet to attribute it to.
   @system nil
@@ -250,14 +251,17 @@ defmodule Leaf.Seed do
   in the UI and present in every unscoped query. The guard is here rather than in the mix task
   because a release has the task nowhere and `Leaf.Seed.run/0` everywhere.
 
-  Raises on anything that will not validate.
+  Raises on anything that will not validate, leaving nothing behind, so it can be run again once
+  the cause is put right.
   """
   @spec run() :: {:ok, seeded()} | {:error, String.t()}
   def run do
-    case Org.organisations() do
-      [] -> {:ok, seed()}
-      [organisation | _rest] -> {:error, "#{organisation.name} is already seeded"}
-    end
+    Repo.transact(fn ->
+      case Org.organisations() do
+        [] -> {:ok, seed()}
+        [organisation | _rest] -> {:error, "#{organisation.name} is already seeded"}
+      end
+    end)
   end
 
   defp seed do
