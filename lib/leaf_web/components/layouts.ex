@@ -75,6 +75,9 @@ defmodule LeafWeb.Layouts do
         </button>
         <ul id="account" popover>
           <li>
+            <.link navigate={~p"/people/#{@viewer.person.id}"}>Profile</.link>
+          </li>
+          <li>
             <.link href="/sign-out" method="delete">Sign out</.link>
           </li>
         </ul>
