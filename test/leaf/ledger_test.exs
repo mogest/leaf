@@ -850,6 +850,53 @@ defmodule Leaf.LedgerTest do
     assert Decimal.equal?(ended.balance, "0.00")
   end
 
+  test "a balance entered by hand lapses with the entitlement it is held under", context do
+    person = context.person
+    full_time(person)
+    quarterly = leave_type(context, %{name: "Quarterly leave", position: 2})
+
+    quarterly_terms = %{
+      grant_amount: "8",
+      grant_basis: :calendar_year,
+      grant_period: :quarter,
+      grant_timing: :period_start,
+      pro_rated_by_fte: false
+    }
+
+    # The old terms stop granting at the end of June and are spendable to the end of September; the
+    # new ones take over from July, so the two overlap over the quarter between.
+    entitlement(
+      context,
+      quarterly,
+      Map.merge(quarterly_terms, %{granted_to: ~D[2024-06-30], effective_to: ~D[2024-09-30]})
+    )
+
+    entitlement(context, quarterly, Map.put(quarterly_terms, :effective_from, ~D[2024-07-01]))
+
+    entry = %{person_id: person.id, leave_type_id: quarterly.id}
+    adjusted = %{kind: :adjustment, amount: "5", reason: "Carried over by agreement"}
+
+    # Brought in before the old terms reached them, adjusted under them, and adjusted while both are
+    # in force: none of them says it lapses.
+    Fixtures.balance_entry(Map.put(entry, :amount, "30"))
+    Fixtures.balance_entry(entry |> Map.merge(adjusted) |> Map.put(:date, ~D[2024-05-01]))
+    Fixtures.balance_entry(entry |> Map.merge(adjusted) |> Map.put(:date, ~D[2024-08-01]))
+
+    statement = statement(person, quarterly, ~D[2024-10-01])
+    movements = movements(statement)
+
+    assert {:opening_balance, ~D[2024-01-01], Decimal.new("30.00"), ~D[2024-09-30]} in movements
+    assert {:adjustment, ~D[2024-05-01], Decimal.new("5.00"), ~D[2024-09-30]} in movements
+    assert {:adjustment, ~D[2024-08-01], Decimal.new("5.00"), nil} in movements
+
+    # The new terms' July and October grants, and the adjustment held under them.
+    assert Decimal.equal?(statement.balance, "21.00")
+
+    # The page listing entries reads the same lapse dates, while each entry keeps its own.
+    assert [{%{expires_on: nil}, ~D[2024-09-30]}, {_may, ~D[2024-09-30]}, {_august, nil}] =
+             Ledger.balance_entries(person)
+  end
+
   test "raising what an entitlement grants keeps what it has already granted", context do
     person = context.person
     full_time(person)

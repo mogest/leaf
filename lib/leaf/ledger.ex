@@ -13,6 +13,7 @@ defmodule Leaf.Ledger do
 
   alias Leaf.Dates
   alias Leaf.Leave
+  alias Leaf.Leave.BalanceEntry
   alias Leaf.Leave.Day
   alias Leaf.Ledger.Drawdown
   alias Leaf.Ledger.Grant
@@ -59,7 +60,7 @@ defmodule Leaf.Ledger do
       as_at: as_at,
       holidays: observed_holidays(person, spans),
       spans: spans,
-      entered: Leave.balance_entries(person, as_at),
+      entered: lapsing(person, Leave.balance_entries(person, as_at)),
       taken: taken,
       hours: hours,
       suspended: suspended(taken, leave_types, hours)
@@ -92,18 +93,63 @@ defmodule Leaf.Ledger do
   """
   @spec granted(Person.t()) :: MapSet.t(Ecto.UUID.t())
   def granted(person) do
-    employed = Date.range(person.employment_start_date, person.employment_end_date || @forever)
-
-    by_policy =
-      person
-      |> People.leave_policy_segments(employed)
-      |> Enum.flat_map(fn {span, policy} -> Policies.entitlements(policy.id, span) end)
-      |> Enum.reject(&(&1.amount_source == :none))
-
+    by_policy = Enum.map(lives(person), fn {_life, entitlement} -> entitlement end)
     by_hand = person |> Leave.balance_entries() |> Enum.filter(&Decimal.positive?(&1.amount))
 
     MapSet.new(by_policy ++ by_hand, & &1.leave_type_id)
   end
+
+  @doc """
+  Every balance figure entered for the person, oldest first, each with the date it lapses on.
+
+  An entry lapses with the entitlement it is held under, like anything that entitlement granted
+  (§4.8), so it lapses on its own `expires_on` or that entitlement's `effective_to`, whichever comes
+  first, and nil where neither does.
+  """
+  @spec balance_entries(Person.t()) :: [{BalanceEntry.t(), Date.t() | nil}]
+  def balance_entries(person), do: lapsing(person, Leave.balance_entries(person))
+
+  defp lapsing(person, entries) do
+    lives = lives(person)
+
+    Enum.map(entries, &{&1, Dates.earliest(&1.expires_on, ends_on(&1, lives))})
+  end
+
+  # Each entitlement that grants the person something, over the part of its life they are on it.
+  defp lives(person) do
+    employed = Date.range(person.employment_start_date, person.employment_end_date || @forever)
+
+    for {span, policy} <- People.leave_policy_segments(person, employed),
+        entitlement <- Policies.entitlements(policy.id, span),
+        entitlement.amount_source != :none,
+        {:ok, life} <- [
+          Dates.intersect(span, entitlement.effective_from, entitlement.effective_to)
+        ],
+        do: {life, entitlement}
+  end
+
+  # Where two entitlements' lives overlap, the entry is held under the one that succeeded the other,
+  # as a cap is (`Leaf.Ledger.Grant`). One dated before any entitlement reached the person — an
+  # opening balance brought in ahead of go-live — is held under the first that did.
+  defp ends_on(entry, lives) do
+    of_type =
+      for {life, held} <- lives, held.leave_type_id == entry.leave_type_id, do: {life, held}
+
+    case for({life, held} <- of_type, entry.date in life, do: held) do
+      [] -> of_type |> first_after(entry.date) |> effective_to()
+      holding -> Enum.max_by(holding, & &1.effective_from, Date).effective_to
+    end
+  end
+
+  defp first_after(lives, date) do
+    lives
+    |> Enum.filter(fn {life, _held} -> Date.after?(life.first, date) end)
+    |> Enum.min_by(fn {life, _held} -> life.first end, Date, fn -> {nil, nil} end)
+    |> elem(1)
+  end
+
+  defp effective_to(nil), do: nil
+  defp effective_to(entitlement), do: entitlement.effective_to
 
   @doc """
   The person's account in one leave type, or `:error` where they hold none.
@@ -199,8 +245,11 @@ defmodule Leaf.Ledger do
 
   defp statement(leave_type, context) do
     spans = Enum.filter(context.spans, &(&1.entitlement.leave_type_id == leave_type.id))
-    entered = of_type(context.entered, leave_type)
-    taken = of_type(context.taken, leave_type)
+
+    entered =
+      for {entry, _lapses_on} = row <- context.entered, of_type?(entry, leave_type), do: row
+
+    taken = Enum.filter(context.taken, &of_type?(&1, leave_type))
 
     case {spans, entered, taken} do
       {[], [], []} -> []
@@ -208,7 +257,7 @@ defmodule Leaf.Ledger do
     end
   end
 
-  defp of_type(rows, leave_type), do: Enum.filter(rows, &(&1.leave_type_id == leave_type.id))
+  defp of_type?(row, leave_type), do: row.leave_type_id == leave_type.id
 
   defp asked(days, unit, hours) do
     Enum.reduce(days, Decimal.new(0), &Decimal.add(&2, Day.in_unit(&1, unit, hours[&1.date])))
@@ -228,12 +277,12 @@ defmodule Leaf.Ledger do
     Statement.new(leave_type, context.as_at, movements, lots)
   end
 
-  defp entered_movement(entry) do
+  defp entered_movement({entry, lapses_on}) do
     %Movement{
       date: entry.date,
       kind: entry.kind,
       amount: entry.amount,
-      expires_on: entry.expires_on
+      expires_on: lapses_on
     }
   end
 
