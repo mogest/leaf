@@ -1,7 +1,7 @@
-defmodule Leaf.Ledger.GrantCycleTest do
+defmodule Leaf.Policies.GrantCycleTest do
   use ExUnit.Case, async: true
 
-  alias Leaf.Ledger.GrantCycle
+  alias Leaf.Policies.GrantCycle
 
   test "a yearly cycle runs from the day it is pinned to" do
     cycle = GrantCycle.new(3, 4, :year)

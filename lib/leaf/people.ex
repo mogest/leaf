@@ -314,6 +314,7 @@ defmodule Leaf.People do
   @spec dated([Person.t()]) :: [Person.t()]
   def dated(person_or_people) do
     Repo.preload(person_or_people, [
+      :organisation,
       :work_patterns,
       policy_assignments: [leave_policy: Policies.entitlements_preload()],
       calendar_assignments: [calendar: Org.holidays_preload()]

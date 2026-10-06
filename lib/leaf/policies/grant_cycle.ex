@@ -1,4 +1,4 @@
-defmodule Leaf.Ledger.GrantCycle do
+defmodule Leaf.Policies.GrantCycle do
   @moduledoc """
   The repeating run of periods an entitlement grants over.
 
