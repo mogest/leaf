@@ -241,22 +241,25 @@ defmodule Leaf.Leave do
   off the same dates, so anything showing months needs nothing else to draw them.
   """
   @spec calendar(Person.t(), Date.Range.t()) :: [Month.t()]
-  def calendar(person, range), do: Month.over(person, range, Booked.days(person, range))
+  def calendar(person, range) do
+    person = People.dated(person)
+
+    Month.over(person, range, Booked.days(person, range))
+  end
 
   @doc """
-  Each of `people` and their own dates across `range`, approved leave the only leave on them.
+  Everyone the organisation employs over `range` and their own dates across it, by name.
 
   The same days a calendar is drawn from, laid out as a row each rather than as months. Leave
   nobody has decided on yet is the person's own business, and an organisation-wide chart is the
-  broadest view there is (§5.5), so a day only asked for is one they are not away on.
+  broadest view there is (§5.5), so approved leave is the only leave on them.
   """
-  @spec away([Person.t()], Date.Range.t()) :: [{Person.t(), [Diary.day()]}]
-  def away(people, range) do
-    Enum.map(people, &{&1, Diary.over(&1, range, approved(&1, range))})
-  end
+  @spec away(Ecto.UUID.t(), Date.Range.t()) :: [{Person.t(), [Diary.day()]}]
+  def away(organisation_id, range) do
+    people = People.employed(organisation_id, range)
+    approved = Booked.approved(people, range)
 
-  defp approved(person, range) do
-    person |> Booked.days(range) |> Enum.filter(&(&1.leave_request.status == :approved))
+    Enum.map(people, &{&1, Diary.over(&1, range, Map.get(approved, &1.id, []))})
   end
 
   @doc """

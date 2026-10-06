@@ -70,6 +70,20 @@ defmodule Leaf.LeaveTest do
     })
   end
 
+  defp observes_in_region(context, holiday) do
+    country = Fixtures.calendar(%{organisation_id: context.organisation.id})
+
+    region =
+      Fixtures.calendar(%{
+        organisation_id: context.organisation.id,
+        parent_id: country.id,
+        name: "Wellington"
+      })
+
+    Fixtures.public_holiday(%{calendar_id: country.id, date: holiday})
+    Fixtures.calendar_assignment(%{person_id: context.person.id, calendar_id: region.id})
+  end
+
   # Public holidays are credited as a share of a leave type of their own, so this goes on the policy
   # the person is already on rather than replacing the terms their annual leave is offered under.
   defp crediting_holidays(context) do
@@ -86,6 +100,22 @@ defmodule Leaf.LeaveTest do
       amount_source: :public_holidays,
       grant_amount: nil
     })
+  end
+
+  # Counts the queries `fun` makes, and only those: any test running alongside queries too.
+  defp queries(fun) do
+    ref = make_ref()
+    :telemetry.attach(ref, [:leaf, :repo, :query], &__MODULE__.counted/4, {self(), ref})
+    fun.()
+    :telemetry.detach(ref)
+
+    Stream.repeatedly(fn -> receive(do: (^ref -> 1), after: (0 -> nil)) end)
+    |> Enum.take_while(& &1)
+    |> length()
+  end
+
+  def counted(_event, _measurements, _metadata, {test, ref}) do
+    if test in [self() | Process.get(:"$callers", [])], do: send(test, ref)
   end
 
   defp taken(context) do
@@ -481,6 +511,59 @@ defmodule Leaf.LeaveTest do
     assert %{leave: nil, working?: true} = days[~D[2026-08-24]]
     assert %{holiday: "Labour Day", working?: false} = days[~D[2026-08-26]]
     assert %{leave: nil, holiday: nil, working?: false} = days[@saturday]
+  end
+
+  test "who is away costs the same queries however many it shows, and leaves out who has left",
+       context do
+    observes_in_region(context, @friday)
+    crediting_holidays(context)
+    taken(context)
+    august = Date.range(~D[2026-08-01], ~D[2026-08-31])
+    alone = queries(fn -> Leave.away(context.organisation.id, august) end)
+
+    for {name, observing} <- [
+          {"Oren Castellan", &observes_in_region/2},
+          {"Pita Marsh", &observes/2}
+        ] do
+      colleague = Fixtures.person(%{organisation_id: context.organisation.id, name: name})
+      Fixtures.work_pattern(%{person_id: colleague.id})
+
+      Fixtures.policy_assignment(%{
+        person_id: colleague.id,
+        leave_policy_id: context.entitlement.leave_policy_id
+      })
+
+      joined = %{context | person: colleague}
+      observing.(joined, @friday)
+      taken(joined)
+    end
+
+    Fixtures.person(%{
+      organisation_id: context.organisation.id,
+      name: "Wren Okafor",
+      employment_end_date: ~D[2026-07-31]
+    })
+
+    assert queries(fn -> Leave.away(context.organisation.id, august) end) == alone
+
+    away = Leave.away(context.organisation.id, august)
+
+    assert Enum.map(away, &elem(&1, 0).name) == [
+             "Ines Vasquez",
+             "Oren Castellan",
+             "Pita Marsh",
+             "Rae Halloran",
+             "Toma Ferrer"
+           ]
+
+    assert for({person, days} <- away, %{leave: :approved} <- days, do: person.name) ==
+             ["Oren Castellan", "Pita Marsh", "Rae Halloran"]
+
+    assert for(
+             {person, days} <- away,
+             %{working?: true, holiday: "New Year's Day"} <- days,
+             do: person.name
+           ) == ["Oren Castellan", "Pita Marsh", "Rae Halloran"]
   end
 
   describe "awaiting/1" do

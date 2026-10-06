@@ -171,26 +171,30 @@ defmodule Leaf.Org do
     )
   end
 
+  @doc "What `observed_holidays/2` reads of a calendar, to load it for many calendars at once."
+  @spec holidays_preload() :: list()
+  def holidays_preload, do: [:public_holidays, parent: :public_holidays]
+
   @doc """
   Every public holiday somebody on a calendar observes within `range`, in date order.
 
   A region observes its country's holidays as well as its own, and cannot decline one of them.
   """
-  @spec observed_holidays(Ecto.UUID.t(), Date.Range.t()) :: [PublicHoliday.t()]
-  def observed_holidays(calendar_id, range) do
+  @spec observed_holidays(Calendar.t(), Date.Range.t()) :: [PublicHoliday.t()]
+  def observed_holidays(calendar, range) do
+    %{public_holidays: own, parent: country} = Repo.preload(calendar, holidays_preload())
+
     # A region that enters a day its country already keeps is still one day off, and an allowance
     # that counted it twice would be worth two. So a date is observed once, under the nearer of the
     # two names for it.
-    Repo.all(
-      from holiday in PublicHoliday,
-        join: calendar in Calendar,
-        on: calendar.id == ^calendar_id,
-        where: holiday.calendar_id in [calendar.id, calendar.parent_id],
-        where: holiday.date >= ^range.first and holiday.date <= ^range.last,
-        distinct: holiday.date,
-        order_by: [asc: holiday.date, desc: holiday.calendar_id == ^calendar_id]
-    )
+    (own ++ holidays(country))
+    |> Enum.uniq_by(& &1.date)
+    |> Enum.filter(&(&1.date in range))
+    |> Enum.sort_by(& &1.date, Date)
   end
+
+  defp holidays(nil), do: []
+  defp holidays(country), do: country.public_holidays
 
   defp region_of(%Calendar{parent_id: nil} = country) do
     %Calendar{

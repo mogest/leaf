@@ -46,6 +46,7 @@ defmodule Leaf.Ledger do
   """
   @spec statements(Person.t(), Date.t(), [Day.t()]) :: [Statement.t()]
   def statements(person, as_at, days \\ []) do
+    person = People.dated(person)
     as_at = Enum.reduce(days, as_at, &Enum.max([&1.date, &2], Date))
     {:ok, organisation} = Org.fetch_organisation(person.organisation_id)
     spans = Span.all(person, organisation, as_at)
@@ -96,7 +97,7 @@ defmodule Leaf.Ledger do
     by_policy =
       person
       |> People.leave_policy_segments(employed)
-      |> Enum.flat_map(fn {span, policy_id} -> Policies.entitlements(policy_id, span) end)
+      |> Enum.flat_map(fn {span, policy} -> Policies.entitlements(policy.id, span) end)
       |> Enum.reject(&(&1.amount_source == :none))
 
     by_hand = person |> Leave.balance_entries() |> Enum.filter(&Decimal.positive?(&1.amount))

@@ -87,7 +87,6 @@ defmodule LeafWeb.WhoIsAwayLive do
     viewer = socket.assigns.current_person
 
     viewer.organisation_id
-    |> People.people()
     |> Leave.away(range)
     |> Enum.map(&row(&1, viewer, today))
   end

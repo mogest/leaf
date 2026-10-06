@@ -30,6 +30,8 @@ defmodule Leaf.People do
   alias Leaf.People.PersonPolicyAssignment
   alias Leaf.People.Timeline
   alias Leaf.People.WorkPattern
+  alias Leaf.Policies
+  alias Leaf.Policies.LeavePolicy
   alias Leaf.Repo
 
   @typedoc "A stretch of dates over which one answer holds."
@@ -181,7 +183,7 @@ defmodule Leaf.People do
   """
   @spec fetch_work_pattern_on(Person.t(), Date.t()) :: {:ok, WorkPattern.t()} | :error
   def fetch_work_pattern_on(person, date) do
-    person |> succession(WorkPattern) |> Timeline.fetch(date)
+    person |> succession(:work_patterns) |> Timeline.fetch(date)
   end
 
   @doc "One of the person's work patterns, or `:error` where it is not theirs."
@@ -239,7 +241,7 @@ defmodule Leaf.People do
   @doc "Each work pattern the person is on over part of `range`, with the span it covers."
   @spec work_pattern_segments(Person.t(), Date.Range.t()) :: [segment(WorkPattern.t())]
   def work_pattern_segments(person, range) do
-    person |> succession(WorkPattern) |> Timeline.segments(range)
+    person |> succession(:work_patterns) |> Timeline.segments(range)
   end
 
   @doc """
@@ -275,13 +277,13 @@ defmodule Leaf.People do
     person |> work_pattern_segments!(range) |> hours_worked()
   end
 
-  @doc "The id of the leave policy the person is on over each part of `range`."
-  @spec leave_policy_segments(Person.t(), Date.Range.t()) :: [segment(Ecto.UUID.t())]
+  @doc "The leave policy the person is on over each part of `range`."
+  @spec leave_policy_segments(Person.t(), Date.Range.t()) :: [segment(LeavePolicy.t())]
   def leave_policy_segments(person, range) do
     person
-    |> succession(PersonPolicyAssignment)
+    |> succession(:policy_assignments, :leave_policy)
     |> Timeline.segments(range)
-    |> Enum.map(fn {span, assignment} -> {span, assignment.leave_policy_id} end)
+    |> Enum.map(fn {span, assignment} -> {span, assignment.leave_policy} end)
   end
 
   @doc """
@@ -300,6 +302,35 @@ defmodule Leaf.People do
         distinct: true,
         order_by: person.name
     )
+  end
+
+  @doc """
+  Loads every effective-dated row a person's days are read from, for one person or many at once.
+
+  Whatever reads their days afterwards reads it from here rather than asking again, so the days of
+  the whole organisation cost no more than one person's.
+  """
+  @spec dated(Person.t()) :: Person.t()
+  @spec dated([Person.t()]) :: [Person.t()]
+  def dated(person_or_people) do
+    Repo.preload(person_or_people, [
+      :work_patterns,
+      policy_assignments: [leave_policy: Policies.entitlements_preload()],
+      calendar_assignments: [calendar: Org.holidays_preload()]
+    ])
+  end
+
+  @doc "Everyone an organisation employs over any part of `range`, by name, `dated/1`."
+  @spec employed(Ecto.UUID.t(), Date.Range.t()) :: [Person.t()]
+  def employed(organisation_id, range) do
+    Repo.all(
+      from person in Person,
+        where: person.organisation_id == ^organisation_id,
+        where: person.employment_start_date <= ^range.last,
+        where: is_nil(person.employment_end_date) or person.employment_end_date >= ^range.first,
+        order_by: person.name
+    )
+    |> dated()
   end
 
   @doc "Everyone in an organisation, by name."
@@ -352,7 +383,10 @@ defmodule Leaf.People do
   """
   @spec time_zone(Person.t()) :: String.t()
   def time_zone(person) do
-    person |> succession(PersonCalendar, :calendar) |> Timeline.fetch(Date.utc_today()) |> zone()
+    person
+    |> succession(:calendar_assignments, :calendar)
+    |> Timeline.fetch(Date.utc_today())
+    |> zone()
   end
 
   @doc "The hours worked over a full week under a work pattern."
@@ -377,19 +411,19 @@ defmodule Leaf.People do
     from row in schema, where: row.person_id == ^person.id, order_by: row.effective_from
   end
 
-  defp succession(person, schema, preloads \\ []) do
-    Repo.all(from row in schema, where: row.person_id == ^person.id, preload: ^preloads)
+  defp succession(person, rows, preloads \\ []) do
+    person |> Repo.preload([{rows, preloads}]) |> Map.fetch!(rows)
   end
 
   defp calendar_segments(person, range) do
     person
-    |> succession(PersonCalendar)
+    |> succession(:calendar_assignments, :calendar)
     |> Timeline.segments(range)
-    |> Enum.map(fn {span, assignment} -> {span, assignment.calendar_id} end)
+    |> Enum.map(fn {span, assignment} -> {span, assignment.calendar} end)
   end
 
   defp observed(segments) do
-    Enum.flat_map(segments, fn {span, calendar_id} -> Org.observed_holidays(calendar_id, span) end)
+    Enum.flat_map(segments, fn {span, calendar} -> Org.observed_holidays(calendar, span) end)
   end
 
   defp zone({:ok, assignment}), do: assignment.calendar.time_zone

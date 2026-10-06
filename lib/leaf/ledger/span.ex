@@ -61,9 +61,7 @@ defmodule Leaf.Ledger.Span do
 
         person
         |> People.leave_policy_segments(range)
-        |> Enum.flat_map(fn {assigned, policy_id} ->
-          policy_spans(context, policy_id, assigned)
-        end)
+        |> Enum.flat_map(fn {assigned, policy} -> policy_spans(context, policy.id, assigned) end)
     end
   end
 
