@@ -95,6 +95,9 @@ defmodule LeafWeb.SettingsLiveTest do
     )
     |> render_submit()
 
+    {:ok, _live, html} = live(context.conn, ~p"/settings/policies")
+    assert html =~ "one leave type"
+
     {:ok, live, html} = live(context.conn, ~p"/settings/policies/#{policy}")
 
     assert html =~ "160 hours each year, reckoned from their start date, accruing day by day"

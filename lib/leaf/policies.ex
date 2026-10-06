@@ -201,9 +201,11 @@ defmodule Leaf.Policies do
     Repo.all(from type in all_leave_types(organisation_id), where: is_nil(type.archived_at))
   end
 
-  @doc "Every leave policy the organisation offers, withdrawn ones included, by name."
+  @doc "Every leave policy the organisation offers, withdrawn ones included, with its entitlements, by name."
   @spec leave_policies(Ecto.UUID.t()) :: [LeavePolicy.t()]
-  def leave_policies(organisation_id), do: Repo.all(all_leave_policies(organisation_id))
+  def leave_policies(organisation_id) do
+    Repo.all(from policy in all_leave_policies(organisation_id), preload: :entitlements)
+  end
 
   @doc "The leave policies still offered, which are the ones somebody may be put on."
   @spec leave_policies_offered(Ecto.UUID.t()) :: [LeavePolicy.t()]
