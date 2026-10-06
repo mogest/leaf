@@ -556,31 +556,6 @@ defmodule Leaf.LedgerTest do
              [{:grant, @started, Decimal.new("7.20"), nil}]
   end
 
-  test "a public holiday allowance is not worked out over an unknown calendar", context do
-    person = context.person
-    part_time(person)
-    allowance = leave_type(context, %{name: "Public holiday allowance", position: 2})
-
-    entitlement(context, allowance, %{
-      amount_source: :public_holidays,
-      grant_amount: nil,
-      grant_timing: :period_start
-    })
-
-    calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
-    Fixtures.public_holiday(%{calendar_id: calendar.id, date: ~D[2024-12-25]})
-
-    Fixtures.calendar_assignment(%{
-      person_id: person.id,
-      calendar_id: calendar.id,
-      effective_from: ~D[2024-06-01]
-    })
-
-    assert_raise RuntimeError, ~r/no calendar in force on 2024-03-04/, fn ->
-      Ledger.statements(person, ~D[2024-04-01])
-    end
-  end
-
   test "a daily public holiday allowance credits each holiday as it falls", context do
     person = context.person
     part_time(person)
@@ -995,6 +970,24 @@ defmodule Leaf.LedgerTest do
     refute Ledger.ready?(person, ~D[2025-03-03])
     assert Ledger.statements(person, ~D[2025-03-03]) == []
     assert Ledger.awaiting(person) == %{}
+  end
+
+  test "nothing is worked out where public holidays are counted over an unknown calendar",
+       context do
+    person = context.person
+    part_time(person)
+    allowance = leave_type(context, %{name: "Public holiday allowance", position: 2})
+    entitlement(context, allowance, %{amount_source: :public_holidays, grant_amount: nil})
+    calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
+
+    Fixtures.calendar_assignment(%{
+      person_id: person.id,
+      calendar_id: calendar.id,
+      effective_from: ~D[2024-06-01]
+    })
+
+    refute Ledger.ready?(person, ~D[2024-04-01])
+    assert Ledger.statements(person, ~D[2024-04-01]) == []
   end
 
   test "an accrual of nothing is not a movement", context do

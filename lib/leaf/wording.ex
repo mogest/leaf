@@ -129,14 +129,16 @@ defmodule Leaf.Wording do
   @doc """
   Why somebody has no balance to show, `who` being "you" or "they".
 
-  `ready?` is `Leaf.Ledger.ready?/2`: a record with a stretch on no work pattern has no balance that
-  can be worked out, which is not the same as holding none.
+  `ready?` is `Leaf.Ledger.ready?/2`: a record with a stretch on no work pattern, or on no calendar
+  where public holidays are counted, has no balance that can be worked out, which is not the same as
+  holding none.
   """
   @spec no_balance(boolean(), String.t()) :: String.t()
   def no_balance(true, who), do: "#{String.capitalize(who)} hold no balance in anything."
 
   def no_balance(false, who),
-    do: "No balance can be worked out until #{who} are on a work pattern throughout."
+    do:
+      "No balance can be worked out until #{who} are on a work pattern and a calendar throughout."
 
   @doc "Whether approving would take any balance it draws on under nothing."
   @spec overdrawn?([Statement.t()]) :: boolean()

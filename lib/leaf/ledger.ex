@@ -219,14 +219,29 @@ defmodule Leaf.Ledger do
   earlier: leave dated before tracking started is filed on a pattern reaching back over it, and
   removing that pattern leaves the leave with nothing to be measured against. A pattern runs on
   until the next supersedes it, so one in force on that first date is in force on every date after.
+
+  A calendar is needed only where an allowance counts public holidays, and then throughout the
+  range they are counted over, since a stretch on no calendar would count as none rather than as
+  unknown. It too runs on until superseded.
   """
   @spec ready?(Person.t(), Date.t()) :: boolean()
   def ready?(person, as_at) do
     {:ok, organisation} = Org.fetch_organisation(person.organisation_id)
 
     case Dates.earliest(tracked_from(person, organisation, as_at), Leave.first_filed_on(person)) do
-      nil -> true
-      from -> People.fetch_work_pattern_on(person, from) != :error
+      nil ->
+        true
+
+      from ->
+        People.fetch_work_pattern_on(person, from) != :error and
+          calendared?(person, organisation, as_at)
+    end
+  end
+
+  defp calendared?(person, organisation, as_at) do
+    case holidays_counted_over(Span.all(person, organisation, as_at)) do
+      :error -> true
+      {:ok, range} -> People.fetch_country_on(person, range.first) != :error
     end
   end
 
@@ -305,21 +320,26 @@ defmodule Leaf.Ledger do
     end
   end
 
+  defp observed_holidays(person, spans) do
+    case holidays_counted_over(spans) do
+      :error -> []
+      {:ok, range} -> holidays(person, range)
+    end
+  end
+
   # A public holiday allowance is counted over the range its grant is measured over, which for a
   # block grant is a whole period and so may run past the date being asked about, so the calendar
   # is read over those rather than the range. Nothing else needs it, so nothing else pays for
   # reading it.
-  defp observed_holidays(person, spans) do
+  defp holidays_counted_over(spans) do
     spans
     |> Enum.filter(&(&1.entitlement.amount_source == :public_holidays))
     |> Enum.flat_map(&Grant.measured/1)
-    |> counted_holidays(person)
-  end
-
-  defp counted_holidays([], _person), do: []
-
-  defp counted_holidays(ranges, person) do
-    holidays(person, Dates.spanning(Enum.flat_map(ranges, &[&1.first, &1.last])))
+    |> Enum.flat_map(&[&1.first, &1.last])
+    |> case do
+      [] -> :error
+      dates -> {:ok, Dates.spanning(dates)}
+    end
   end
 
   # The count claims to be the period's whole share of the calendar, so a period the person is on no
