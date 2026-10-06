@@ -18,7 +18,8 @@ defmodule Leaf.AuditTest do
     %{organisation: organisation, actor: actor, person: person}
   end
 
-  test "an insert is recorded against the row it created, with what it set", context do
+  test "an insert is recorded against the row it created, with what it set and the ids of rows nested in it",
+       context do
     %{actor: actor, person: person} = context
     leave_type = Fixtures.leave_type(%{organisation_id: context.organisation.id})
 
@@ -44,7 +45,8 @@ defmodule Leaf.AuditTest do
     assert entry.entity_id == filed.id
     assert entry.actor_id == actor.id
     assert entry.changes["note"] == %{"from" => nil, "to" => "Away"}
-    assert [%{"amount" => "8.00", "unit" => "hours"}] = entry.changes["days"]["to"]
+    assert [%{"id" => id, "amount" => "8.00", "unit" => "hours"}] = entry.changes["days"]["to"]
+    assert [%{id: ^id}] = filed.days
   end
 
   test "an update is recorded with the value it replaced", context do
@@ -75,30 +77,6 @@ defmodule Leaf.AuditTest do
     assert changes["date"] == %{"from" => "2026-06-19", "to" => nil}
     assert changes["name"] == %{"from" => "Entered twice", "to" => nil}
     assert Repo.all(PublicHoliday) == []
-  end
-
-  test "a change to nested rows names the rows it created", context do
-    %{actor: actor, person: person} = context
-    leave_type = Fixtures.leave_type(%{organisation_id: context.organisation.id})
-
-    days = [
-      %{
-        leave_type_id: leave_type.id,
-        date: ~D[2026-08-20],
-        amount: "8",
-        unit: :hours,
-        hours_in_day: "8"
-      }
-    ]
-
-    assert {:ok, filed} =
-             %Request{person_id: person.id, submitted_by_id: person.id, status: :pending}
-             |> Request.changeset(%{days: days})
-             |> Audit.write("leave_request.requested", actor, person.id)
-
-    assert [%{changes: changes}] = Repo.all(Entry)
-    assert [%{"id" => id}] = changes["days"]["to"]
-    assert [%{id: ^id}] = filed.days
   end
 
   test "a created row's entry names what it belongs to", %{

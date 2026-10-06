@@ -89,7 +89,7 @@ defmodule LeafWeb.PagesTest do
 
     Enum.each(paths, fn path ->
       assert {:ok, _live, html} = live(context.conn, path)
-      assert html =~ "Fernbank Collective" or html =~ "<h1>"
+      assert html =~ "<h1>"
     end)
   end
 
