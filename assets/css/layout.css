@@ -712,6 +712,18 @@ main.who-is-away {
   }
 }
 
+main.chart {
+  & li {
+    padding-block-start: var(--step-2);
+  }
+
+  & li > ul {
+    margin-inline-start: var(--step-1);
+    padding-inline-start: var(--step-5);
+    border-inline-start: 1px solid var(--rule-firm);
+  }
+}
+
 /* What is waiting on you: a card a decision, read top to bottom — who and when, what they said,
    what saying yes leaves them, and the saying of it. Cards rather than a running list because each
    one is answered on its own, and narrower than the measure so the figure stays beside the ask. */

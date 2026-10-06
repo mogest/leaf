@@ -37,6 +37,9 @@ defmodule Leaf.People do
   @typedoc "A stretch of dates over which one answer holds."
   @type segment(value) :: {Date.Range.t(), value}
 
+  @typedoc "A person, and the same again for each of their reports."
+  @type tree :: {Person.t(), [tree()]}
+
   @doc "Creates a person."
   @spec create_person(Organisation.t(), Person.t() | nil, map()) :: Audit.written(Person.t())
   def create_person(organisation, actor, attrs) do
@@ -332,14 +335,22 @@ defmodule Leaf.People do
   @doc "Everyone an organisation employs over any part of `range`, by name, `dated/1`."
   @spec employed(Ecto.UUID.t(), Date.Range.t()) :: [Person.t()]
   def employed(organisation_id, range) do
-    Repo.all(
-      from person in Person,
-        where: person.organisation_id == ^organisation_id,
-        where: person.employment_start_date <= ^range.last,
-        where: is_nil(person.employment_end_date) or person.employment_end_date >= ^range.first,
-        order_by: person.name
-    )
-    |> dated()
+    organisation_id |> employing(range) |> Repo.all() |> dated()
+  end
+
+  @doc """
+  Everyone an organisation employs on `date`, each under their manager, by name.
+
+  Somebody whose manager is not employed that day heads a tree of their own, as does somebody with
+  no manager at all.
+  """
+  @spec chart(Ecto.UUID.t(), Date.t()) :: [tree()]
+  def chart(organisation_id, date) do
+    people = Repo.all(employing(organisation_id, Date.range(date, date)))
+    ids = MapSet.new(people, & &1.id)
+    reports = Enum.group_by(people, & &1.manager_id)
+
+    people |> Enum.reject(&MapSet.member?(ids, &1.manager_id)) |> branches(reports)
   end
 
   @doc "Everyone in an organisation, by name."
@@ -413,6 +424,18 @@ defmodule Leaf.People do
   @doc "The fraction of the organisation's full-time week a work pattern works, for display."
   @spec fte(WorkPattern.t(), Decimal.t()) :: Decimal.t()
   defdelegate fte(work_pattern, full_time_week_hours), to: WorkPattern
+
+  defp employing(organisation_id, range) do
+    from person in Person,
+      where: person.organisation_id == ^organisation_id,
+      where: person.employment_start_date <= ^range.last,
+      where: is_nil(person.employment_end_date) or person.employment_end_date >= ^range.first,
+      order_by: person.name
+  end
+
+  defp branches(people, reports) do
+    Enum.map(people, &{&1, branches(Map.get(reports, &1.id, []), reports)})
+  end
 
   defp fetch_of(schema, person, id), do: Repo.fetch(schema, id, person_id: person.id)
 

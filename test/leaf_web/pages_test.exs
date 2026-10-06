@@ -49,6 +49,7 @@ defmodule LeafWeb.PagesTest do
       ~p"/leave/new",
       ~p"/approvals",
       ~p"/away",
+      ~p"/chart",
       ~p"/balances",
       ~p"/balances/#{context.leave_type}",
       ~p"/people/#{who}",

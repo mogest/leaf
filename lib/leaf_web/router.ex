@@ -78,6 +78,7 @@ defmodule LeafWeb.Router do
       live "/leave/:id/amend", RequestLeaveLive, :amend
       live "/approvals", ApprovalsLive
       live "/away", WhoIsAwayLive
+      live "/chart", ChartLive
       live "/balances", BalancesLive
       live "/balances/:leave_type_id", BalancesLive
       live "/people", PeopleLive

@@ -18,6 +18,7 @@ defmodule LeafWeb.Layouts do
     {"Your balances", "/balances", ~w(balances)},
     {"Your requests", "/leave", ~w(your-requests)},
     {"Who's away", "/away", ~w(who-is-away)},
+    {"Org chart", "/chart", ~w(chart)},
     @approvals
   ]
 
