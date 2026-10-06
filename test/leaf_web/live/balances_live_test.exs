@@ -62,6 +62,7 @@ defmodule LeafWeb.BalancesLiveTest do
     assert html =~ "100 hours"
     assert html =~ "lapses 31 December 2030"
     assert html =~ "Brought in"
+    assert html =~ "Employed from 4 March 2024"
   end
 
   test "a date that is not a date reads as today", context do
@@ -206,6 +207,7 @@ defmodule LeafWeb.BalancesLiveTest do
     {:ok, _live, html} = live(sign_in(build_conn(), admin), path)
 
     assert html =~ "Rae Halloran"
+    assert html =~ "Employed from 4 March 2024"
     assert html =~ "100 hours"
   end
 end
