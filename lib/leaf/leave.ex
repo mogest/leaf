@@ -138,6 +138,15 @@ defmodule Leaf.Leave do
     end
   end
 
+  @doc "Archives a balance entry, after which it counts in nothing and shows nowhere."
+  @spec archive_balance_entry(BalanceEntry.t(), Person.t() | nil) ::
+          Audit.written(BalanceEntry.t())
+  def archive_balance_entry(entry, actor) do
+    entry
+    |> Ecto.Changeset.change(archived_at: DateTime.truncate(DateTime.utc_now(), :second))
+    |> Audit.write("balance_entry.archived", actor, entry.person_id)
+  end
+
   @doc "The changeset a balance entry's form binds to."
   @spec change_balance_entry(Person.t(), map()) :: Ecto.Changeset.t()
   def change_balance_entry(person, attrs) do
@@ -402,6 +411,10 @@ defmodule Leaf.Leave do
   def revisable?(%{status: :approved} = request, actor), do: approver?(request.person, actor)
   def revisable?(_request, _actor), do: false
 
+  @doc "One of a person's balance entries, unless it has been archived."
+  @spec fetch_balance_entry(Person.t(), Ecto.UUID.t()) :: {:ok, BalanceEntry.t()} | :error
+  def fetch_balance_entry(person, id), do: Repo.fetch(entered(person), id)
+
   @doc "Every balance figure entered for a person, oldest first, whatever it is dated."
   @spec balance_entries(Person.t()) :: [BalanceEntry.t()]
   def balance_entries(person), do: Repo.all(entered(person))
@@ -413,7 +426,9 @@ defmodule Leaf.Leave do
   end
 
   defp entered(person) do
-    from entry in BalanceEntry, where: entry.person_id == ^person.id, order_by: entry.date
+    from entry in BalanceEntry,
+      where: entry.person_id == ^person.id and is_nil(entry.archived_at),
+      order_by: entry.date
   end
 
   defp overseen(%{role: :admin} = approver) do

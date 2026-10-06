@@ -54,6 +54,13 @@ defmodule LeafWeb.PersonLive do
     {:noreply, remove(socket, assignment, &People.delete_calendar_assignment/2)}
   end
 
+  @role :admin
+  def handle_event("archive-balance-entry", %{"id" => id}, socket) do
+    entry = Leave.fetch_balance_entry(socket.assigns.person, id)
+
+    {:noreply, remove(socket, entry, &Leave.archive_balance_entry/2)}
+  end
+
   @role :member
   def handle_event("cancel-request", %{"id" => id}, socket) do
     {:noreply, socket |> Parts.cancel_request(id) |> loaded()}
@@ -198,6 +205,7 @@ defmodule LeafWeb.PersonLive do
                 <th scope="col">Amount</th>
                 <th scope="col">Lapses</th>
                 <th :if={@reasons?} scope="col">Reason</th>
+                <th :if={@admin?} scope="col"></th>
               </tr>
             </thead>
             <tbody>
@@ -208,6 +216,18 @@ defmodule LeafWeb.PersonLive do
                 <td>{entry.amount}</td>
                 <td>{entry.expires}</td>
                 <td :if={@reasons?}>{entry.reason}</td>
+                <td :if={@admin?}>
+                  <Parts.row_menu id={"balance-entry-#{entry.id}"} label={entry.kind}>
+                    <button
+                      type="button"
+                      phx-click="archive-balance-entry"
+                      phx-value-id={entry.id}
+                      data-confirm="Archive this entry? It stops counting in every balance. Enter the right figure afresh if it was wrong."
+                    >
+                      Archive
+                    </button>
+                  </Parts.row_menu>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -373,6 +393,7 @@ defmodule LeafWeb.PersonLive do
     leave_type = Map.fetch!(leave_types, entry.leave_type_id)
 
     %{
+      id: entry.id,
       date: Wording.brief_date(entry.date),
       kind: kind(entry.kind),
       leave_type: leave_type.name,

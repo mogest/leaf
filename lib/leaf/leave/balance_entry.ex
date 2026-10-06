@@ -9,6 +9,10 @@ defmodule Leaf.Leave.BalanceEntry do
 
   `expires_on` gives an entry a lapse date of its own, which an import needs: a quarterly balance
   carried in at go-live lapses at the end of the quarter it lands in.
+
+  An entry is never changed or deleted. A wrong one is archived, after which it counts in nothing
+  and its audit entry is all that is left of it; correcting it is archiving it and entering the
+  right one.
   """
 
   use Leaf.Schema
@@ -28,6 +32,7 @@ defmodule Leaf.Leave.BalanceEntry do
     field :amount, :decimal
     field :expires_on, :date
     field :reason, :string
+    field :archived_at, :utc_datetime
 
     belongs_to :person, Person
     belongs_to :leave_type, LeaveType

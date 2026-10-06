@@ -25,10 +25,10 @@ defmodule Leaf.Repo do
   `within` scopes the lookup to the parent the row hangs off, so an id belonging to somebody
   else reads as missing rather than as theirs.
   """
-  @spec fetch(module(), term(), keyword()) :: {:ok, struct()} | :error
-  def fetch(schema, id, within \\ []) do
+  @spec fetch(Ecto.Queryable.t(), term(), keyword()) :: {:ok, struct()} | :error
+  def fetch(queryable, id, within \\ []) do
     case Ecto.UUID.cast(id) do
-      {:ok, id} -> schema |> get_by([{:id, id} | within]) |> found()
+      {:ok, id} -> queryable |> get_by([{:id, id} | within]) |> found()
       :error -> :error
     end
   end
