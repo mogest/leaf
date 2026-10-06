@@ -24,7 +24,7 @@ defmodule LeafWeb.BalancesLive do
     opening_balance: "Brought in",
     adjustment: "Adjusted",
     grant: "Granted",
-    accrual: "Accrued",
+    accrual: "Earned",
     taken: "Taken",
     expiry: "Lapsed",
     rollover_cap: "Over the cap"
@@ -79,8 +79,8 @@ defmodule LeafWeb.BalancesLive do
             <h2>{@account.name} <small>as at {@account.as_at}</small></h2>
           </header>
           <dl>
-            <dt>Held</dt>
-            <dd>{@account.held}</dd>
+            <dt>Accrued</dt>
+            <dd>{@account.accrued}</dd>
             <dd :if={@account.awaiting} data-awaiting>{@account.awaiting}</dd>
           </dl>
         </section>
@@ -261,7 +261,7 @@ defmodule LeafWeb.BalancesLive do
     %{
       name: leave_type.name,
       as_at: Wording.date(as_at),
-      held: figure(statement, leave_type, granted),
+      accrued: figure(statement, leave_type, granted),
       awaiting: Wording.asked(Ledger.awaiting(person)[leave_type.id], leave_type.unit),
       lots: lots(statement, leave_type),
       movements: movements(statement, leave_type)
