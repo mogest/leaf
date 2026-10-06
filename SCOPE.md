@@ -66,7 +66,8 @@ is preserved.
 Work patterns, policy assignments, leave types, entitlements, leave records and calendars can
 all be created, amended or removed **retrospectively**. Admins can insert a work
 pattern change that started six months ago, correct an FTE that was wrong all year, or fix a
-back-dated start date.
+back-dated start date. A policy or calendar assignment, or a public holiday, is corrected by
+removing it and adding it again; only a work pattern is amended in place.
 
 When that happens the system recalculates accruals, grants, expiries and balances from the
 effective date forward, shows what changed, and records it in the audit log. Already-recorded
