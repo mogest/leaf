@@ -172,6 +172,10 @@ defmodule Leaf.Leave do
   @spec hours_per_day!(Person.t(), Date.Range.t()) :: [{Date.t(), Decimal.t()}]
   def hours_per_day!(person, range), do: WorkingDay.hours_per_day!(person, range)
 
+  @doc "What a day of leave is worth in `unit`, given the hours its person works on its date."
+  @spec in_unit(Day.t(), Day.unit(), Decimal.t()) :: Decimal.t()
+  defdelegate in_unit(day, unit, hours), to: Day
+
   @doc """
   Every day of approved leave a person holds, oldest first.
 
