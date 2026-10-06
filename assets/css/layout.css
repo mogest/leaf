@@ -106,8 +106,8 @@ body > div[data-phx-main] {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      inline-size: 1.5625rem;
-      block-size: 1.5625rem;
+      inline-size: 2rem;
+      block-size: 2rem;
       border-radius: var(--pill);
       background: var(--green-wash);
       color: var(--green-ink);
