@@ -56,8 +56,10 @@ defmodule LeafWeb.BalancesLiveTest do
   end
 
   test "the page reads the first account, saying what is held and how it got there", context do
-    {:ok, _live, html} = live(context.conn, ~p"/balances")
+    {:ok, live, html} = live(context.conn, ~p"/balances")
 
+    assert html =~ "<h1>Your balances</h1>"
+    assert has_element?(live, ~s(#pages a[aria-current]), "Your balances")
     assert html =~ "Annual leave"
     assert html =~ "100 hours"
     assert html =~ "lapses 31 December 2030"
@@ -68,7 +70,7 @@ defmodule LeafWeb.BalancesLiveTest do
   test "a date that is not a date reads as today", context do
     {:ok, _live, html} = live(context.conn, ~p"/balances?as_at[x]=1")
 
-    assert html =~ "Balances"
+    assert html =~ "Your balances"
   end
 
   test "balances that are not there are not theirs to read", context do
@@ -204,8 +206,11 @@ defmodule LeafWeb.BalancesLiveTest do
       Fixtures.person(%{organisation_id: context.organisation.id, name: "Kit Rua", role: :admin})
 
     path = ~p"/people/#{context.person}/balances/#{context.leave_type}"
-    {:ok, _live, html} = live(sign_in(build_conn(), admin), path)
+    {:ok, live, html} = live(sign_in(build_conn(), admin), path)
 
+    assert html =~ "<h1>Balances</h1>"
+    assert has_element?(live, ~s(#pages a[aria-current]), "People")
+    refute has_element?(live, ~s(#pages a[aria-current]), "Your balances")
     assert html =~ "Rae Halloran"
     assert html =~ "Employed from 4 March 2024"
     assert html =~ "100 hours"

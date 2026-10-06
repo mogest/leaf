@@ -49,9 +49,9 @@ defmodule LeafWeb.BalancesLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="balances" viewer={@viewer}>
+    <Layouts.app flash={@flash} page="balances" rail={@rail} viewer={@viewer}>
       <header>
-        <h1>Balances</h1>
+        <h1>{@heading}</h1>
         <.link :if={!@mine?} navigate={~p"/people/#{@person}"}>{@person.name}</.link>
         <p>Employed {@employment}</p>
       </header>
@@ -169,6 +169,8 @@ defmodule LeafWeb.BalancesLive do
 
     socket
     |> assign(:page_title, title(person, mine?))
+    |> assign(:heading, heading(mine?))
+    |> assign(:rail, rail(mine?))
     |> assign(:person, person)
     |> assign(:employment, Wording.employment(person))
     |> assign(:mine?, mine?)
@@ -179,8 +181,14 @@ defmodule LeafWeb.BalancesLive do
     |> assign(:nothing, nothing(accounts, person, mine?, as_at))
   end
 
-  defp title(_person, true), do: "Balances"
+  defp title(_person, true), do: "Your balances"
   defp title(person, false), do: "#{person.name}'s balances"
+
+  defp heading(true), do: "Your balances"
+  defp heading(false), do: "Balances"
+
+  defp rail(true), do: nil
+  defp rail(false), do: "people"
 
   defp accounts(person, as_at, id) do
     case Ledger.ready?(person, as_at) do
