@@ -373,8 +373,14 @@ li > button[popovertarget] {
     color: var(--ochre);
   }
 
+  & > p {
+    padding-block-start: var(--step-3);
+    font-size: var(--size-base);
+    color: var(--ink-soft);
+  }
+
   /* Waiting on an answer is not time running out, so it is not coloured as though it were. */
-  & dd[data-awaiting] {
+  & [data-awaiting] {
     color: var(--waiting);
   }
 }
