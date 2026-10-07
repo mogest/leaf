@@ -135,27 +135,12 @@ li > button[popovertarget] {
   flex-wrap: wrap;
   gap: var(--step-1);
   border-block-end: 1px solid var(--rule-firm);
+  color: var(--ink-quiet);
 
   & a {
-    display: flex;
-    align-items: center;
     block-size: 2.125rem;
-    padding-inline: var(--step-3);
-    border-radius: var(--radius) var(--radius) 0 0;
-    color: var(--ink-quiet);
-    font-size: var(--size-base);
-
-    &:hover {
-      background: var(--ground);
-      color: var(--ink);
-      text-decoration: none;
-    }
-
-    &[aria-current="page"] {
-      background: var(--green-wash);
-      color: var(--green-ink);
-      font-weight: 600;
-    }
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
   }
 }
 
