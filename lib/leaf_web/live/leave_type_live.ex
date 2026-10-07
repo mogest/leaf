@@ -4,10 +4,6 @@ defmodule LeafWeb.LeaveTypeLive do
 
   Changing the unit changes what every amount already recorded against it means, so it is here
   rather than inline on the list, where it would be a click away from an accident.
-
-  Archiving one only takes it out of the pickers that set up new entitlements and balance entries.
-  A policy stops granting a type by closing its entitlement, which is where the dates and the
-  wind-down live, so the wording here says what this does and no more.
   """
 
   use LeafWeb, :live_view
@@ -43,11 +39,6 @@ defmodule LeafWeb.LeaveTypeLive do
     {:noreply, saved(socket, written)}
   end
 
-  @role :admin
-  def handle_event("archive", _params, socket) do
-    {:noreply, written(socket, offer(socket.assigns.leave_type, socket.assigns.current_person))}
-  end
-
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
@@ -57,21 +48,11 @@ defmodule LeafWeb.LeaveTypeLive do
           <.link navigate={~p"/settings/leave-types"}>Leave types</.link>
         </nav>
         <h1>{@leave_type.name}</h1>
+        <p :if={@leave_type.archived_at}>{withdrawn(@leave_type)}</p>
       </header>
-
-      <section>
-        <header>
-          <h2>Whether it is offered</h2>
-          <button type="button" phx-click="archive">{action(@leave_type)}</button>
-        </header>
-        <p>{standing(@leave_type)}</p>
-      </section>
 
       <.form id="leave-type" for={@form} phx-change="validate" phx-submit="save">
         <section>
-          <header>
-            <h2>The type itself</h2>
-          </header>
           <.input field={@form[:name]} type="text" label="Name" />
           <.input field={@form[:unit]} type="select" label="Counted in" options={@units} />
           <.input field={@form[:suspends_accrual]} type="checkbox" label="Suspends accrual" />
@@ -103,26 +84,10 @@ defmodule LeafWeb.LeaveTypeLive do
     |> push_navigate(to: ~p"/settings/leave-types")
   end
 
-  defp standing(%{archived_at: nil}),
-    do: "Offered when an entitlement or a balance entry is set up."
-
-  defp standing(leave_type) do
+  defp withdrawn(leave_type) do
     "Not offered in new configuration since #{Wording.date(DateTime.to_date(leave_type.archived_at))}. " <>
       "Policies that already include it go on granting it."
   end
-
-  defp action(%{archived_at: nil}), do: "Stop offering it in new configuration"
-  defp action(_leave_type), do: "Offer it again"
-
-  defp offer(%{archived_at: nil} = leave_type, actor), do: Policies.withdraw(leave_type, actor)
-  defp offer(leave_type, actor), do: Policies.reoffer(leave_type, actor)
-
-  defp written(socket, {:ok, leave_type}) do
-    socket |> assign(:leave_type, leave_type) |> put_flash(:info, "Saved.")
-  end
-
-  defp written(socket, {:error, _changeset}),
-    do: put_flash(socket, :error, "That would not save.")
 
   defp saved(socket, {:ok, _leave_type}) do
     socket

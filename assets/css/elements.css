@@ -135,7 +135,7 @@ button {
   cursor: pointer;
 }
 
-:is(section > header > button, .button ~ button):not(.button) {
+.button ~ button:not(.button) {
   padding: var(--step-1) var(--step-3);
   border: 1px solid var(--edge);
   border-radius: var(--pill);

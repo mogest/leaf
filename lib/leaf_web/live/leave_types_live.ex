@@ -51,6 +51,11 @@ defmodule LeafWeb.LeaveTypesLive do
     {:noreply, saved(socket, created)}
   end
 
+  @role :admin
+  def handle_event("offer", %{"id" => id}, socket) do
+    {:noreply, offer(socket, Policies.fetch_leave_type(id))}
+  end
+
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
@@ -65,26 +70,34 @@ defmodule LeafWeb.LeaveTypesLive do
         <header>
           <h2>What the organisation offers</h2>
         </header>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Order</th>
-              <th scope="col">Name</th>
-              <th scope="col">Counted in</th>
-              <th scope="col">Payroll code</th>
-              <th scope="col">Standing</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr :for={leave_type <- @leave_types} data-tone={leave_type.tone}>
-              <td>{leave_type.position}</td>
-              <th scope="row"><.link navigate={leave_type.path}>{leave_type.name}</.link></th>
-              <td>{leave_type.unit}</td>
-              <td>{leave_type.payroll_code}</td>
-              <td>{leave_type.standing}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div :if={@leave_types != []}>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Order</th>
+                <th scope="col">Name</th>
+                <th scope="col">Counted in</th>
+                <th scope="col">Standing</th>
+                <td></td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :for={leave_type <- @leave_types} data-tone={leave_type.tone}>
+                <td>{leave_type.position}</td>
+                <th scope="row"><.link navigate={leave_type.path}>{leave_type.name}</.link></th>
+                <td>{leave_type.unit}</td>
+                <td>{leave_type.standing}</td>
+                <td>
+                  <Parts.row_menu id={"leave-type-#{leave_type.id}"} label={leave_type.name}>
+                    <button type="button" phx-click="offer" phx-value-id={leave_type.id}>
+                      {leave_type.offer}
+                    </button>
+                  </Parts.row_menu>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <p :if={@leave_types == []}>No leave types yet.</p>
       </section>
 
@@ -132,12 +145,36 @@ defmodule LeafWeb.LeaveTypesLive do
       name: leave_type.name,
       unit: to_string(leave_type.unit),
       position: leave_type.position,
-      payroll_code: leave_type.payroll_code,
       path: ~p"/settings/leave-types/#{leave_type}",
       standing: Wording.standing(leave_type),
-      tone: Wording.tone(leave_type)
+      tone: Wording.tone(leave_type),
+      offer: offer_label(leave_type)
     }
   end
+
+  defp offer_label(%{archived_at: nil}), do: "Stop offering"
+  defp offer_label(_leave_type), do: "Offer again"
+
+  defp offer(socket, {:ok, leave_type}) do
+    offered(socket, toggled(leave_type, socket.assigns.current_person))
+  end
+
+  defp offer(socket, :error),
+    do: put_flash(socket, :error, "That leave type is not on record.")
+
+  defp toggled(%{archived_at: nil} = leave_type, actor), do: Policies.withdraw(leave_type, actor)
+  defp toggled(leave_type, actor), do: Policies.reoffer(leave_type, actor)
+
+  defp offered(socket, {:ok, %{archived_at: nil} = leave_type}) do
+    socket |> put_flash(:info, "#{leave_type.name} is offered again.") |> listed()
+  end
+
+  defp offered(socket, {:ok, leave_type}) do
+    socket |> put_flash(:info, "#{leave_type.name} is no longer offered.") |> listed()
+  end
+
+  defp offered(socket, {:error, _changeset}),
+    do: put_flash(socket, :error, "That would not save.")
 
   defp saved(socket, {:ok, leave_type}) do
     socket |> put_flash(:info, "#{leave_type.name} is offered.") |> listed() |> blank()

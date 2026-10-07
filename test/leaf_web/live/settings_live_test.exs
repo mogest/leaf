@@ -54,16 +54,21 @@ defmodule LeafWeb.SettingsLiveTest do
     |> form("#leave-type", leave_type: %{"name" => "Study", "suspends_accrual" => "true"})
     |> render_submit()
 
-    {:ok, _live, html} = live(context.conn, ~p"/settings/leave-types")
+    {:ok, live, html} = live(context.conn, ~p"/settings/leave-types")
     assert html =~ "Study"
 
-    {:ok, live, _html} = live(context.conn, ~p"/settings/leave-types/#{leave_type}")
-    html = live |> element("button", "Stop offering it in new configuration") |> render_click()
-    assert html =~ "Not offered in new configuration since"
+    assert live |> element("button", "Stop offering") |> render_click() =~
+             "Study is no longer offered."
 
     {:ok, archived} = Policies.fetch_leave_type(leave_type.id)
     assert archived.archived_at
     assert archived.suspends_accrual
+
+    {:ok, _page, html} = live(context.conn, ~p"/settings/leave-types/#{leave_type}")
+    assert html =~ "Not offered in new configuration since"
+
+    assert live |> element("button", "Offer again") |> render_click() =~ "Study is offered again."
+    assert {:ok, %{archived_at: nil}} = Policies.fetch_leave_type(leave_type.id)
   end
 
   test "a policy grants what its entitlements say, in words", context do
@@ -108,23 +113,39 @@ defmodule LeafWeb.SettingsLiveTest do
     assert html =~ "This policy grants nothing yet."
   end
 
-  test "withdrawing a policy leaves its name form alone, and a rename retitles the tab",
+  test "a policy is withdrawn from the list, and it and a calendar are edited on their own pages",
        context do
     policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
-    {:ok, live, _html} = live(context.conn, ~p"/settings/policies/#{policy}")
+    {:ok, live, _html} = live(context.conn, ~p"/settings/policies")
 
-    live |> form("#policy", leave_policy: %{"name" => "Unsaved"}) |> render_change()
-    html = live |> element("button", "Withdraw") |> render_click()
+    live |> element("button", "Withdraw") |> render_click()
+    assert {:ok, %{archived_at: %DateTime{}}} = Policies.fetch_leave_policy(policy.id)
 
-    assert html =~ "Withdrawn"
-    assert html =~ ~s(value="Unsaved")
+    {:ok, _page, html} = live(context.conn, ~p"/settings/policies/#{policy}")
+    assert html =~ "Nobody new goes on it"
 
-    live |> form("#policy", leave_policy: %{"name" => "Contractor"}) |> render_submit()
+    live |> element("button", "Use again") |> render_click()
+    assert {:ok, %{archived_at: nil}} = Policies.fetch_leave_policy(policy.id)
+
+    {:ok, live, _html} = live(context.conn, ~p"/settings/policies/#{policy}/edit")
+
+    {:ok, live, _html} =
+      live
+      |> form("#policy", leave_policy: %{"name" => "Contractor"})
+      |> render_submit()
+      |> follow_redirect(context.conn)
+
     assert page_title(live) =~ "Contractor"
 
     calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
-    {:ok, live, _html} = live(context.conn, ~p"/settings/calendars/#{calendar}")
-    live |> form("#calendar", calendar: %{"name" => "Aotearoa"}) |> render_submit()
+    {:ok, live, _html} = live(context.conn, ~p"/settings/calendars/#{calendar}/edit")
+
+    {:ok, live, _html} =
+      live
+      |> form("#calendar", calendar: %{"name" => "Aotearoa"})
+      |> render_submit()
+      |> follow_redirect(context.conn)
+
     assert page_title(live) =~ "Aotearoa"
   end
 

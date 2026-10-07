@@ -73,10 +73,12 @@ defmodule LeafWeb.PagesTest do
       ~p"/settings/leave-types/#{context.leave_type}",
       ~p"/settings/policies",
       ~p"/settings/policies/#{context.policy}",
+      ~p"/settings/policies/#{context.policy}/edit",
       ~p"/settings/policies/#{context.policy}/entitlements/new",
       ~p"/settings/policies/#{context.policy}/entitlements/#{context.entitlement}",
       ~p"/settings/calendars",
       ~p"/settings/calendars/#{context.calendar}",
+      ~p"/settings/calendars/#{context.calendar}/edit",
       ~p"/settings/calendars/#{context.calendar}/regions/new",
       ~p"/settings/audit",
       ~p"/reports",
@@ -161,8 +163,10 @@ defmodule LeafWeb.PagesTest do
       {~p"/people/#{nothing}/balance-entries/new", "/people"},
       {~p"/settings/leave-types/#{nothing}", "/settings/leave-types"},
       {~p"/settings/policies/#{nothing}", "/settings/policies"},
+      {~p"/settings/policies/#{nothing}/edit", "/settings/policies"},
       {~p"/settings/policies/#{nothing}/entitlements/new", "/settings/policies"},
       {~p"/settings/calendars/#{nothing}", "/settings/calendars"},
+      {~p"/settings/calendars/#{nothing}/edit", "/settings/calendars"},
       {~p"/settings/calendars/#{nothing}/regions/new", "/settings/calendars"},
       {~p"/reports/nothing", "/reports"}
     ]
@@ -184,6 +188,12 @@ defmodule LeafWeb.PagesTest do
 
     decision = %{"request_id" => nothing, "decision" => "approve", "review" => %{"comment" => ""}}
     assert render_submit(live, "decide", decision) =~ "That is not yours to decide."
+
+    {:ok, live, _html} = live(context.conn, ~p"/settings/leave-types")
+    assert render_click(live, "offer", %{"id" => nothing}) =~ "That leave type is not on record."
+
+    {:ok, live, _html} = live(context.conn, ~p"/settings/policies")
+    assert render_click(live, "offer", %{"id" => nothing}) =~ "That policy is not on record."
   end
 
   test "the specimen sheet renders every part the pages are built from", context do

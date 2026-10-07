@@ -267,6 +267,10 @@ main > header:has(> nav) {
     grid-row: 2;
   }
 
+  & > p {
+    grid-column: 1 / -1;
+  }
+
   & > .button {
     grid-area: 1 / 2 / span 2;
     align-self: start;

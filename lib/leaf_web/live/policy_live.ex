@@ -1,6 +1,6 @@
 defmodule LeafWeb.PolicyLive do
   @moduledoc """
-  One policy: its name, and what it grants for each leave type over each stretch of time.
+  One policy: what it grants for each leave type over each stretch of time.
 
   Two entitlements for one leave type may not overlap, so succeeding one means closing the old
   window rather than only opening a new one. Each is said in words here, because what a row of
@@ -11,7 +11,6 @@ defmodule LeafWeb.PolicyLive do
 
   on_mount {LeafWeb.SignIn, :admin}
 
-  alias Leaf.Changeset
   alias Leaf.Policies
 
   @impl Phoenix.LiveView
@@ -23,26 +22,6 @@ defmodule LeafWeb.PolicyLive do
   end
 
   @impl Phoenix.LiveView
-  @role :admin
-  def handle_event("validate", %{"leave_policy" => params}, socket) do
-    changeset = Changeset.change(socket.assigns.policy, params)
-
-    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
-  end
-
-  @role :admin
-  def handle_event("save", %{"leave_policy" => params}, socket) do
-    written =
-      Policies.update_leave_policy(socket.assigns.policy, socket.assigns.current_person, params)
-
-    {:noreply, saved(socket, written)}
-  end
-
-  @role :admin
-  def handle_event("archive", _params, socket) do
-    {:noreply, written(socket, offer(socket.assigns.policy, socket.assigns.current_person))}
-  end
-
   @role :admin
   def handle_event("remove", %{"id" => id}, socket) do
     {:noreply, remove(socket, Policies.fetch_entitlement(socket.assigns.policy, id))}
@@ -57,6 +36,8 @@ defmodule LeafWeb.PolicyLive do
           <.link navigate={~p"/settings/policies"}>Leave policies</.link>
         </nav>
         <h1>{@policy.name}</h1>
+        <p :if={@policy.archived_at}>{withdrawn(@policy)}</p>
+        <.link class="button" navigate={~p"/settings/policies/#{@policy}/edit"}>Edit</.link>
       </header>
 
       <section>
@@ -86,28 +67,6 @@ defmodule LeafWeb.PolicyLive do
         </ol>
         <p :if={@entitlements == []}>This policy grants nothing yet.</p>
       </section>
-
-      <section>
-        <header>
-          <h2>Whether it is in use</h2>
-          <button type="button" phx-click="archive">{action(@policy)}</button>
-        </header>
-        <p>{standing(@policy)}</p>
-      </section>
-
-      <.form id="policy" for={@form} phx-change="validate" phx-submit="save">
-        <section>
-          <header>
-            <h2>The policy itself</h2>
-          </header>
-          <.input field={@form[:name]} type="text" label="Name" />
-        </section>
-
-        <footer>
-          <button class="button" type="submit">Save</button>
-          <.link navigate={~p"/settings/policies"}>Cancel</.link>
-        </footer>
-      </.form>
     </Layouts.app>
     """
   end
@@ -116,7 +75,6 @@ defmodule LeafWeb.PolicyLive do
     socket
     |> assign(:page_title, policy.name)
     |> assign(:policy, policy)
-    |> assign(:form, to_form(Changeset.change(policy, %{})))
     |> listed()
   end
 
@@ -198,36 +156,9 @@ defmodule LeafWeb.PolicyLive do
     "Lapses #{entitlement.expiry_window_days} days after it lands"
   end
 
-  defp standing(%{archived_at: nil}), do: "In use, and offered when somebody is put on a policy."
-
-  defp standing(policy) do
+  defp withdrawn(policy) do
     "Withdrawn #{Wording.date(DateTime.to_date(policy.archived_at))}. " <>
       "Nobody new goes on it; whoever is already on it stays, and goes on being granted what it says."
-  end
-
-  defp action(%{archived_at: nil}), do: "Withdraw"
-  defp action(_policy), do: "Use again"
-
-  defp offer(%{archived_at: nil} = policy, actor), do: Policies.withdraw(policy, actor)
-  defp offer(policy, actor), do: Policies.reoffer(policy, actor)
-
-  defp written(socket, {:ok, policy}) do
-    socket |> assign(:policy, policy) |> put_flash(:info, "Saved.")
-  end
-
-  defp written(socket, {:error, _changeset}),
-    do: put_flash(socket, :error, "That would not save.")
-
-  defp saved(socket, {:ok, policy}) do
-    socket
-    |> assign(:page_title, policy.name)
-    |> assign(:policy, policy)
-    |> assign(:form, to_form(Changeset.change(policy, %{})))
-    |> put_flash(:info, "Saved.")
-  end
-
-  defp saved(socket, {:error, changeset}) do
-    assign(socket, :form, to_form(changeset, action: :validate))
   end
 
   defp remove(socket, :error) do
