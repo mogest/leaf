@@ -7,25 +7,28 @@ defmodule LeafWeb.DesignSystemTest do
   stylesheet has never heard of, and the stylesheet may not keep a name nothing uses. Either one
   drifting is how a design system turns into a pile of one-off rules.
 
-  A page scope — a class on `main` — is exempt from both directions. `Layouts.app` writes most of
-  them from its `page` attribute, where no pass over the markup can see them, so policing the ones
-  written by hand would only punish the pages that are honest about it.
+  A page scope — a class on `main` — is a page's name, which `Layouts.app` writes from its `page`
+  attribute. Every scope the stylesheet writes has to name a page, and no page may share its name
+  with a part, whose rules would otherwise style the page.
   """
 
   use ExUnit.Case, async: true
 
   @stylesheets Path.wildcard("assets/css/*.css")
   @markup Path.wildcard("lib/leaf_web/**/*.{ex,heex}")
+  @code Path.wildcard("lib/**/*.{ex,heex}")
 
   # A class attribute is either a literal or an expression; a name inside the expression is still
   # quoted, so both forms give up their names to the same pass over the quoted strings.
-  @attribute ~r/\bclass=(?:"[^"]*"|\{[^}]*\})/
+  @attribute ~r/\bclass=(?:"[^"]*"|(\{(?:[^{}]|(?1))*\}))/
   @quoted ~r/"([^"]*)"/
+  @page ~r/<main[^>]*\bclass="([^"]*)"|\bpage="([^"]*)"/
 
   # A class selector, told from a decimal by the digit that would precede it. Comments, strings and
   # urls go first, so a filename inside one cannot read as a selector.
   @selector ~r/(?<!\d)(?<!main)\.([a-z][a-z0-9-]*)/
-  @page_scope ~r/<main[^>]*\bclass="([^"]*)"/
+  @page_scope ~r/\bmain\.([a-z][a-z0-9-]*)/
+  @data_value ~r/\[data-[a-z-]+="([^"]*)"\]/
   @not_selectors ~r|/\*.*?\*/|s
   @literal ~r/"[^"]*"|'[^']*'|url\([^)]*\)/
 
@@ -37,8 +40,27 @@ defmodule LeafWeb.DesignSystemTest do
     assert Enum.sort(MapSet.difference(defined(), used())) == []
   end
 
+  test "every page scope the stylesheet writes names a page" do
+    assert Enum.sort(MapSet.difference(stylesheet_names(@page_scope), pages())) == []
+  end
+
+  test "no page shares its name with a part" do
+    assert Enum.sort(MapSet.intersection(pages(), defined())) == []
+  end
+
+  test "every data value the stylesheet selects is one the code can write" do
+    code = Enum.map_join(@code, &File.read!/1)
+
+    unwritten =
+      @stylesheets
+      |> Enum.flat_map(&names(@data_value, String.replace(File.read!(&1), @not_selectors, " ")))
+      |> Enum.reject(&Regex.match?(~r/"#{Regex.escape(&1)}"|:#{Regex.escape(&1)}\b/, code))
+
+    assert Enum.uniq(unwritten) == []
+  end
+
   defp used do
-    MapSet.difference(classes(), page_scopes())
+    MapSet.difference(classes(), pages())
   end
 
   defp classes do
@@ -49,16 +71,20 @@ defmodule LeafWeb.DesignSystemTest do
     |> MapSet.new()
   end
 
-  defp page_scopes do
+  defp pages do
     @markup
-    |> Enum.flat_map(&names(@page_scope, File.read!(&1)))
+    |> Enum.flat_map(&names(@page, File.read!(&1)))
     |> Enum.flat_map(&String.split/1)
     |> MapSet.new()
   end
 
   defp defined do
+    stylesheet_names(@selector)
+  end
+
+  defp stylesheet_names(regex) do
     @stylesheets
-    |> Enum.flat_map(&names(@selector, selectors_only(File.read!(&1))))
+    |> Enum.flat_map(&names(regex, selectors_only(File.read!(&1))))
     |> MapSet.new()
   end
 
