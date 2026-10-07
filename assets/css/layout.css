@@ -415,10 +415,12 @@ main.styleguide > section {
   & > dl {
     display: grid;
     grid-template-columns: 1fr auto;
+    grid-auto-flow: dense;
     gap: var(--step-3) var(--step-4);
     align-items: baseline;
 
-    & > dd {
+    & > dt {
+      grid-column: 2;
       font-size: var(--size-sm);
       color: var(--ink-soft);
     }
@@ -442,7 +444,7 @@ main.sign-in {
     flex-direction: column;
     gap: var(--step-2);
 
-    & a {
+    & button {
       display: flex;
       align-items: center;
       block-size: 2.75rem;
@@ -455,7 +457,6 @@ main.sign-in {
         border-color: var(--green);
         background: var(--ground);
         color: var(--green);
-        text-decoration: none;
       }
     }
   }

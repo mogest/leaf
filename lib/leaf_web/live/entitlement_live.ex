@@ -72,7 +72,7 @@ defmodule LeafWeb.EntitlementLive do
     ~H"""
     <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
-        <nav>
+        <nav aria-label="Breadcrumb">
           <.link navigate={~p"/settings/policies"}>Leave policies</.link>
           <.link navigate={~p"/settings/policies/#{@policy}"}>{@policy.name}</.link>
         </nav>

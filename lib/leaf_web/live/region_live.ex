@@ -40,7 +40,7 @@ defmodule LeafWeb.RegionLive do
     ~H"""
     <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
-        <nav>
+        <nav aria-label="Breadcrumb">
           <.link navigate={~p"/settings/calendars"}>Calendars</.link>
           <.link navigate={~p"/settings/calendars/#{@country}"}>{@country.name}</.link>
         </nav>

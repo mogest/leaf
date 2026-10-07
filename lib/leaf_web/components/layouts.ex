@@ -53,7 +53,7 @@ defmodule LeafWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <nav>
+    <nav aria-label="Main">
       <.link navigate="/">
         <svg viewBox="4 4 40 40" aria-hidden="true">
           <rect x="4" y="4" width="18" height="18" rx="4" />
@@ -69,7 +69,7 @@ defmodule LeafWeb.Layouts do
         </li>
       </ul>
       <div :if={@viewer}>
-        <button popovertarget="account" aria-label="Your account">
+        <button popovertarget="account">
           <b>{Wording.initials(@viewer.person.name)}</b>
           <span>{@viewer.person.name}</span>
         </button>
@@ -78,7 +78,9 @@ defmodule LeafWeb.Layouts do
             <.link navigate={~p"/people/#{@viewer.person.id}"}>Profile</.link>
           </li>
           <li>
-            <.link href="/sign-out" method="delete">Sign out</.link>
+            <.form for={%{}} action={~p"/sign-out"} method="delete">
+              <button>Sign out</button>
+            </.form>
           </li>
         </ul>
       </div>

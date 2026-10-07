@@ -4,7 +4,9 @@
 
   <ul :if={@people != []}>
     <li :for={person <- @people}>
-      <.link href={~p"/sign-in/#{person.id}"} method="post">{person.name}</.link>
+      <.form for={%{}} action={~p"/sign-in/#{person.id}"}>
+        <button>{person.name}</button>
+      </.form>
     </li>
   </ul>
 

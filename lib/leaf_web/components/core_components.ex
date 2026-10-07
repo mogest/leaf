@@ -154,11 +154,12 @@ defmodule LeafWeb.CoreComponents do
             name={@name}
             value="true"
             checked={@checked}
+            {invalid(@id, @errors)}
             {@rest}
           />{@label}
         </span>
       </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
+      <.errors id={@id} errors={@errors} />
     </div>
     """
   end
@@ -168,12 +169,12 @@ defmodule LeafWeb.CoreComponents do
     <div>
       <label for={@id}>
         <span :if={@label}>{@label}</span>
-        <select id={@id} name={@name} multiple={@multiple} {@rest}>
+        <select id={@id} name={@name} multiple={@multiple} {invalid(@id, @errors)} {@rest}>
           <option :if={@prompt} value="">{@prompt}</option>
           {Form.options_for_select(@options, @value)}
         </select>
       </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
+      <.errors id={@id} errors={@errors} />
     </div>
     """
   end
@@ -183,9 +184,9 @@ defmodule LeafWeb.CoreComponents do
     <div>
       <label for={@id}>
         <span :if={@label}>{@label}</span>
-        <textarea id={@id} name={@name} {@rest}>{Form.normalize_value("textarea", @value)}</textarea>
+        <textarea id={@id} name={@name} {invalid(@id, @errors)} {@rest}>{Form.normalize_value("textarea", @value)}</textarea>
       </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
+      <.errors id={@id} errors={@errors} />
     </div>
     """
   end
@@ -201,20 +202,31 @@ defmodule LeafWeb.CoreComponents do
           name={@name}
           id={@id}
           value={Form.normalize_value(@type, @value)}
+          {invalid(@id, @errors)}
           {@rest}
         />
       </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
+      <.errors id={@id} errors={@errors} />
     </div>
     """
   end
 
-  # Helper used by inputs to generate form errors
-  defp error(assigns) do
+  defp errors(assigns) do
     ~H"""
-    <p>{render_slot(@inner_block)}</p>
+    <p :for={{msg, n} <- Enum.with_index(@errors, 1)} id={error_id(@id, n)}>{msg}</p>
     """
   end
+
+  defp invalid(_id, []), do: []
+
+  defp invalid(id, errors) do
+    [
+      "aria-invalid": "true",
+      "aria-describedby": Enum.map_join(1..length(errors), " ", &error_id(id, &1))
+    ]
+  end
+
+  defp error_id(id, n), do: "#{id}-error-#{n}"
 
   ## JS Commands
 

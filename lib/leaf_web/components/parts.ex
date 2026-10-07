@@ -44,7 +44,7 @@ defmodule LeafWeb.Parts do
 
   def settings_nav(assigns) do
     ~H"""
-    <nav class="tabs">
+    <nav class="tabs" aria-label="Settings">
       <ul>
         <li :for={{label, path, name} <- settings()}>
           <.link navigate={path} aria-current={name == @here && "page"}>{label}</.link>
@@ -188,7 +188,7 @@ defmodule LeafWeb.Parts do
               <th scope="col">Amount</th>
               <th scope="col">Standing</th>
               <th scope="col">Who and when</th>
-              <th :if={@cancel} scope="col"></th>
+              <td :if={@cancel}></td>
             </tr>
           </thead>
           <tbody>

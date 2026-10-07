@@ -104,19 +104,19 @@ defmodule LeafWeb.RequestLeaveLive do
           <table :if={@filing}>
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Off</th>
+                <th scope="col">Date</th>
+                <th scope="col">Off</th>
               </tr>
             </thead>
             <tbody>
               <tr :for={day <- @filing.days} data-working={day.working}>
-                <th>{day.date}</th>
+                <th scope="row">{day.date}</th>
                 <td>{day.off}</td>
               </tr>
             </tbody>
             <tfoot>
               <tr>
-                <th>Total</th>
+                <th scope="row">Total</th>
                 <td>{@filing.total}</td>
               </tr>
             </tfoot>

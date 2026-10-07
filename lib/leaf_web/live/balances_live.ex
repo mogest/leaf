@@ -50,7 +50,7 @@ defmodule LeafWeb.BalancesLive do
     ~H"""
     <Layouts.app flash={@flash} page="balances" rail={@rail} viewer={@viewer}>
       <header>
-        <nav :if={!@mine?}>
+        <nav :if={!@mine?} aria-label="Breadcrumb">
           <.link navigate={~p"/people"}>People</.link>
           <.link navigate={~p"/people/#{@person}"}>{@person.name}</.link>
         </nav>
@@ -63,7 +63,7 @@ defmodule LeafWeb.BalancesLive do
 
       <p :if={@nothing}>{@nothing}</p>
 
-      <nav :if={@accounts != []}>
+      <nav :if={@accounts != []} aria-label="Balances">
         <ul>
           <li :for={account <- @accounts}>
             <.link patch={account.path} aria-current={account.current? && "page"}>
