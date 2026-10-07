@@ -72,9 +72,11 @@ defmodule LeafWeb.EntitlementLive do
     ~H"""
     <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
+        <nav>
+          <.link navigate={~p"/settings/policies"}>Leave policies</.link>
+          <.link navigate={~p"/settings/policies/#{@policy}"}>{@policy.name}</.link>
+        </nav>
         <h1>{@title}</h1>
-        <p :if={@entitlement}>{@entitlement.leave_type.name}</p>
-        <.link navigate={~p"/settings/policies/#{@policy}"}>{@policy.name}</.link>
       </header>
 
       <.form id="entitlement" for={@form} phx-change="validate" phx-submit="save">
@@ -188,8 +190,8 @@ defmodule LeafWeb.EntitlementLive do
 
     socket =
       socket
-      |> assign(:page_title, title(socket.assigns.live_action))
-      |> assign(:title, title(socket.assigns.live_action))
+      |> assign(:page_title, title(entitlement))
+      |> assign(:title, title(entitlement))
       |> assign(:policy, policy)
       |> assign(:entitlement, entitlement)
       |> assign(:leave_types, Enum.map(offered, &{Wording.leave_type(&1), &1.id}))
@@ -211,8 +213,8 @@ defmodule LeafWeb.EntitlementLive do
     |> push_navigate(to: ~p"/settings/policies")
   end
 
-  defp title(:new), do: "Add an entitlement"
-  defp title(:edit), do: "Edit an entitlement"
+  defp title(nil), do: "Add an entitlement"
+  defp title(entitlement), do: entitlement.leave_type.name
 
   # A leave type is settled when the entitlement is created: moving one to another type would
   # silently re-file everything already granted under it.

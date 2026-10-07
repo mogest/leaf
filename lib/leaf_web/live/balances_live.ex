@@ -50,8 +50,11 @@ defmodule LeafWeb.BalancesLive do
     ~H"""
     <Layouts.app flash={@flash} page="balances" rail={@rail} viewer={@viewer}>
       <header>
+        <nav :if={!@mine?}>
+          <.link navigate={~p"/people"}>People</.link>
+          <.link navigate={~p"/people/#{@person}"}>{@person.name}</.link>
+        </nav>
         <h1>{@heading}</h1>
-        <.link :if={!@mine?} navigate={~p"/people/#{@person}"}>{@person.name}</.link>
         <p>Employed {@employment}</p>
       </header>
 

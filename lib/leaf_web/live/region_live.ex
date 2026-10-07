@@ -40,8 +40,11 @@ defmodule LeafWeb.RegionLive do
     ~H"""
     <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
+        <nav>
+          <.link navigate={~p"/settings/calendars"}>Calendars</.link>
+          <.link navigate={~p"/settings/calendars/#{@country}"}>{@country.name}</.link>
+        </nav>
         <h1>Add a region</h1>
-        <.link navigate={~p"/settings/calendars/#{@country}"}>{@country.name}</.link>
       </header>
 
       <.form id="region" for={@form} phx-change="validate" phx-submit="save">

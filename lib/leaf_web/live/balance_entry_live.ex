@@ -49,8 +49,11 @@ defmodule LeafWeb.BalanceEntryLive do
     ~H"""
     <Layouts.app flash={@flash} page="people" viewer={@viewer}>
       <header>
+        <nav>
+          <.link navigate={~p"/people"}>People</.link>
+          <.link navigate={~p"/people/#{@person}"}>{@person.name}</.link>
+        </nav>
         <h1>Record a balance</h1>
-        <.link navigate={~p"/people/#{@person}"}>{@person.name}</.link>
       </header>
 
       <.form id="balance-entry" for={@form} phx-change="validate" phx-submit="save">

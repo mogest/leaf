@@ -42,8 +42,11 @@ defmodule LeafWeb.PersonFormLive do
     ~H"""
     <Layouts.app flash={@flash} page="people" viewer={@viewer}>
       <header>
+        <nav>
+          <.link navigate={~p"/people"}>People</.link>
+          <.link :if={@person} navigate={~p"/people/#{@person}"}>{@person.name}</.link>
+        </nav>
         <h1>{@title}</h1>
-        <.link navigate={@back}>Back</.link>
       </header>
 
       <.form id="person" for={@form} phx-change="validate" phx-submit="save">

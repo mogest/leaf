@@ -275,13 +275,14 @@ main > header {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--step-4);
+  gap: var(--step-3) var(--step-4);
 
   & h1 {
     flex-grow: 1;
   }
 
-  & > :is(p, a) {
+  & > p {
+    flex-basis: 100%;
     font-size: var(--size-base);
     color: var(--ink-soft);
   }
