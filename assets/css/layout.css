@@ -54,28 +54,8 @@ body > div[data-phx-main] {
     }
   }
 
-  & > ul {
-    & a {
-      display: flex;
-      align-items: center;
-      block-size: var(--rail-row);
-      padding-inline: var(--step-3);
-      border-radius: var(--radius);
-      color: var(--ink-quiet);
-      font-size: var(--size-base);
-
-      &:hover {
-        background: var(--ground);
-        color: var(--ink);
-        text-decoration: none;
-      }
-
-      &[aria-current="page"] {
-        background: var(--green-wash);
-        color: var(--green-ink);
-        font-weight: 600;
-      }
-    }
+  & > ul a {
+    block-size: var(--rail-row);
   }
 
   & > div {
@@ -507,29 +487,14 @@ main.balances {
     gap: 1px;
 
     & a {
-      display: flex;
       align-items: baseline;
       justify-content: space-between;
       gap: var(--step-3);
-      padding: 0.4375rem var(--step-3);
-      border-radius: var(--radius);
-      font-size: var(--size-base);
+      padding-block: 0.4375rem;
       font-variant-numeric: tabular-nums;
 
       & > span + span {
         white-space: nowrap;
-      }
-
-      &:hover {
-        background: var(--ground);
-        color: var(--ink);
-        text-decoration: none;
-      }
-
-      &[aria-current="page"] {
-        background: var(--green-wash);
-        color: var(--green-ink);
-        font-weight: 600;
       }
     }
   }

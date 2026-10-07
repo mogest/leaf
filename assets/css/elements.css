@@ -163,29 +163,38 @@ button {
   background: var(--sheet);
   color: var(--ink);
   box-shadow: var(--lift);
+}
 
-  & :is(a, button) {
-    display: flex;
-    align-items: center;
-    inline-size: 100%;
-    block-size: 2rem;
-    padding: 0 var(--step-3);
-    border-radius: var(--radius);
-    color: var(--ink-quiet);
-    font-size: var(--size-base);
-    white-space: nowrap;
+:where(nav li, [popover]) > :is(a, button) {
+  display: flex;
+  align-items: center;
+  padding-inline: var(--step-3);
+  border-radius: var(--radius);
+  font-size: var(--size-base);
 
-    &:hover {
-      background: var(--ground);
-      color: var(--ink);
-      text-decoration: none;
-    }
-
-    &[data-confirm]:hover {
-      background: var(--clay-wash);
-      color: var(--clay-ink);
-    }
+  &:hover {
+    background: var(--ground);
+    color: var(--ink);
+    text-decoration: none;
   }
+
+  &[aria-current="page"] {
+    background: var(--green-wash);
+    color: var(--green-ink);
+    font-weight: 600;
+  }
+
+  &[data-confirm]:hover {
+    background: var(--clay-wash);
+    color: var(--clay-ink);
+  }
+}
+
+:where([popover]) :is(a, button) {
+  inline-size: 100%;
+  block-size: 2rem;
+  color: var(--ink-quiet);
+  white-space: nowrap;
 }
 
 input,
