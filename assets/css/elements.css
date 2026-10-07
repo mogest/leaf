@@ -128,11 +128,15 @@ td[data-tone="spent"] {
 }
 
 button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
   font: inherit;
   cursor: pointer;
 }
 
-button:not(.button) {
+:is(header, form) > button:not(.button) {
   padding: 0.25rem 0.75rem;
   border: 1px solid var(--edge);
   border-radius: var(--pill);
@@ -141,6 +145,11 @@ button:not(.button) {
   font-size: var(--size-sm);
 
   &:hover {
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  &[value="decline"]:hover {
     border-color: var(--clay);
     color: var(--clay-ink);
   }
@@ -161,9 +170,7 @@ button:not(.button) {
     inline-size: 100%;
     block-size: 2rem;
     padding: 0 var(--step-3);
-    border: 0;
     border-radius: var(--radius);
-    background: none;
     color: var(--ink-quiet);
     font-size: var(--size-base);
     white-space: nowrap;

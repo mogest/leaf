@@ -86,16 +86,12 @@ body > div[data-phx-main] {
       inline-size: 100%;
       block-size: var(--rail-row);
       padding-inline: var(--step-3);
-      border: 0;
       border-radius: var(--radius);
-      background: none;
-      color: var(--ink);
       font-size: var(--size-base);
       text-align: start;
 
       &:hover {
         background: var(--ground);
-        color: var(--ink);
       }
     }
 
@@ -179,10 +175,7 @@ body > div[data-phx-main] {
       justify-content: center;
       inline-size: var(--rail-row);
       block-size: var(--rail-row);
-      padding: 0;
-      border: 0;
       border-radius: var(--radius);
-      background: none;
       color: var(--ink-quiet);
 
       &:hover {
@@ -239,10 +232,6 @@ body > div[data-phx-main] {
     }
 
     & > button {
-      padding: 0;
-      border: 0;
-      background: none;
-      color: inherit;
       font-size: var(--size-sm);
       opacity: 0.75;
 
