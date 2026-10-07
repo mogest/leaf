@@ -22,7 +22,8 @@ body > div[data-phx-main] {
   display: flex;
   flex-direction: column;
   gap: var(--step-6);
-  padding: var(--step-6) 0.875rem var(--step-5);
+  padding-block: var(--step-6) var(--step-5);
+  padding-inline: 0.875rem;
   background: var(--ground);
   border-inline-end: 1px solid var(--edge);
 
@@ -96,7 +97,8 @@ body > div[data-phx-main] {
        rail is pinned to the inline start, and clearing the name row puts the menu above it. */
     & > [popover] {
       position: fixed;
-      inset: auto auto calc(var(--step-5) + var(--rail-row) + var(--step-2)) 0.875rem;
+      inset-block: auto calc(var(--step-5) + var(--rail-row) + var(--step-2));
+      inset-inline: 0.875rem auto;
       inline-size: calc(var(--rail) - 1.75rem);
     }
   }
@@ -167,7 +169,8 @@ body > div[data-phx-main] {
     & > ul,
     & > div > [popover] {
       position: fixed;
-      inset: calc(var(--rail-row) + 2 * var(--step-3)) var(--step-6) auto auto;
+      inset-block: calc(var(--rail-row) + 2 * var(--step-3)) auto;
+      inset-inline: auto var(--step-6);
       inline-size: auto;
       min-inline-size: 12rem;
     }
@@ -549,12 +552,20 @@ main.request-leave {
   }
 
   & tbody td {
+    position: relative;
     padding-inline-start: var(--step-3);
-    box-shadow: inset 2px 0 0 var(--rule-firm);
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset-block: 0;
+      inset-inline-start: 0;
+      border-inline-start: 2px solid var(--rule-firm);
+    }
   }
 
-  & tbody tr:not([data-working="no"]) td {
-    box-shadow: inset 2px 0 0 var(--green);
+  & tbody tr:not([data-working="no"]) td::before {
+    border-color: var(--green);
   }
 
   & tbody tr[data-working="no"] :is(th, td) {
@@ -602,7 +613,8 @@ main.who-is-away {
 
   & thead th {
     inline-size: 1.375rem;
-    padding: 0 0 var(--step-2);
+    padding: 0;
+    padding-block-end: var(--step-2);
     border: 0;
     font-size: var(--size-xs);
     color: var(--ink-faint);
@@ -615,7 +627,8 @@ main.who-is-away {
   }
 
   & tbody th {
-    padding: 0 var(--step-3) 0 0;
+    padding: 0;
+    padding-inline-end: var(--step-3);
     border: 0;
     white-space: nowrap;
   }
@@ -743,7 +756,8 @@ main.chart {
 
       & > li {
         position: relative;
-        padding: var(--step-5) var(--step-2) 0;
+        padding-block: var(--step-5) 0;
+        padding-inline: var(--step-2);
       }
 
       & > li::before,
