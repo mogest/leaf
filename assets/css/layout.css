@@ -1088,7 +1088,8 @@ main.reports {
       flex: 0 1 13rem;
     }
 
-    & :is(input, select, & > a) {
+    & :is(input, select),
+    & > a {
       block-size: 2.5rem;
     }
 
