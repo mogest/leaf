@@ -31,8 +31,8 @@ td:has(> button[popovertarget]) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  inline-size: 1.5rem;
-  block-size: 1.5rem;
+  inline-size: var(--row-menu);
+  block-size: var(--row-menu);
   border-radius: var(--pill);
   color: var(--ink-soft);
   font-size: var(--size-md);
@@ -385,7 +385,7 @@ li > button[popovertarget] {
 
     /* A row with nothing to do to it keeps the menu's room, so the standings line up. */
     & td:nth-child(6) {
-      min-inline-size: 1.5rem;
+      min-inline-size: var(--row-menu);
     }
 
     & td:nth-child(5) {

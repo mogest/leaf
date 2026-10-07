@@ -1,6 +1,6 @@
 defmodule LeafWeb.CoreComponents do
   @moduledoc """
-  Core UI components: flashes and form inputs, with JS show/hide and error translation helpers.
+  Core UI components: flashes and form inputs, with an error translation helper.
 
   The markup here is deliberately unstyled — no classes. Presentation comes from the
   semantic design system in the stylesheet, which selects on the elements themselves.
@@ -20,7 +20,7 @@ defmodule LeafWeb.CoreComponents do
       <.flash
         id="welcome-back"
         kind={:info}
-        phx-mounted={show("#welcome-back") |> JS.remove_attribute("hidden")}
+        phx-mounted={JS.remove_attribute("hidden")}
         hidden
       >
         Welcome Back!
@@ -41,14 +41,14 @@ defmodule LeafWeb.CoreComponents do
     <div
       :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
       id={@id}
-      phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
+      phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> JS.set_attribute({"hidden", ""})}
       role="alert"
       data-kind={@kind}
       {@rest}
     >
       <p :if={@title}>{@title}</p>
       <p>{msg}</p>
-      <button type="button" aria-label="close">Close</button>
+      <button type="button">Close</button>
     </div>
     """
   end
@@ -227,16 +227,6 @@ defmodule LeafWeb.CoreComponents do
   end
 
   defp error_id(id, n), do: "#{id}-error-#{n}"
-
-  ## JS Commands
-
-  def show(js \\ %JS{}, selector) do
-    JS.show(js, to: selector, display: "flex")
-  end
-
-  def hide(js \\ %JS{}, selector) do
-    JS.hide(js, to: selector)
-  end
 
   @doc """
   Translates a changeset error into a message, interpolating its options.
