@@ -97,13 +97,11 @@ defmodule LeafWeb.EntitlementLive do
             field={@form[:granted_to]}
             type="date"
             label="Stops granting after (optional)"
-            placeholder="never"
           />
           <.input
             field={@form[:effective_to]}
             type="date"
             label="Stops being spendable after (optional)"
-            placeholder="never"
           />
         </section>
 

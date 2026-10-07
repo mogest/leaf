@@ -96,7 +96,7 @@ th {
 }
 
 thead :is(th, td) {
-  padding-block-end: 0.5rem;
+  padding-block-end: var(--step-2);
   padding-inline-end: var(--step-4);
   border-block-end: 1px solid var(--rule-firm);
   font-size: var(--size-sm);
@@ -136,7 +136,7 @@ button {
 }
 
 :is(section > header > button, .button ~ button):not(.button) {
-  padding: 0.25rem 0.75rem;
+  padding: var(--step-1) var(--step-3);
   border: 1px solid var(--edge);
   border-radius: var(--pill);
   background: var(--sheet);
