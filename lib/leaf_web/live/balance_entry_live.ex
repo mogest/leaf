@@ -49,7 +49,7 @@ defmodule LeafWeb.BalanceEntryLive do
     ~H"""
     <Layouts.app flash={@flash} page="people" viewer={@viewer}>
       <header>
-        <nav>
+        <nav aria-label="Breadcrumb">
           <.link navigate={~p"/people"}>People</.link>
           <.link navigate={~p"/people/#{@person}"}>{@person.name}</.link>
         </nav>

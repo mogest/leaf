@@ -71,7 +71,7 @@ defmodule LeafWeb.PersonLive do
     ~H"""
     <Layouts.app flash={@flash} page="person" viewer={@viewer}>
       <header>
-        <nav :if={@admin?}>
+        <nav :if={@admin?} aria-label="Breadcrumb">
           <.link navigate={~p"/people"}>People</.link>
         </nav>
         <h1>{@person.name}</h1>
@@ -207,7 +207,7 @@ defmodule LeafWeb.PersonLive do
                 <th scope="col">Amount</th>
                 <th scope="col">Lapses</th>
                 <th :if={@reasons?} scope="col">Reason</th>
-                <th :if={@admin?} scope="col"></th>
+                <td :if={@admin?}></td>
               </tr>
             </thead>
             <tbody>

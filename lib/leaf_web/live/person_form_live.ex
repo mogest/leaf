@@ -42,7 +42,7 @@ defmodule LeafWeb.PersonFormLive do
     ~H"""
     <Layouts.app flash={@flash} page="people" viewer={@viewer}>
       <header>
-        <nav>
+        <nav aria-label="Breadcrumb">
           <.link navigate={~p"/people"}>People</.link>
           <.link :if={@person} navigate={~p"/people/#{@person}"}>{@person.name}</.link>
         </nav>

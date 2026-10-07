@@ -70,7 +70,7 @@ defmodule LeafWeb.CalendarLive do
     ~H"""
     <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
-        <nav>
+        <nav aria-label="Breadcrumb">
           <.link navigate={~p"/settings/calendars"}>Calendars</.link>
           <.link :if={@country} navigate={~p"/settings/calendars/#{@country}"}>{@country.name}</.link>
         </nav>
@@ -90,7 +90,7 @@ defmodule LeafWeb.CalendarLive do
             <tr>
               <th scope="col">Date</th>
               <th scope="col">Name</th>
-              <th scope="col"></th>
+              <td></td>
             </tr>
           </thead>
           <tbody>

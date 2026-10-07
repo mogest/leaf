@@ -122,7 +122,7 @@ defmodule LeafWeb.ApprovalsLiveTest do
   test "approving takes the request off the queue", context do
     {:ok, live, _html} = live(sign_in(context.conn, context.manager), ~p"/approvals")
 
-    html = live |> element("form") |> render_submit(%{"decision" => "approve"})
+    html = live |> element("main form") |> render_submit(%{"decision" => "approve"})
 
     assert html =~ "The request is approved."
     assert html =~ "Nothing is waiting on you."
@@ -141,10 +141,10 @@ defmodule LeafWeb.ApprovalsLiveTest do
     {:ok, live, _html} = live(sign_in(context.conn, context.manager), ~p"/approvals")
 
     live
-    |> element("form")
+    |> element("main form")
     |> render_change(%{"review" => %{"comment" => "Three of you are away"}})
 
-    live |> element("form") |> render_submit(%{"decision" => "decline"})
+    live |> element("main form") |> render_submit(%{"decision" => "decline"})
 
     assert [request] = Leave.requests(context.person)
     assert request.status == :declined

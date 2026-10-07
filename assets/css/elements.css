@@ -53,12 +53,12 @@ a {
     text-decoration: underline;
     text-underline-offset: 3px;
   }
+}
 
-  &:focus-visible {
-    outline: 2px solid var(--green);
-    outline-offset: 2px;
-    text-decoration: none;
-  }
+:is(a, button):focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+  text-decoration: none;
 }
 
 ul,
@@ -95,7 +95,7 @@ th {
   text-align: start;
 }
 
-thead th {
+thead :is(th, td) {
   padding-block-end: 0.5rem;
   padding-inline-end: var(--step-4);
   border-block-end: 1px solid var(--rule-firm);
@@ -135,7 +135,7 @@ button {
   cursor: pointer;
 }
 
-:is(header, form) > button:not(.button) {
+:is(section > header > button, .button ~ button):not(.button) {
   padding: 0.25rem 0.75rem;
   border: 1px solid var(--edge);
   border-radius: var(--pill);
@@ -164,7 +164,7 @@ button {
   box-shadow: var(--lift);
 }
 
-:where(nav li, [popover]) > :is(a, button) {
+:where(nav li, [popover]) :is(a, button) {
   display: flex;
   align-items: center;
   padding-inline: var(--step-3);

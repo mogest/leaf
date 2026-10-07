@@ -351,6 +351,13 @@ defmodule LeafWeb.PeopleLiveTest do
       |> render_submit()
 
     assert html =~ "can&#39;t be blank"
+
+    assert has_element?(
+             live,
+             ~s(#balance_entry_reason[aria-describedby="balance_entry_reason-error-1"][aria-invalid="true"])
+           )
+
+    assert has_element?(live, "#balance_entry_reason-error-1", "can't be blank")
     assert Leave.balance_entries(context.person, ~D[2026-12-31]) == []
   end
 end

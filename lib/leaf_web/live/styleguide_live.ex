@@ -166,18 +166,18 @@ defmodule LeafWeb.StyleguideLive do
           <h2>Type</h2>
         </header>
         <dl>
-          <dt>
+          <dt>Sora 500, page title</dt>
+          <dd>
             <h1>At a glance</h1>
-          </dt>
-          <dd>Sora 500, page title</dd>
-          <dt>
+          </dd>
+          <dt>Sora 500, a section</dt>
+          <dd>
             <h2>Balances</h2>
-          </dt>
-          <dd>Sora 500, a section</dd>
-          <dt>Leave dated while the entitlement was still offered can still be filed.</dt>
-          <dd>Figtree 400, reading text</dd>
-          <dt><small>Recorded only, no balance</small></dt>
-          <dd>Figtree 400, anything secondary</dd>
+          </dd>
+          <dt>Figtree 400, reading text</dt>
+          <dd>Leave dated while the entitlement was still offered can still be filed.</dd>
+          <dt>Figtree 400, anything secondary</dt>
+          <dd><small>Recorded only, no balance</small></dd>
         </dl>
       </section>
 
@@ -219,6 +219,7 @@ defmodule LeafWeb.StyleguideLive do
               options={@units}
             />
             <.input
+              id="specimen-amount"
               name="specimen[amount]"
               value="eight"
               label="Amount per day"
@@ -249,7 +250,7 @@ defmodule LeafWeb.StyleguideLive do
               <th scope="col">Name</th>
               <th scope="col">Counted in</th>
               <th scope="col">Standing</th>
-              <th scope="col"></th>
+              <td></td>
             </tr>
           </thead>
           <tbody>

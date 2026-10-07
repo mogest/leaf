@@ -55,8 +55,8 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
   # Hours off are asked of a day, so the field is only there once a single day has been entered.
   defp asking_hours(live, context, params) do
-    live |> form("form", request: asking(context, %{})) |> render_change()
-    live |> form("form", request: asking(context, params))
+    live |> form("#request", request: asking(context, %{})) |> render_change()
+    live |> form("#request", request: asking(context, params))
   end
 
   # Dates are entered while a type is already chosen, so the change carries the choice the options
@@ -124,7 +124,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert dating(live, context, %{"to" => to_string(@friday)}) =~ "Annual leave"
 
     live
-    |> form("form", request: asking(context, %{"to" => to_string(@friday)}))
+    |> form("#request", request: asking(context, %{"to" => to_string(@friday)}))
     |> render_submit()
 
     assert [%{days: days}] = Leave.requests(context.person)
@@ -147,7 +147,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     refute has_element?(live, "#request_from[value]")
     refute has_element?(live, "#request_to[value]")
 
-    live |> form("form", request: asking(context, %{"to" => ""})) |> render_submit()
+    live |> form("#request", request: asking(context, %{"to" => ""})) |> render_submit()
 
     assert [%{days: [day]}] = Leave.requests(context.person)
     assert day.date == @monday
@@ -156,13 +156,13 @@ defmodule LeafWeb.RequestLeaveLiveTest do
   test "leaving one date fills in the other, and drags it where it is the wrong side", context do
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
 
-    live |> form("form", request: asking(context, %{"to" => ""})) |> render_change()
+    live |> form("#request", request: asking(context, %{"to" => ""})) |> render_change()
     live |> element("#request_from") |> render_blur()
 
     assert has_element?(live, "#request_to[value='#{@monday}']")
 
     live
-    |> form("form", request: asking(context, %{"from" => to_string(@next_monday)}))
+    |> form("#request", request: asking(context, %{"from" => to_string(@next_monday)}))
     |> render_change()
 
     live |> element("#request_from") |> render_blur()
@@ -170,7 +170,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert has_element?(live, "#request_to[value='#{@next_monday}']")
 
     live
-    |> form("form", request: asking(context, %{"from" => to_string(@friday)}))
+    |> form("#request", request: asking(context, %{"from" => to_string(@friday)}))
     |> render_change()
 
     live |> element("#request_to") |> render_blur()
@@ -183,7 +183,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     html =
       live
-      |> form("form", request: asking(context, %{"to" => to_string(@sunday)}))
+      |> form("#request", request: asking(context, %{"to" => to_string(@sunday)}))
       |> render_change()
 
     assert html =~ "Mon 2 Mar"
@@ -197,7 +197,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     html =
       live
-      |> form("form",
+      |> form("#request",
         request:
           asking(context, %{"from" => to_string(@saturday), "to" => to_string(@next_monday)})
       )
@@ -213,7 +213,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     html =
       live
-      |> form("form",
+      |> form("#request",
         request: asking(context, %{"from" => to_string(@friday), "to" => to_string(@next_monday)})
       )
       |> render_change()
@@ -227,7 +227,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
   test "one day has no rows worth reading, and still says what it would leave", context do
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
 
-    html = live |> form("form", request: asking(context, %{})) |> render_change()
+    html = live |> form("#request", request: asking(context, %{})) |> render_change()
 
     refute html =~ "Day by day"
     assert html =~ "Annual leave left on"
@@ -254,19 +254,19 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     html =
       live
-      |> form("form", request: asking(context, %{"leave_type_id" => unpaid.id}))
+      |> form("#request", request: asking(context, %{"leave_type_id" => unpaid.id}))
       |> render_change()
 
     refute html =~ "Unpaid leave —"
     refute html =~ "What it would leave"
 
     asked = asking(context, %{"leave_type_id" => bereavement.id})
-    html = live |> form("form", request: asked) |> render_change()
+    html = live |> form("#request", request: asked) |> render_change()
 
     assert html =~ "-4 hours"
     assert html =~ "That is more leave than the balance holds. It can still be approved."
 
-    live |> form("form", request: asked) |> render_submit()
+    live |> form("#request", request: asked) |> render_submit()
 
     assert [%{status: :approved}, %{status: :pending}] = Leave.requests(context.person)
   end
@@ -276,7 +276,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     html =
       live
-      |> form("form",
+      |> form("#request",
         request: asking(context, %{"from" => to_string(@sunday), "to" => to_string(@sunday)})
       )
       |> render_change()
@@ -285,7 +285,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     html =
       live
-      |> form("form",
+      |> form("#request",
         request: asking(context, %{"from" => to_string(@saturday), "to" => to_string(@sunday)})
       )
       |> render_change()
@@ -300,7 +300,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     html =
       live
-      |> form("form", request: asking(context, %{"from" => "", "to" => ""}))
+      |> form("#request", request: asking(context, %{"from" => "", "to" => ""}))
       |> render_change()
 
     refute html =~ "Day by day"
@@ -311,7 +311,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
 
     live
-    |> form("form", request: asking(context, %{"to" => to_string(@sunday), "note" => "Away"}))
+    |> form("#request", request: asking(context, %{"to" => to_string(@sunday), "note" => "Away"}))
     |> render_submit()
 
     assert [request] = Leave.requests(context.person)
@@ -332,7 +332,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert html =~ "the whole day (8 hours)"
     refute html =~ "Day by day"
 
-    live |> form("form", request: asking(context, params)) |> render_submit()
+    live |> form("#request", request: asking(context, params)) |> render_submit()
 
     assert [%{days: [part]}] = Leave.requests(context.person)
     assert part.unit == :hours
@@ -374,14 +374,14 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
 
     live
-    |> form("form", request: asking(context, %{"to" => to_string(@friday)}))
+    |> form("#request", request: asking(context, %{"to" => to_string(@friday)}))
     |> render_submit()
 
     {:ok, again, _html} = live(context.conn, ~p"/leave/new")
 
     friday = %{"from" => to_string(@friday), "to" => to_string(@friday)}
 
-    html = again |> form("form", request: asking(context, friday)) |> render_change()
+    html = again |> form("#request", request: asking(context, friday)) |> render_change()
 
     assert html =~ "Friday 6 March already has leave on it."
     assert [_first] = Leave.requests(context.person)
@@ -394,7 +394,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     html =
       live
-      |> form("form",
+      |> form("#request",
         request: asking(context, %{"leave_type_id" => sick.id, "to" => to_string(@friday)})
       )
       |> render_change()
@@ -409,7 +409,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     html =
       live
-      |> form("form", request: asking(context, %{"leave_type_id" => "", "to" => ""}))
+      |> form("#request", request: asking(context, %{"leave_type_id" => "", "to" => ""}))
       |> render_submit()
 
     assert html =~ "That could not be filed. Check what it asks for and try again."
@@ -431,7 +431,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
   test "a request that is no longer open to change is not there to edit", context do
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
-    live |> form("form", request: asking(context, %{})) |> render_submit()
+    live |> form("#request", request: asking(context, %{})) |> render_submit()
     [request] = Leave.requests(context.person)
     {:ok, _cancelled} = Leave.cancel(request, context.person)
 
@@ -445,7 +445,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
   test "amending replaces the days a pending request asks for", context do
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
-    live |> form("form", request: asking(context, %{})) |> render_submit()
+    live |> form("#request", request: asking(context, %{})) |> render_submit()
     [request] = Leave.requests(context.person)
 
     {:ok, amend, html} = live(context.conn, ~p"/leave/#{request}/amend")
@@ -454,7 +454,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert html =~ "Your leave will be reviewed by an administrator"
 
     amend
-    |> form("form", request: asking(context, %{"to" => to_string(@sunday)}))
+    |> form("#request", request: asking(context, %{"to" => to_string(@sunday)}))
     |> render_submit()
 
     assert [%{id: same, days: days}] = Leave.requests(context.person)
@@ -492,7 +492,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     assert {:error, {:live_redirect, %{to: to}}} =
              amend
-             |> form("form",
+             |> form("#request",
                request:
                  asking(context, %{"from" => to_string(@friday), "to" => to_string(@friday)})
              )

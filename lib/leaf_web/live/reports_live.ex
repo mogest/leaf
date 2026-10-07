@@ -72,7 +72,7 @@ defmodule LeafWeb.ReportsLive do
         <h1>Reports</h1>
       </header>
 
-      <nav class="tabs">
+      <nav class="tabs" aria-label="Reports">
         <ul>
           <li :for={{label, report} <- @tabs}>
             <.link patch={~p"/reports/#{report}"} aria-current={report == @report && "page"}>
