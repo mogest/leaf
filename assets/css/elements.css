@@ -100,7 +100,6 @@ thead th {
   padding-inline-end: var(--step-4);
   border-block-end: 1px solid var(--rule-firm);
   font-size: var(--size-sm);
-  font-weight: 600;
   color: var(--ink-soft);
 }
 
