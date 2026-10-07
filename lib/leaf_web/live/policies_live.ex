@@ -45,6 +45,11 @@ defmodule LeafWeb.PoliciesLive do
     {:noreply, saved(socket, created)}
   end
 
+  @role :admin
+  def handle_event("offer", %{"id" => id}, socket) do
+    {:noreply, offer(socket, Policies.fetch_leave_policy(id))}
+  end
+
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
@@ -59,22 +64,32 @@ defmodule LeafWeb.PoliciesLive do
         <header>
           <h2>What people can be put on</h2>
         </header>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Entitlements</th>
-              <th scope="col">Standing</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr :for={policy <- @policies} data-tone={policy.tone}>
-              <th scope="row"><.link navigate={policy.path}>{policy.name}</.link></th>
-              <td>{policy.entitlements}</td>
-              <td>{policy.standing}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div :if={@policies != []}>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Entitlements</th>
+                <th scope="col">Standing</th>
+                <td></td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :for={policy <- @policies} data-tone={policy.tone}>
+                <th scope="row"><.link navigate={policy.path}>{policy.name}</.link></th>
+                <td>{policy.entitlements}</td>
+                <td>{policy.standing}</td>
+                <td>
+                  <Parts.row_menu id={"policy-#{policy.id}"} label={policy.name}>
+                    <button type="button" phx-click="offer" phx-value-id={policy.id}>
+                      {policy.offer}
+                    </button>
+                  </Parts.row_menu>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <p :if={@policies == []}>No policies yet.</p>
       </section>
 
@@ -107,9 +122,35 @@ defmodule LeafWeb.PoliciesLive do
       path: ~p"/settings/policies/#{policy}",
       entitlements: counted(policy.entitlements),
       standing: Wording.standing(policy),
-      tone: Wording.tone(policy)
+      tone: Wording.tone(policy),
+      offer: offer_label(policy)
     }
   end
+
+  defp offer_label(%{archived_at: nil}), do: "Withdraw"
+  defp offer_label(_policy), do: "Use again"
+
+  defp offer(socket, {:ok, policy}) do
+    offered(socket, toggled(policy, socket.assigns.current_person))
+  end
+
+  defp offer(socket, :error), do: put_flash(socket, :error, "That policy is not on record.")
+
+  defp toggled(%{archived_at: nil} = policy, actor), do: Policies.withdraw(policy, actor)
+  defp toggled(policy, actor), do: Policies.reoffer(policy, actor)
+
+  defp offered(socket, {:ok, %{archived_at: nil} = policy}) do
+    socket |> put_flash(:info, "#{policy.name} is in use again.") |> listed()
+  end
+
+  defp offered(socket, {:ok, policy}) do
+    socket
+    |> put_flash(:info, "#{policy.name} is withdrawn. Whoever is already on it stays on it.")
+    |> listed()
+  end
+
+  defp offered(socket, {:error, _changeset}),
+    do: put_flash(socket, :error, "That would not save.")
 
   defp counted(entitlements) do
     named(length(Enum.uniq_by(entitlements, & &1.leave_type_id)))

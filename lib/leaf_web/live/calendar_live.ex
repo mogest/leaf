@@ -13,7 +13,6 @@ defmodule LeafWeb.CalendarLive do
 
   on_mount {LeafWeb.SignIn, :admin}
 
-  alias Leaf.Changeset
   alias Leaf.Org
 
   @impl Phoenix.LiveView
@@ -25,26 +24,6 @@ defmodule LeafWeb.CalendarLive do
   end
 
   @impl Phoenix.LiveView
-  @role :admin
-  def handle_event("validate-calendar", %{"calendar" => params}, socket) do
-    changeset = Changeset.change(socket.assigns.calendar, params)
-
-    country_code =
-      params["country_code"] || (socket.assigns.country || socket.assigns.calendar).country_code
-
-    {:noreply,
-     socket
-     |> assign(:form, to_form(changeset, action: :validate))
-     |> assign(:time_zones, Org.time_zones(country_code))}
-  end
-
-  @role :admin
-  def handle_event("save-calendar", %{"calendar" => params}, socket) do
-    written = Org.update_calendar(socket.assigns.calendar, socket.assigns.current_person, params)
-
-    {:noreply, renamed(socket, written)}
-  end
-
   @role :admin
   def handle_event("validate-holiday", %{"public_holiday" => params}, socket) do
     changeset = Org.change_public_holiday(socket.assigns.calendar, params)
@@ -75,6 +54,7 @@ defmodule LeafWeb.CalendarLive do
           <.link :if={@country} navigate={~p"/settings/calendars/#{@country}"}>{@country.name}</.link>
         </nav>
         <h1>{@calendar.name}</h1>
+        <.link class="button" navigate={~p"/settings/calendars/#{@calendar}/edit"}>Edit</.link>
       </header>
 
       <section>
@@ -148,35 +128,6 @@ defmodule LeafWeb.CalendarLive do
             <button class="button" type="submit">Add it</button>
           </footer>
         </.form>
-
-        <.form id="calendar" for={@form} phx-change="validate-calendar" phx-submit="save-calendar">
-          <section>
-            <header>
-              <h2>The calendar itself</h2>
-            </header>
-            <.input field={@form[:name]} type="text" label="Name" />
-            <.input
-              :if={!@country}
-              field={@form[:country_code]}
-              type="text"
-              label="Country code, two letters"
-            />
-            <.input
-              field={@form[:time_zone]}
-              type="select"
-              label="Time zone"
-              prompt="Choose one"
-              options={@time_zones}
-            />
-          </section>
-
-          <footer>
-            <p :if={@regions != []}>
-              Changing the time zone here leaves its regions' zones as they are.
-            </p>
-            <button class="button" type="submit">Save</button>
-          </footer>
-        </.form>
       </aside>
     </Layouts.app>
     """
@@ -188,8 +139,6 @@ defmodule LeafWeb.CalendarLive do
     |> assign(:calendar, calendar)
     |> assign(:country, calendar.parent)
     |> assign(:regions, calendar.regions)
-    |> assign(:form, to_form(Changeset.change(calendar, %{})))
-    |> assign(:time_zones, Org.time_zones((calendar.parent || calendar).country_code))
     |> blank()
     |> listed()
   end
@@ -216,18 +165,6 @@ defmodule LeafWeb.CalendarLive do
 
   defp row(holiday) do
     %{id: holiday.id, date: Wording.date(holiday.date), name: holiday.name}
-  end
-
-  defp renamed(socket, {:ok, calendar}) do
-    socket
-    |> assign(:page_title, calendar.name)
-    |> assign(:calendar, calendar)
-    |> assign(:form, to_form(Changeset.change(calendar, %{})))
-    |> put_flash(:info, "Saved.")
-  end
-
-  defp renamed(socket, {:error, changeset}) do
-    assign(socket, :form, to_form(changeset, action: :validate))
   end
 
   defp added(socket, {:ok, holiday}) do
