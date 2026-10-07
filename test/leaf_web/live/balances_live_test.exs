@@ -64,7 +64,7 @@ defmodule LeafWeb.BalancesLiveTest do
     assert html =~ "100 hours"
     assert html =~ "lapses 31 December 2030"
     assert html =~ "Brought in"
-    assert html =~ "Employed from 4 March 2024"
+    assert has_element?(live, "tbody tr:first-child", ~r/4 March 2024\s*Started/)
   end
 
   test "the balance reads as accrued, and what accrued it as earned", context do
@@ -112,7 +112,7 @@ defmodule LeafWeb.BalancesLiveTest do
     assert html =~ "Recorded as it is taken; nothing accrues."
     refute html =~ "<dt>Accrued</dt>"
     assert html =~ "Nothing held."
-    assert html =~ "Nothing has happened to it yet."
+    assert has_element?(live, "tbody tr:only-child", "Started")
 
     Fixtures.leave_request(%{
       person_id: context.person.id,
@@ -208,7 +208,7 @@ defmodule LeafWeb.BalancesLiveTest do
 
     assert html =~ "as at 1 May 2024"
     assert html =~ "0 hours"
-    assert html =~ "Nothing has happened to it yet."
+    assert has_element?(live, "tbody tr:only-child", "Started")
   end
 
   test "a leave type that is nothing of theirs is no account of theirs", context do
@@ -240,7 +240,32 @@ defmodule LeafWeb.BalancesLiveTest do
     assert has_element?(live, ~s(#pages a[aria-current]), "People")
     refute has_element?(live, ~s(#pages a[aria-current]), "Your balances")
     assert html =~ "Rae Halloran"
-    assert html =~ "Employed from 4 March 2024"
     assert html =~ "100 hours"
+  end
+
+  test "somebody who has left reads as having left, after all that happened to them", context do
+    admin =
+      Fixtures.person(%{organisation_id: context.organisation.id, name: "Kit Rua", role: :admin})
+
+    left =
+      Fixtures.person(%{
+        organisation_id: context.organisation.id,
+        name: "Ari Moana",
+        employment_end_date: ~D[2025-06-30]
+      })
+
+    Fixtures.work_pattern(%{person_id: left.id})
+
+    Fixtures.balance_entry(%{
+      person_id: left.id,
+      leave_type_id: context.leave_type.id,
+      amount: "8",
+      date: ~D[2024-06-01]
+    })
+
+    path = ~p"/people/#{left}/balances?as_at=2025-01-01"
+    {:ok, live, _html} = live(sign_in(build_conn(), admin), path)
+
+    assert has_element?(live, "tbody tr:last-child", ~r/30 June 2025\s*Left/)
   end
 end

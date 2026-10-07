@@ -55,7 +55,6 @@ defmodule LeafWeb.BalancesLive do
           <.link navigate={~p"/people/#{@person}"}>{@person.name}</.link>
         </nav>
         <h1>{@heading}</h1>
-        <p>Employed {@employment}</p>
       </header>
 
       <.form id="as-at" for={@form} phx-change="as-at">
@@ -106,7 +105,7 @@ defmodule LeafWeb.BalancesLive do
           <header>
             <h2>How it was arrived at</h2>
           </header>
-          <table :if={@account.movements != []}>
+          <table>
             <thead>
               <tr>
                 <th scope="col">Date</th>
@@ -124,7 +123,6 @@ defmodule LeafWeb.BalancesLive do
               </tr>
             </tbody>
           </table>
-          <p :if={@account.movements == []}>Nothing has happened to it yet.</p>
         </section>
       </div>
     </Layouts.app>
@@ -182,7 +180,6 @@ defmodule LeafWeb.BalancesLive do
     |> assign(:heading, heading(mine?))
     |> assign(:rail, rail(mine?))
     |> assign(:person, person)
-    |> assign(:employment, Wording.employment(person))
     |> assign(:mine?, mine?)
     |> assign(:selected, selected)
     |> assign(:form, to_form(%{"as_at" => to_string(as_at)}, as: :ledger))
@@ -271,7 +268,7 @@ defmodule LeafWeb.BalancesLive do
       accrued: accrued(statement, leave_type, granted),
       awaiting: Wording.asked(Ledger.awaiting(person)[leave_type.id], leave_type.unit),
       lots: lots(statement, leave_type),
-      movements: movements(statement, leave_type)
+      movements: movements(statement, leave_type, person)
     }
   end
 
@@ -293,10 +290,19 @@ defmodule LeafWeb.BalancesLive do
   defp lapses(nil), do: "does not lapse"
   defp lapses(date), do: "lapses #{Wording.date(date)}"
 
-  defp movements(nil, _leave_type), do: []
+  defp movements(statement, leave_type, person) do
+    employment(person.employment_start_date, "Started") ++
+      Enum.map(recorded(statement), &movement(&1, leave_type)) ++
+      employment(person.employment_end_date, "Left")
+  end
 
-  defp movements(statement, leave_type),
-    do: Enum.map(statement.movements, &movement(&1, leave_type))
+  defp recorded(nil), do: []
+  defp recorded(statement), do: statement.movements
+
+  defp employment(nil, _kind), do: []
+
+  defp employment(date, kind),
+    do: [%{date: Wording.date(date), kind: kind, amount: nil, expires: nil, tone: nil}]
 
   defp movement(movement, leave_type) do
     %{
