@@ -46,11 +46,11 @@ defmodule LeafWeb.YourRequestsLive do
     assign(
       socket,
       :requests,
-      Enum.map(Leave.requests(person), &shown(&1, person, today, manager))
+      Enum.map(Leave.requests(person), &shown(&1, person, today, socket.assigns.zone, manager))
     )
   end
 
-  defp shown(request, person, today, manager) do
-    request |> Wording.filed(today, manager) |> Parts.revisable(request, person)
+  defp shown(request, person, today, zone, manager) do
+    request |> Wording.filed(today, zone, manager) |> Parts.revisable(request, person)
   end
 end

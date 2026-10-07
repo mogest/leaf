@@ -111,7 +111,7 @@ defmodule LeafWeb.AuditLive do
   end
 
   defp shown(socket, entries) do
-    zone = People.time_zone(socket.assigns.current_person)
+    zone = socket.assigns.zone
 
     assign(socket, :entries, Enum.map(entries, &row(&1, zone)))
   end

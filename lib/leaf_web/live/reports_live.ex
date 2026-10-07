@@ -11,7 +11,6 @@ defmodule LeafWeb.ReportsLive do
   on_mount {LeafWeb.SignIn, :admin}
 
   alias Leaf.Org
-  alias Leaf.People
   alias Leaf.Policies
   alias Leaf.Reports
 
@@ -39,7 +38,6 @@ defmodule LeafWeb.ReportsLive do
     {:ok,
      socket
      |> assign(:page_title, "Reports")
-     |> assign(:zone, People.time_zone(socket.assigns.current_person))
      |> assign(:tabs, Enum.map(@tabs, fn {label, report, _says, _fields} -> {label, report} end))
      |> assign(:countries, Enum.map(Org.countries(organisation_id), &{&1.name, &1.id}))
      |> assign(:leave_types, Enum.map(Policies.leave_types(organisation_id), &{&1.name, &1.id}))}
