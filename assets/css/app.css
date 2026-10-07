@@ -1,4 +1,3 @@
-/* The design system. Imports are bundled into one stylesheet by esbuild. */
 @import "tokens.css";
 @import "elements.css";
 @import "layout.css";
