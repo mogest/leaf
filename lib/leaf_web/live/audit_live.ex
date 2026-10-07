@@ -38,7 +38,7 @@ defmodule LeafWeb.AuditLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
+    <Layouts.app flash={@flash} page="audit" viewer={@viewer}>
       <header>
         <h1>Audit log</h1>
       </header>

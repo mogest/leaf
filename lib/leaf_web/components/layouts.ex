@@ -11,7 +11,7 @@ defmodule LeafWeb.Layouts do
   # Each entry, where it goes, and the pages that light it up. A page reached from an entry stands
   # under it, so a form opened off "People" leaves the rail where the reader left it.
   @approvals {"Approvals", "/approvals", ~w(approvals)}
-  @people {"People", "/people", ~w(people)}
+  @people {"People", "/people", ~w(people person)}
 
   @rail [
     {"At a glance", "/", ~w(at-a-glance request-leave)},
@@ -25,7 +25,7 @@ defmodule LeafWeb.Layouts do
   @administered [
     @people,
     {"Reports", "/reports", ~w(reports)},
-    {"Settings", "/settings", ~w(settings)}
+    {"Settings", "/settings", ~w(settings audit)}
   ]
 
   @doc """

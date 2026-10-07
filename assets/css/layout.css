@@ -899,7 +899,7 @@ main.approvals > ol > li {
   }
 }
 
-:is(main.people, main.settings, main.your-requests, main.styleguide)
+:is(main.people, main.person, main.settings, main.your-requests, main.styleguide)
   :is(tbody tr:has(th a), section > ol > li:has(> a:first-child)) {
   position: relative;
 
@@ -921,45 +921,37 @@ main.approvals > ol > li {
   }
 }
 
-main.people {
-  & section:not(.balance-sheet) > dl {
-    display: grid;
-    grid-template-columns: 9rem 1fr;
-    gap: var(--step-2) var(--step-4);
-    font-size: var(--size-base);
+main.person section:not(.balance-sheet) > dl {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: var(--step-2) var(--step-4);
+  font-size: var(--size-base);
 
-    & > dt {
-      color: var(--ink-soft);
-    }
+  & > dt {
+    color: var(--ink-soft);
   }
+}
 
-  @media (width < 48rem) {
-    & > div > table {
-      & td:not(:nth-child(2)) {
-        display: none;
-      }
+@media (width < 48rem) {
+  main.people table {
+    & td:not(:nth-child(2)) {
+      display: none;
+    }
 
-      & :is(th, td) {
-        flex-basis: 100%;
-      }
+    & :is(th, td) {
+      flex-basis: 100%;
+    }
 
-      & td {
-        font-size: var(--size-sm);
-        color: var(--ink-soft);
-      }
+    & td {
+      font-size: var(--size-sm);
+      color: var(--ink-soft);
     }
   }
 }
 
 @media (width < 48rem) {
-  :is(
-      main.people > div,
-      main.people section,
-      main.balances section,
-      main.settings > form + section > div,
-      .requests > div
-    )
-    > table {
+  :is(main.people, main.person, main.audit) table,
+  :is(main.balances section, .requests > div) > table {
     display: block;
 
     & thead {
@@ -993,7 +985,7 @@ main.people {
 }
 
 @media (width < 48rem) {
-  :is(main.people, main.balances) section > table {
+  :is(main.person, main.balances) section > table {
     & td:empty {
       display: none;
     }
@@ -1008,7 +1000,7 @@ main.people {
     }
   }
 
-  main.people section > table {
+  main.person section > table {
     & td:nth-child(4) {
       order: 0;
     }
@@ -1054,7 +1046,7 @@ main.people {
 }
 
 @media (width < 48rem) {
-  main.settings > form + section > div > table {
+  main.audit table {
     & td:nth-child(5),
     & td:empty {
       display: none;
