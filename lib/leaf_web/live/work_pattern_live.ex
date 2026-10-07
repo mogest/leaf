@@ -36,15 +36,20 @@ defmodule LeafWeb.WorkPatternLive do
 
   @impl Phoenix.LiveView
   @role :admin
-  def handle_event("validate", %{"work_pattern" => params}, socket) do
-    changeset = change(socket.assigns.pattern, socket.assigns.person, params)
+  def handle_event("validate", %{"work_pattern" => params} = form_params, socket) do
+    %{pattern: pattern, person: person, shape: shape} = socket.assigns
+    # The params come from the form as it stood, before any new shape was picked.
+    changeset = change(pattern, person, shaped(shape, params))
 
-    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
+    {:noreply,
+     socket
+     |> assign(:form, to_form(changeset, action: :validate))
+     |> assign(:shape, Map.get(form_params, "shape", shape))}
   end
 
   @role :admin
   def handle_event("save", %{"work_pattern" => params}, socket) do
-    {:noreply, saved(socket, write(socket.assigns, params))}
+    {:noreply, saved(socket, write(socket.assigns, shaped(socket.assigns.shape, params)))}
   end
 
   @impl Phoenix.LiveView
@@ -62,10 +67,35 @@ defmodule LeafWeb.WorkPatternLive do
       <.form id="work-pattern" for={@form} phx-change="validate" phx-submit="save">
         <section>
           <header>
-            <h2>Hours a day</h2>
+            <h2>Hours</h2>
           </header>
           <.input field={@form[:effective_from]} type="date" label="From" />
-          <.input :for={{field, day} <- @weekdays} field={@form[field]} type="text" label={day} />
+          <fieldset :if={@live_action == :new}>
+            <legend>Works</legend>
+            <label>
+              <input type="radio" name="shape" value="weekdays" checked={@shape == "weekdays"} />
+              The same hours every weekday
+            </label>
+            <label>
+              <input type="radio" name="shape" value="by-day" checked={@shape == "by-day"} />
+              Different hours by day
+            </label>
+          </fieldset>
+          <.input
+            :if={@shape == "weekdays"}
+            field={@form[:monday_hours]}
+            label="Hours each weekday"
+            inputmode="decimal"
+          />
+          <fieldset :if={@shape == "by-day"}>
+            <legend>Hours each day</legend>
+            <.input
+              :for={{field, day} <- @weekdays}
+              field={named(@form[field], day)}
+              label={String.slice(day, 0, 3)}
+              inputmode="decimal"
+            />
+          </fieldset>
         </section>
 
         <footer>
@@ -87,6 +117,7 @@ defmodule LeafWeb.WorkPatternLive do
     |> assign(:person, person)
     |> assign(:pattern, pattern)
     |> assign(:weekdays, @weekdays)
+    |> assign(:shape, shape(socket.assigns.live_action))
     |> assign(:form, to_form(change(pattern, person, opening(pattern, person))))
   end
 
@@ -103,9 +134,39 @@ defmodule LeafWeb.WorkPatternLive do
   defp title(:new), do: "Add a work pattern"
   defp title(:edit), do: "Edit a work pattern"
 
-  # A first pattern almost always starts the day the person did, so that is what is offered.
-  defp opening(nil, person), do: %{"effective_from" => to_string(person.employment_start_date)}
+  defp named(field, day) do
+    %{
+      field
+      | errors: Enum.map(field.errors, fn {message, opts} -> {"#{day} #{message}", opts} end)
+    }
+  end
+
+  defp shape(:new), do: "weekdays"
+  defp shape(:edit), do: "by-day"
+
+  defp shaped("weekdays", %{"monday_hours" => ""} = params), do: params
+
+  defp shaped("weekdays", %{"monday_hours" => hours} = params) do
+    Map.merge(params, %{
+      "tuesday_hours" => hours,
+      "wednesday_hours" => hours,
+      "thursday_hours" => hours,
+      "friday_hours" => hours,
+      "saturday_hours" => "0",
+      "sunday_hours" => "0"
+    })
+  end
+
+  defp shaped(_shape, params), do: params
+
+  defp opening(nil, person),
+    do: %{"effective_from" => to_string(starting(person, People.work_patterns(person)))}
+
   defp opening(_pattern, _person), do: %{}
+
+  # A first pattern almost always starts the day the person did; a later one, about now.
+  defp starting(person, []), do: person.employment_start_date
+  defp starting(person, _patterns), do: People.today(person)
 
   defp change(nil, person, params), do: People.change_work_pattern(person, params)
   defp change(pattern, _person, params), do: Changeset.change(pattern, params)

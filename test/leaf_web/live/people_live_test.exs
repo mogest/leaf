@@ -197,26 +197,55 @@ defmodule LeafWeb.PeopleLiveTest do
     assert html =~ "Mon 8, Tue 6, Thu–Fri 8, Sat 4"
   end
 
+  test "a first work pattern is offered their start date, a later one today", context do
+    other = Fixtures.person(%{organisation_id: context.organisation.id, name: "Ines Vasquez"})
+
+    {:ok, _live, html} = live(context.conn, ~p"/people/#{other}/work-patterns/new")
+    assert html =~ ~s(value="#{other.employment_start_date}")
+
+    {:ok, _live, html} = live(context.conn, ~p"/people/#{context.person}/work-patterns/new")
+    assert html =~ ~s(value="#{People.today(context.person)}")
+  end
+
+  test "the same hours every weekday fills Monday to Friday", context do
+    {:ok, live, _html} = live(context.conn, ~p"/people/#{context.person}/work-patterns/new")
+
+    refute live |> form("#work-pattern") |> render_change(%{"shape" => "by-day"}) =~ "Tuesday can"
+
+    live |> form("#work-pattern") |> render_change(%{"shape" => "weekdays"})
+
+    live
+    |> form("#work-pattern",
+      work_pattern: %{"effective_from" => "2026-01-01", "monday_hours" => "7.5"}
+    )
+    |> render_submit()
+
+    assert [_first, added] = People.work_patterns(context.person)
+    assert Decimal.eq?(People.weekly_hours(added), "37.5")
+    assert Decimal.eq?(People.hours_on(added, ~D[2026-01-03]), 0)
+  end
+
   test "a work pattern can be added, amended and removed", context do
     {:ok, live, _html} = live(context.conn, ~p"/people/#{context.person}/work-patterns/new")
 
     live
     |> form("#work-pattern",
-      work_pattern: %{
-        "effective_from" => "2026-01-01",
-        "monday_hours" => "9",
-        "tuesday_hours" => "9",
-        "wednesday_hours" => "9",
-        "thursday_hours" => "0",
-        "friday_hours" => "9",
-        "saturday_hours" => "0",
-        "sunday_hours" => "0"
-      }
+      work_pattern: %{"effective_from" => "2026-01-01", "monday_hours" => "7.5"}
     )
+    |> render_change(%{"shape" => "by-day"})
+
+    assert live
+           |> form("#work-pattern", work_pattern: %{"thursday_hours" => "25"})
+           |> render_change() =~ "Thursday must be less than or equal to 24"
+
+    live
+    |> form("#work-pattern", work_pattern: %{"thursday_hours" => "0"})
     |> render_submit()
 
     assert [_first, added] = People.work_patterns(context.person)
     assert added.effective_from == ~D[2026-01-01]
+    assert Decimal.eq?(People.weekly_hours(added), 30)
+    assert Decimal.eq?(People.hours_on(added, ~D[2026-01-01]), 0)
 
     {:ok, live, _html} =
       live(context.conn, ~p"/people/#{context.person}/work-patterns/#{added}")
