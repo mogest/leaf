@@ -12,6 +12,17 @@ defmodule Leaf.WordingTest do
     end
   end
 
+  describe "date/2" do
+    test "an instant falls on the date it is where whoever is reading it is" do
+      at = ~U[2026-08-21 21:00:00Z]
+
+      assert Wording.date(at, "Pacific/Auckland") == "22 August 2026"
+      assert Wording.date(at, "Etc/UTC") == "21 August 2026"
+      assert Wording.brief_date(at, "Pacific/Auckland") == "22 Aug 2026"
+      assert Wording.day_and_month(at, "Pacific/Auckland") == "22 August"
+    end
+  end
+
   describe "month/2" do
     test "a month in the year being read in is named without it" do
       assert Wording.month(~D[2030-08-01], ~D[2030-02-14]) == "August"

@@ -86,11 +86,11 @@ defmodule LeafWeb.LeaveTypesLive do
                 <td>{leave_type.position}</td>
                 <th scope="row"><.link navigate={leave_type.path}>{leave_type.name}</.link></th>
                 <td>{leave_type.unit}</td>
-                <td>{leave_type.standing}</td>
+                <td>{leave_type.offering}</td>
                 <td>
                   <Parts.row_menu id={"leave-type-#{leave_type.id}"} label={leave_type.name}>
                     <button type="button" phx-click="offer" phx-value-id={leave_type.id}>
-                      {leave_type.offer}
+                      {leave_type.action}
                     </button>
                   </Parts.row_menu>
                 </td>
@@ -125,7 +125,7 @@ defmodule LeafWeb.LeaveTypesLive do
     leave_types = Policies.leave_types(socket.assigns.organisation.id)
 
     socket
-    |> assign(:leave_types, Enum.map(leave_types, &row/1))
+    |> assign(:leave_types, Enum.map(leave_types, &row(&1, socket.assigns.zone)))
     |> assign(:next, length(leave_types) + 1)
   end
 
@@ -139,21 +139,21 @@ defmodule LeafWeb.LeaveTypesLive do
     assign(socket, :form, to_form(changeset))
   end
 
-  defp row(leave_type) do
+  defp row(leave_type, zone) do
     %{
       id: leave_type.id,
       name: leave_type.name,
       unit: to_string(leave_type.unit),
       position: leave_type.position,
       path: ~p"/settings/leave-types/#{leave_type}",
-      standing: Wording.standing(leave_type),
+      offering: Wording.offering(leave_type, zone),
       tone: Wording.tone(leave_type),
-      offer: offer_label(leave_type)
+      action: action(leave_type)
     }
   end
 
-  defp offer_label(%{archived_at: nil}), do: "Stop offering"
-  defp offer_label(_leave_type), do: "Offer again"
+  defp action(%{archived_at: nil}), do: "Stop offering"
+  defp action(_leave_type), do: "Offer again"
 
   defp offer(socket, {:ok, leave_type}) do
     offered(socket, toggled(leave_type, socket.assigns.current_person))

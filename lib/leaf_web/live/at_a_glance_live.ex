@@ -33,7 +33,10 @@ defmodule LeafWeb.AtAGlanceLive do
      |> assign(:later, step(from, @months))
      |> assign(:months, Leave.calendar(person, Date.range(from, closes(from))))
      |> assign(:balances, balances(person, today))
-     |> assign(:requests, Enum.map(shown, &Wording.filed(&1, today, manager)))
+     |> assign(
+       :requests,
+       Enum.map(shown, &Wording.filed(&1, today, socket.assigns.zone, manager))
+     )
      |> assign(:filed, length(shown) + length(rest))
      |> assign(:more?, rest != [])}
   end

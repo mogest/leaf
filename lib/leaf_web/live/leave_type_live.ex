@@ -48,7 +48,7 @@ defmodule LeafWeb.LeaveTypeLive do
           <.link navigate={~p"/settings/leave-types"}>Leave types</.link>
         </nav>
         <h1>{@leave_type.name}</h1>
-        <p :if={@leave_type.archived_at}>{withdrawn(@leave_type)}</p>
+        <p :if={@leave_type.archived_at}>{withdrawn(@leave_type, @zone)}</p>
       </header>
 
       <.form id="leave-type" for={@form} phx-change="validate" phx-submit="save">
@@ -84,8 +84,8 @@ defmodule LeafWeb.LeaveTypeLive do
     |> push_navigate(to: ~p"/settings/leave-types")
   end
 
-  defp withdrawn(leave_type) do
-    "Not offered in new configuration since #{Wording.date(DateTime.to_date(leave_type.archived_at))}. " <>
+  defp withdrawn(leave_type, zone) do
+    "Not offered in new configuration since #{Wording.date(leave_type.archived_at, zone)}. " <>
       "Policies that already include it go on granting it."
   end
 

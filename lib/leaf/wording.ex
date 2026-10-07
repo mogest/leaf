@@ -33,10 +33,11 @@ defmodule Leaf.Wording do
   a row at a time against others, so the dates are the short form, and how it got there leaves out
   the word its standing already says.
 
-  `awaiting` is who a pending one is with, and is left out where a page is not saying.
+  `zone` is the reader's, for the days it was sent and settled on. `awaiting` is who a pending one
+  is with, and is left out where a page is not saying.
   """
-  @spec filed(Request.t(), Date.t(), String.t() | nil) :: filed()
-  def filed(request, today, awaiting \\ nil) do
+  @spec filed(Request.t(), Date.t(), String.t(), String.t() | nil) :: filed()
+  def filed(request, today, zone, awaiting \\ nil) do
     standing = standing(request, today)
 
     %{
@@ -46,7 +47,7 @@ defmodule Leaf.Wording do
       amount: amount(request),
       standing: standing,
       label: standing |> Atom.to_string() |> String.capitalize(),
-      progress: progress(request, awaiting)
+      progress: progress(request, zone, awaiting)
     }
   end
 
@@ -196,14 +197,26 @@ defmodule Leaf.Wording do
   def date(nil), do: nil
   def date(date), do: Calendar.strftime(date, "%-d %B %Y")
 
+  @doc "The date an instant fell on where the reader is: 22 August 2026."
+  @spec date(DateTime.t(), String.t()) :: String.t()
+  def date(at, zone), do: at |> on(zone) |> date()
+
   @doc "A date narrow enough for a column of them, the year kept: 22 Aug 2026."
-  @spec brief_date(Date.t() | DateTime.t() | nil) :: String.t() | nil
+  @spec brief_date(Date.t() | nil) :: String.t() | nil
   def brief_date(nil), do: nil
-  def brief_date(at), do: Calendar.strftime(at, "%-d %b %Y")
+  def brief_date(date), do: Calendar.strftime(date, "%-d %b %Y")
+
+  @doc "The date an instant fell on where the reader is, narrow enough for a column: 22 Aug 2026."
+  @spec brief_date(DateTime.t(), String.t()) :: String.t()
+  def brief_date(at, zone), do: at |> on(zone) |> brief_date()
 
   @doc "A date within the year it is being read in: 18 August."
-  @spec day_and_month(Date.t() | DateTime.t()) :: String.t()
-  def day_and_month(at), do: Calendar.strftime(at, "%-d %B")
+  @spec day_and_month(Date.t()) :: String.t()
+  def day_and_month(date), do: Calendar.strftime(date, "%-d %B")
+
+  @doc "The date an instant fell on where the reader is, within the year it is read in: 18 August."
+  @spec day_and_month(DateTime.t(), String.t()) :: String.t()
+  def day_and_month(at, zone), do: at |> on(zone) |> day_and_month()
 
   @doc "A month, named with its year only where that is not the year being read in: August 2030."
   @spec month(Date.t(), Date.t()) :: String.t()
@@ -236,9 +249,9 @@ defmodule Leaf.Wording do
   def leave_type(leave_type), do: "#{leave_type.name} (in #{leave_type.unit})"
 
   @doc "Whether a leave type or a policy is still offered, and when it stopped being."
-  @spec standing(LeavePolicy.t() | LeaveType.t()) :: String.t()
-  def standing(%{archived_at: nil}), do: "offered"
-  def standing(record), do: "withdrawn #{date(DateTime.to_date(record.archived_at))}"
+  @spec offering(LeavePolicy.t() | LeaveType.t(), String.t()) :: String.t()
+  def offering(%{archived_at: nil}, _zone), do: "offered"
+  def offering(record, zone), do: "withdrawn #{date(record.archived_at, zone)}"
 
   @doc "The tone a withdrawn leave type or policy is read in, and none while it is still offered."
   @spec tone(LeavePolicy.t() | LeaveType.t()) :: String.t() | nil
@@ -350,19 +363,21 @@ defmodule Leaf.Wording do
   defp last(request), do: request.days |> Enum.map(& &1.date) |> Enum.max(Date)
 
   # Whoever it is with or whoever settled it, and when. What they did is the standing's to say.
-  defp progress(%{status: :pending} = request, nil),
-    do: "sent #{brief_date(request.inserted_at)}"
+  defp progress(%{status: :pending} = request, zone, nil),
+    do: "sent #{brief_date(request.inserted_at, zone)}"
 
-  defp progress(%{status: :pending} = request, awaiting) do
-    "with #{awaiting} since #{brief_date(request.inserted_at)}"
+  defp progress(%{status: :pending} = request, zone, awaiting) do
+    "with #{awaiting} since #{brief_date(request.inserted_at, zone)}"
   end
 
-  defp progress(%{status: :declined, review_comment: comment} = request, _awaiting)
+  defp progress(%{status: :declined, review_comment: comment} = request, _zone, _awaiting)
        when is_binary(comment) do
     "#{request.reviewed_by.name} said “#{comment}”"
   end
 
-  defp progress(request, _awaiting) do
-    "#{request.reviewed_by.name} · #{brief_date(request.reviewed_at)}"
+  defp progress(request, zone, _awaiting) do
+    "#{request.reviewed_by.name} · #{brief_date(request.reviewed_at, zone)}"
   end
+
+  defp on(at, zone), do: at |> DateTime.shift_zone!(zone) |> DateTime.to_date()
 end

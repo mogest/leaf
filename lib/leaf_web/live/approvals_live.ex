@@ -81,11 +81,13 @@ defmodule LeafWeb.ApprovalsLive do
     assign(
       socket,
       :waiting,
-      socket.assigns.current_person |> Leave.awaiting() |> Enum.map(&shown/1)
+      socket.assigns.current_person
+      |> Leave.awaiting()
+      |> Enum.map(&shown(&1, socket.assigns.zone))
     )
   end
 
-  defp shown(request) do
+  defp shown(request, zone) do
     projected = Ledger.projected(request.person, request.days)
 
     %{
@@ -95,7 +97,7 @@ defmodule LeafWeb.ApprovalsLive do
       dates: Wording.dates(request),
       amount: Wording.amount(request),
       detail:
-        "#{Wording.types(request)} · requested on #{Wording.day_and_month(request.inserted_at)}",
+        "#{Wording.types(request)} · requested on #{Wording.day_and_month(request.inserted_at, zone)}",
       note: request.note,
       remaining: Wording.remaining(projected),
       overdrawn: Wording.overdrawn?(projected)

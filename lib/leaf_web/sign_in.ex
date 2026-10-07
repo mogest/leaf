@@ -29,7 +29,8 @@ defmodule LeafWeb.SignIn do
   Puts whoever the session names on the socket, and turns anybody else away.
 
   `:current_person` assigns the person twice over: as themselves, which is the actor every context
-  write takes, and as a `Viewer`, which is all the chrome around a page is given. It also puts
+  write takes, and as a `Viewer`, which is all the chrome around a page is given. `:zone` is their
+  time zone, which every stored instant is shown in. It also puts
   `LeafWeb.AuthorizedEvents` in front of every event, since a page a member may open can still
   carry an administrator's buttons.
 
@@ -88,6 +89,7 @@ defmodule LeafWeb.SignIn do
     socket
     |> Component.assign(:current_person, person)
     |> Component.assign(:viewer, Viewer.new(person))
+    |> Component.assign(:zone, People.time_zone(person))
     |> AuthorizedEvents.enforce()
   end
 

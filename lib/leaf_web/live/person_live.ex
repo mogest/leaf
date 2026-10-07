@@ -289,11 +289,14 @@ defmodule LeafWeb.PersonLive do
     |> assign(:policies, Enum.map(People.policy_assignments(person), &policy/1))
     |> assign(:calendars, Enum.map(People.calendar_assignments(person), &calendar/1))
     |> assign(:entries, entries(person, leave_types))
-    |> assign(:requests, Enum.map(Leave.requests(person), &filed(&1, actor(socket), today)))
+    |> assign(
+      :requests,
+      Enum.map(Leave.requests(person), &filed(&1, actor(socket), today, socket.assigns.zone))
+    )
   end
 
-  defp filed(request, viewer, today) do
-    request |> Wording.filed(today) |> Parts.revisable(request, viewer)
+  defp filed(request, viewer, today, zone) do
+    request |> Wording.filed(today, zone) |> Parts.revisable(request, viewer)
   end
 
   defp actor(socket), do: socket.assigns.current_person

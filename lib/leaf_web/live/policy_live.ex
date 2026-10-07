@@ -36,7 +36,7 @@ defmodule LeafWeb.PolicyLive do
           <.link navigate={~p"/settings/policies"}>Leave policies</.link>
         </nav>
         <h1>{@policy.name}</h1>
-        <p :if={@policy.archived_at}>{withdrawn(@policy)}</p>
+        <p :if={@policy.archived_at}>{withdrawn(@policy, @zone)}</p>
         <.link class="button" navigate={~p"/settings/policies/#{@policy}/edit"}>Edit</.link>
       </header>
 
@@ -156,8 +156,8 @@ defmodule LeafWeb.PolicyLive do
     "Lapses #{entitlement.expiry_window_days} days after it lands"
   end
 
-  defp withdrawn(policy) do
-    "Withdrawn #{Wording.date(DateTime.to_date(policy.archived_at))}. " <>
+  defp withdrawn(policy, zone) do
+    "Withdrawn #{Wording.date(policy.archived_at, zone)}. " <>
       "Nobody new goes on it; whoever is already on it stays, and goes on being granted what it says."
   end
 

@@ -78,11 +78,11 @@ defmodule LeafWeb.PoliciesLive do
               <tr :for={policy <- @policies} data-tone={policy.tone}>
                 <th scope="row"><.link navigate={policy.path}>{policy.name}</.link></th>
                 <td>{policy.entitlements}</td>
-                <td>{policy.standing}</td>
+                <td>{policy.offering}</td>
                 <td>
                   <Parts.row_menu id={"policy-#{policy.id}"} label={policy.name}>
                     <button type="button" phx-click="offer" phx-value-id={policy.id}>
-                      {policy.offer}
+                      {policy.action}
                     </button>
                   </Parts.row_menu>
                 </td>
@@ -112,23 +112,23 @@ defmodule LeafWeb.PoliciesLive do
   defp listed(socket) do
     policies = Policies.leave_policies(socket.assigns.organisation.id)
 
-    assign(socket, :policies, Enum.map(policies, &row/1))
+    assign(socket, :policies, Enum.map(policies, &row(&1, socket.assigns.zone)))
   end
 
-  defp row(policy) do
+  defp row(policy, zone) do
     %{
       id: policy.id,
       name: policy.name,
       path: ~p"/settings/policies/#{policy}",
       entitlements: counted(policy.entitlements),
-      standing: Wording.standing(policy),
+      offering: Wording.offering(policy, zone),
       tone: Wording.tone(policy),
-      offer: offer_label(policy)
+      action: action(policy)
     }
   end
 
-  defp offer_label(%{archived_at: nil}), do: "Withdraw"
-  defp offer_label(_policy), do: "Use again"
+  defp action(%{archived_at: nil}), do: "Withdraw"
+  defp action(_policy), do: "Use again"
 
   defp offer(socket, {:ok, policy}) do
     offered(socket, toggled(policy, socket.assigns.current_person))
