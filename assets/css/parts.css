@@ -16,7 +16,7 @@ section > header {
     flex-grow: 1;
   }
 
-  & > :is(p, a) {
+  & > a {
     font-size: var(--size-base);
     color: var(--ink-soft);
   }

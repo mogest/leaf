@@ -209,7 +209,6 @@ defmodule LeafWeb.StyleguideLive do
           <section>
             <header>
               <h2>What it is</h2>
-              <p>anything quiet the heading wants to say</p>
             </header>
             <.input name="specimen[name]" value="Quarterly leave" label="Name" />
             <.input
