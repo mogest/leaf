@@ -21,11 +21,10 @@ defmodule LeafWeb.WhoIsAwayLive do
     {:ok,
      socket
      |> assign(:page_title, "Who's away")
-     |> assign(:today, today)
      |> assign(:month, Calendar.strftime(from, "%B %Y"))
      |> assign(:earlier, step(from, -1))
      |> assign(:later, step(from, 1))
-     |> assign(:dates, Enum.map(range, &heading(&1, today)))
+     |> assign(:dates, Enum.map(range, &heading/1))
      |> assign(:rows, rows(socket, range, today))}
   end
 
@@ -48,7 +47,7 @@ defmodule LeafWeb.WhoIsAwayLive do
             <thead>
               <tr>
                 <th scope="col">Person</th>
-                <th :for={date <- @dates} scope="col" data-today={date.today?}>
+                <th :for={date <- @dates} scope="col">
                   <abbr title={date.title}>{date.number}</abbr>
                 </th>
               </tr>
@@ -108,12 +107,8 @@ defmodule LeafWeb.WhoIsAwayLive do
     ~p"/away?month=#{named}"
   end
 
-  defp heading(date, today) do
-    %{
-      number: date.day,
-      title: Wording.weekday(date),
-      today?: date == today
-    }
+  defp heading(date) do
+    %{number: date.day, title: Wording.weekday(date)}
   end
 
   # A name is a link only where the reader may open the page behind it (§5.9).
