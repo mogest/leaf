@@ -1,16 +1,7 @@
 <main class="sign-in">
   <h1>Leaf</h1>
-  <p>Choose who you are. There are no passwords yet — anyone can be anyone.</p>
-
-  <ul :if={@people != []}>
-    <li :for={person <- @people}>
-      <.form for={%{}} action={~p"/sign-in/#{person.id}"}>
-        <button>{person.name}</button>
-      </.form>
-    </li>
-  </ul>
-
-  <p :if={@people == []}>
-    Nobody has been added yet. Run <code>mix leaf.seed</code> to build the example organisation.
-  </p>
+  <p>Sign in with your work Google account.</p>
+  <a class="button" href={~p"/sign-in/start"}>Sign in with Google</a>
+  <p :if={@picker?}><a href={~p"/sign-in/pick"}>Or pick someone to be</a>, for testing.</p>
 </main>
+<Layouts.flash_group flash={@flash} />

@@ -54,6 +54,7 @@ defmodule Leaf.MixProject do
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
+      {:assent, "~> 0.3.1"},
       {:tz, "~> 0.28"},
       {:jason, "~> 1.2"},
       {:bandit, "~> 1.5"},

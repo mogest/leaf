@@ -1,3 +1,4 @@
+Mimic.copy(Assent.Strategy.Google)
 Mimic.copy(Leaf.Messaging.Slack.API)
 Mimic.copy(Sentry)
 

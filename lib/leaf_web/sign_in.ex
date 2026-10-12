@@ -1,11 +1,9 @@
 defmodule LeafWeb.SignIn do
   @moduledoc """
-  Signing in, until there is real authentication.
+  Who the session names, and turning away anybody it does not.
 
-  Picking a name off a list is the whole of it: no password, nothing verified, nothing stopping
-  anybody from being anybody. It exists so every page downstream can be written against a
-  `current_person` and need no changing when Google OAuth (SCOPE.md §5.9) arrives. That lands last
-  on purpose, so the pages people actually use get built first.
+  Who that is gets settled by `LeafWeb.SignInController`, or where config allows by
+  `LeafWeb.SignInPickerController`; from then on the session holds only their id.
   """
 
   import Phoenix.Controller
@@ -67,7 +65,7 @@ defmodule LeafWeb.SignIn do
   @spec sign_out(Plug.Conn.t()) :: Plug.Conn.t()
   def sign_out(conn), do: configure_session(conn, drop: true)
 
-  @doc "Sends anyone the session does not name to the list of people."
+  @doc "Sends anyone the session does not name to sign in."
   @spec require_person(Plug.Conn.t(), keyword()) :: Plug.Conn.t()
   def require_person(%{assigns: %{current_person: nil}} = conn, _opts) do
     conn |> redirect(to: "/sign-in") |> halt()

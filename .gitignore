@@ -41,3 +41,6 @@ npm-debug.log
 
 # Deployment config for one particular cluster, kept out of the repository.
 /infrastructure/
+
+# Local secrets, such as the Google OAuth client for development.
+/mise.local.toml

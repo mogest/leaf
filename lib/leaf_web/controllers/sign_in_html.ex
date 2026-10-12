@@ -1,5 +1,5 @@
 defmodule LeafWeb.SignInHTML do
-  @moduledoc "The list of people to sign in as."
+  @moduledoc "The page that sends somebody to sign in."
 
   use LeafWeb, :html
 

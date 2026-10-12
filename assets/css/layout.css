@@ -177,7 +177,8 @@ div[data-phx-main] > nav {
   }
 }
 
-div[data-phx-main] > div[aria-live] {
+div[data-phx-main] > div[aria-live],
+body > div[aria-live] {
   position: fixed;
   inset-block-start: var(--step-6);
   inset-inline-end: var(--step-6);
@@ -441,6 +442,10 @@ main.sign-in {
   & > p {
     font-size: var(--size-base);
     color: var(--ink-soft);
+  }
+
+  & > .button {
+    justify-content: center;
   }
 
   & > ul {

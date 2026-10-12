@@ -17,6 +17,9 @@ config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 # Tried in order. A channel with no configuration of its own is not used.
 config :leaf, Leaf.Messaging, channels: [Leaf.Messaging.Slack]
 
+# Credentials are per environment, in runtime.exs.
+config :leaf, LeafWeb.SignInController, strategy: Assent.Strategy.Google
+
 # Configure the endpoint
 config :leaf, LeafWeb.Endpoint,
   url: [host: "localhost"],

@@ -6,7 +6,7 @@ producing a log and reports that administrators feed into whatever payroll syste
 
 Elixir / Phoenix / LiveView / Postgres. The web interface covers requesting, amending and approving
 leave, balances, who is away, and administering people, policies, leave types, calendars and the
-audit log. There is no authentication yet: signing in is picking a person from a list.
+audit log. People sign in with Google.
 
 `SCOPE.md` is the functional specification and the place to start.
 
@@ -36,6 +36,18 @@ mix phx.server
 ```
 
 `mix leaf.seed` refuses to run where an organisation already exists; `mix ecto.reset` first.
+
+## Signing in
+
+Somebody may sign in with Google only where a person in Leaf has their address. The Google
+credentials come from an Internal OAuth client in the organisation's Google Cloud, whose
+authorised redirect URI is `https://<host>/sign-in/callback`:
+
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` — required in production, and used in development
+  wherever they are set.
+- `SIGN_IN_PICKER=true` lets anybody sign in as anybody from a list at `/sign-in/pick`, for testing.
+  It is always on in development, since seeded people have made-up addresses, and off in
+  production unless set.
 
 To send notifications in Slack, see `docs/slack.md`.
 

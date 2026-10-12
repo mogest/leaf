@@ -1,0 +1,16 @@
+<main class="sign-in">
+  <h1>Leaf</h1>
+  <p>Choose who you are. Nothing is checked — anyone can be anyone.</p>
+
+  <ul :if={@people != []}>
+    <li :for={person <- @people}>
+      <.form for={%{}} action={~p"/sign-in/pick/#{person.id}"}>
+        <button>{person.name}</button>
+      </.form>
+    </li>
+  </ul>
+
+  <p :if={@people == []}>
+    Nobody has been added yet. Run <code>mix leaf.seed</code> to build the example organisation.
+  </p>
+</main>

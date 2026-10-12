@@ -46,7 +46,10 @@ defmodule LeafWeb.Router do
     pipe_through :browser
 
     get "/sign-in", SignInController, :index
-    post "/sign-in/:id", SignInController, :create
+    get "/sign-in/start", SignInController, :start
+    get "/sign-in/callback", SignInController, :callback
+    get "/sign-in/pick", SignInPickerController, :index
+    post "/sign-in/pick/:id", SignInPickerController, :create
     delete "/sign-out", SignInController, :delete
   end
 

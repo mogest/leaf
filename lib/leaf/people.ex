@@ -92,6 +92,18 @@ defmodule Leaf.People do
   @spec fetch_person(Ecto.UUID.t()) :: {:ok, Person.t()} | :error
   def fetch_person(id), do: Repo.fetch(Person, id)
 
+  @doc "The person with that email address, in any case, or `:error` where nobody has it."
+  @spec fetch_person_by_email(String.t()) :: {:ok, Person.t()} | :error
+  def fetch_person_by_email(email) do
+    query =
+      from person in Person, where: fragment("lower(?)", person.email) == ^String.downcase(email)
+
+    case Repo.one(query) do
+      nil -> :error
+      person -> {:ok, person}
+    end
+  end
+
   @doc "The name of the person's manager, or `nil` where they have none."
   @spec manager_name(Person.t()) :: String.t() | nil
   def manager_name(person) do

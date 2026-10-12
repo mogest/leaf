@@ -22,6 +22,13 @@ end
 
 config :leaf, LeafWeb.Endpoint, http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
+# Required in production, and read wherever else they are set so Google can be tried in development.
+if config_env() == :prod or System.get_env("GOOGLE_CLIENT_ID") do
+  config :leaf, LeafWeb.SignInController,
+    client_id: System.fetch_env!("GOOGLE_CLIENT_ID"),
+    client_secret: System.fetch_env!("GOOGLE_CLIENT_SECRET")
+end
+
 if config_env() == :dev do
   # Reload browser tabs when matching files change.
   config :leaf, LeafWeb.Endpoint,
@@ -73,6 +80,10 @@ if config_env() == :prod do
       environment variable PHX_HOST is missing.
       For example: leaf.example.com
       """
+
+  # Anybody can sign in as anybody through the picker, so it is only for testing before launch.
+  config :leaf, LeafWeb.SignInPickerController,
+    enabled: System.get_env("SIGN_IN_PICKER") == "true"
 
   # Production only, so that nothing done in development messages real colleagues.
   if slack_bot_token = System.get_env("SLACK_BOT_TOKEN") do
