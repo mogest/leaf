@@ -12,9 +12,22 @@ defmodule LeafWeb.SignInTest do
   alias LeafWeb.SignIn
   alias Phoenix.LiveView.Socket
 
-  test "a live mount whose session names nobody is sent to sign in" do
+  test "a session naming nobody, or whose impersonation has run out, is sent to sign in", %{
+    conn: conn
+  } do
     assert {:halt, socket} = SignIn.on_mount(:current_person, %{}, %{}, %Socket{})
     assert {:redirect, %{to: "/sign-in"}} = socket.redirected
+
+    organisation = Fixtures.organisation()
+    admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+    person = Fixtures.person(%{organisation_id: organisation.id})
+    session = %{"person_id" => person.id, "impersonation" => {admin.id, 0}}
+
+    assert {:halt, socket} = SignIn.on_mount(:current_person, %{}, session, %Socket{})
+    assert {:redirect, %{to: "/sign-in"}} = socket.redirected
+
+    assert conn |> Plug.Test.init_test_session(session) |> get(~p"/") |> redirected_to() ==
+             "/sign-in"
   end
 
   test "whoever the session names is who an error report names", %{conn: conn} do

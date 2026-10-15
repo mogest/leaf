@@ -14,7 +14,7 @@ section > header {
     flex-grow: 1;
   }
 
-  & > a {
+  & > :is(a, form) {
     font-size: var(--size-base);
     color: var(--ink-soft);
   }

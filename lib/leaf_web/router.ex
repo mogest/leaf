@@ -57,6 +57,13 @@ defmodule LeafWeb.Router do
     pipe_through [:browser, :signed_in, :admin]
 
     get "/reports/:report/download", ReportsController, :download
+    post "/impersonate/:id", ImpersonationController, :create
+  end
+
+  scope "/", LeafWeb do
+    pipe_through [:browser, :signed_in]
+
+    delete "/impersonate", ImpersonationController, :delete
   end
 
   # One live session, so moving between any two pages keeps the socket. The administrator's pages

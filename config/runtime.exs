@@ -81,9 +81,9 @@ if config_env() == :prod do
       For example: leaf.example.com
       """
 
-  # Anybody can sign in as anybody through the picker, so it is only for testing before launch.
-  config :leaf, LeafWeb.SignInPickerController,
-    enabled: System.get_env("SIGN_IN_PICKER") == "true"
+  # An administrator can act as anybody, so it is only for testing.
+  config :leaf, LeafWeb.ImpersonationController,
+    enabled: System.get_env("IMPERSONATION") == "true"
 
   # Production only, so that nothing done in development messages real colleagues.
   if slack_bot_token = System.get_env("SLACK_BOT_TOKEN") do

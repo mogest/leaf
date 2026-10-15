@@ -45,9 +45,11 @@ authorised redirect URI is `https://<host>/sign-in/callback`:
 
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` — required in production, and used in development
   wherever they are set.
-- `SIGN_IN_PICKER=true` lets anybody sign in as anybody from a list at `/sign-in/pick`, for testing.
-  It is always on in development, since seeded people have made-up addresses, and off in
-  production unless set.
+- `IMPERSONATION=true` lets an administrator act as anybody, from the Impersonate button on a
+  person's page, for testing. It is always on in development, and off in production unless set.
+
+In development, anybody can also sign in as anybody from a list at `/sign-in/pick`, since seeded
+people have made-up addresses.
 
 To send notifications in Slack, see `docs/slack.md`.
 

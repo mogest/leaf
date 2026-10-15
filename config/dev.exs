@@ -54,7 +54,7 @@ config :leaf, LeafWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :leaf, dev_routes: true
 
-config :leaf, LeafWeb.SignInPickerController, enabled: true
+config :leaf, LeafWeb.ImpersonationController, enabled: true
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"

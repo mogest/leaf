@@ -228,6 +228,42 @@ body > div[aria-live] {
   }
 }
 
+main:has(+ aside) {
+  padding-block-end: calc(2 * 3.5rem);
+}
+
+div[data-phx-main] > aside {
+  position: fixed;
+  inset-block-end: var(--step-6);
+  inset-inline: 0;
+  inline-size: fit-content;
+  max-inline-size: calc(100% - 2 * var(--step-6));
+  margin-inline: auto;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  gap: var(--step-4);
+  padding: var(--step-3) var(--step-4);
+  border-radius: var(--radius);
+  background: var(--clay-wash);
+  color: var(--clay-ink);
+  font-size: var(--size-base);
+  box-shadow: var(--lift);
+
+  @media (width >= 48rem) {
+    inset-inline: var(--rail) 0;
+  }
+
+  & button {
+    font-weight: 600;
+
+    &:hover {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+  }
+}
+
 main {
   flex-grow: 1;
   min-inline-size: 0;

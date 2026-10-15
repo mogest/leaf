@@ -4,22 +4,33 @@ defmodule LeafWeb.Viewer do
 
   Whether somebody administers the organisation, or has anybody to approve for, decides what the
   rail offers them. Both are asked once a mount rather than at render, and they sit here rather
-  than on the person because neither is a fact about their record.
+  than on the person because neither is a fact about their record. Nor is whether an administrator
+  is impersonating them, which the chrome says so they can stop.
   """
 
   alias Leaf.People
   alias Leaf.People.Person
 
-  @type t :: %__MODULE__{person: Person.t(), admin?: boolean(), approver?: boolean()}
+  @type t :: %__MODULE__{
+          person: Person.t(),
+          admin?: boolean(),
+          approver?: boolean(),
+          impersonated?: boolean()
+        }
 
-  @enforce_keys [:person, :admin?, :approver?]
-  defstruct [:person, :admin?, :approver?]
+  @enforce_keys [:person, :admin?, :approver?, :impersonated?]
+  defstruct [:person, :admin?, :approver?, :impersonated?]
 
   @doc "Builds the viewer for `person`, asking what their standing lets them reach."
-  @spec new(Person.t()) :: t()
-  def new(person) do
+  @spec new(Person.t(), boolean()) :: t()
+  def new(person, impersonated?) do
     admin? = person.role == :admin
 
-    %__MODULE__{person: person, admin?: admin?, approver?: admin? or People.manager?(person)}
+    %__MODULE__{
+      person: person,
+      admin?: admin?,
+      approver?: admin? or People.manager?(person),
+      impersonated?: impersonated?
+    }
   end
 end

@@ -70,7 +70,8 @@ defmodule LeafWeb.StyleguideLive do
   @viewer %Viewer{
     person: %Person{id: "00000000-0000-0000-0000-000000000000", name: "Rae Halloran"},
     admin?: true,
-    approver?: true
+    approver?: true,
+    impersonated?: false
   }
 
   # Where a part that steps through something steps to: nowhere but here. The route is only in

@@ -16,6 +16,7 @@ defmodule LeafWeb.PersonLive do
   alias Leaf.Org
   alias Leaf.People
   alias Leaf.Policies
+  alias LeafWeb.ImpersonationController
 
   @weekdays [
     {:monday_hours, "Mon"},
@@ -82,6 +83,9 @@ defmodule LeafWeb.PersonLive do
         <section>
           <header>
             <h2>Details</h2>
+            <.form :if={@impersonable?} for={%{}} action={~p"/impersonate/#{@person}"}>
+              <button>Impersonate</button>
+            </.form>
           </header>
           <dl>
             <dt>Email</dt>
@@ -275,6 +279,7 @@ defmodule LeafWeb.PersonLive do
 
     socket
     |> assign(:admin?, socket.assigns.current_person.role == :admin)
+    |> assign(:impersonable?, impersonable?(socket.assigns.current_person, person))
     |> assign(:reasons?, reasons?(socket.assigns.current_person, person))
     |> assign(:role, role(person))
     |> assign(:employment, Wording.employment(person))
@@ -304,6 +309,11 @@ defmodule LeafWeb.PersonLive do
   # §5.9: why a balance was put right by hand is the kind of detail a manager should not be
   # reading. It is the person's own and the administrator's.
   defp reasons?(viewer, person), do: viewer.role == :admin or viewer.id == person.id
+
+  defp impersonable?(%{role: :admin, id: id}, %{id: other}) when id != other,
+    do: ImpersonationController.enabled?()
+
+  defp impersonable?(_viewer, _person), do: false
 
   defp role(%{role: :admin}), do: "Administrator"
   defp role(_person), do: "Member"

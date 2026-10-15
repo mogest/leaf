@@ -102,6 +102,12 @@ defmodule LeafWeb.Layouts do
     <main class={@page}>
       {render_slot(@inner_block)}
     </main>
+    <aside :if={@viewer && @viewer.impersonated?}>
+      Impersonating {@viewer.person.name}.
+      <.form for={%{}} action={~p"/impersonate"} method="delete">
+        <button>Stop</button>
+      </.form>
+    </aside>
     <.flash_group flash={@flash} />
     """
   end

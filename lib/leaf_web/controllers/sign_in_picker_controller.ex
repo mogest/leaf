@@ -1,10 +1,9 @@
 defmodule LeafWeb.SignInPickerController do
   @moduledoc """
-  Signing in as anybody by picking them off a list, wherever config switches it on.
+  Signing in as anybody by picking them off a list, in development.
 
-  Seeded people have made-up addresses no identity provider will vouch for, and testers need to be
-  anybody, so this is how they become them. It verifies nothing, so where it is switched off it is
-  not found.
+  Seeded people have made-up addresses no identity provider will vouch for, so this is how a
+  developer becomes them. It verifies nothing, so outside development it is not found.
   """
 
   use LeafWeb, :controller
@@ -17,7 +16,7 @@ defmodule LeafWeb.SignInPickerController do
 
   @doc "Whether picking somebody is allowed here."
   @spec enabled?() :: boolean()
-  def enabled?, do: Application.get_env(:leaf, __MODULE__)[:enabled] == true
+  def enabled?, do: Application.get_env(:leaf, :dev_routes) == true
 
   def index(conn, _params) do
     render(conn, :index, page_title: "Sign in", people: everybody())
