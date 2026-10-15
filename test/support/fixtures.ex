@@ -207,7 +207,7 @@ defmodule Leaf.Fixtures do
   def pending_request(person, attrs) do
     days =
       Enum.map(attrs.dates, fn date ->
-        %{leave_type_id: attrs.leave_type_id, date: date, amount: "8", unit: :hours}
+        %{leave_type_id: attrs.leave_type_id, date: date, amount: "1", unit: :days}
       end)
 
     {:ok, request} = Leave.request(person, person, %{days: days, note: attrs[:note]})

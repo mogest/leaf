@@ -71,7 +71,7 @@ defmodule Leaf.Leave do
   @spec fetch_request(Ecto.UUID.t()) :: {:ok, Request.t()} | :error
   def fetch_request(id) do
     with {:ok, request} <- Repo.fetch(Request, id) do
-      {:ok, Repo.preload(request, [:days, :person])}
+      {:ok, Repo.preload(request, [:person, days: :leave_type])}
     end
   end
 
@@ -460,13 +460,15 @@ defmodule Leaf.Leave do
   end
 
   defp entry({date, _hours}, order) do
-    %{leave_type_id: order.leave_type_id, date: date, amount: asked(order), unit: order.unit}
+    {amount, unit} = asked(order)
+
+    %{leave_type_id: order.leave_type_id, date: date, amount: amount, unit: unit}
   end
 
   # A blank amount asks for the whole of each day, which is one day of whatever the leave type
   # counts in, and stays a whole day if the person's hours change before the date.
-  defp asked(%{unit: :days}), do: @whole
-  defp asked(%{amount: amount}), do: amount
+  defp asked(%{amount: nil}), do: {@whole, :days}
+  defp asked(order), do: {order.amount, order.counted_in}
 
   @doc """
   The days `entries` describe, as days, without filing them.
@@ -615,12 +617,22 @@ defmodule Leaf.Leave do
 
   # The hours are the day's own check that it falls on one the person works, and are not kept:
   # what a day is worth follows from the pattern in force when it comes round, not when it is
-  # asked for. A date with no pattern behind it has none to give, and the day refuses itself.
+  # asked for. A date with no pattern behind it has none to give, and the day refuses itself. The
+  # leave type's unit is its check that a type counted in days is not asked for in hours.
   defp measured(person, %{days: [_first | _rest] = entries} = attrs) do
     span = Dates.spanning(Enum.map(entries, & &1.date))
     hours = person |> WorkingDay.hours_per_day(span) |> Map.new()
 
-    %{attrs | days: Enum.map(entries, &Map.put(&1, :hours_in_day, hours[&1.date]))}
+    units =
+      entries |> Enum.map(& &1.leave_type_id) |> Enum.uniq() |> Map.new(&{&1, Day.counted_in(&1)})
+
+    days =
+      Enum.map(
+        entries,
+        &Map.merge(&1, %{hours_in_day: hours[&1.date], counted_in: units[&1.leave_type_id]})
+      )
+
+    %{attrs | days: days}
   end
 
   defp measured(_person, attrs), do: attrs

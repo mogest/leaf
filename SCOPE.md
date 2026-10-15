@@ -267,8 +267,10 @@ configurable delegate in v1.
 ### 5.2 Requesting leave
 - Choose leave type, dates, and amount.
 - A stretch of dates is asked for in **whole days**, each worth what the person's work pattern
-  says that day is; part of a single day is asked for in **hours**. A person on 5×8h taking
-  Monday off asks for the day and draws 8 hours; one leaving three hours early asks for 3 hours.
+  says that day is; part of a single day is asked for in the **leave type's own unit**. A person
+  on 5×8h taking Monday off asks for the day and draws 8 hours; one leaving three hours early asks
+  for 3 hours of annual leave; one going home sick at lunchtime asks for 0.5 days of sick leave.
+  Leave of a type counted in days is always held in days, never hours.
 - Balances are shown in the leave type's own unit — hours for time-based types, days for
   day-based ones — and not converted to the other. A balance has no date, so a day of it has no
   fixed worth in hours.

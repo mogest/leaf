@@ -419,6 +419,37 @@ defmodule Leaf.LeaveTest do
     assert errors_on(changeset).days == ["ask for more of a day than is left in it"]
   end
 
+  test "part of a day of a type counted in days is filed in days, never hours", context do
+    sick =
+      Fixtures.leave_type(%{
+        organisation_id: context.organisation.id,
+        name: "Sick leave",
+        unit: :days
+      })
+
+    Fixtures.offering(%{
+      leave_policy_id: context.entitlement.leave_policy_id,
+      leave_type_id: sick.id
+    })
+
+    filing = fn attrs ->
+      Leave.request(context.person, context.person, %{days: [entry(sick, @friday, attrs)]})
+    end
+
+    assert {:error, changeset} = filing.(%{amount: "4", unit: :hours})
+    assert %{unit: ["must be days for a leave type counted in days"]} in errors_on(changeset).days
+
+    assert {:ok, %{days: [half]} = request} = filing.(%{amount: "0.5", unit: :days})
+    assert Decimal.equal?(half.amount, "0.5")
+
+    assert {:error, changeset} =
+             Leave.amend(reload(request), context.person, %{
+               days: [entry(sick, @friday, %{amount: "4", unit: :hours})]
+             })
+
+    assert %{unit: ["must be days for a leave type counted in days"]} in errors_on(changeset).days
+  end
+
   test "a request holds a date against a leave type once", context do
     assert {:error, changeset} = file(context, [@friday, @friday], %{amount: "4"})
 
@@ -841,22 +872,39 @@ defmodule Leaf.LeaveTest do
       assert Enum.all?(days, &(&1.unit == :days))
     end
 
-    test "an amount is hours off the one day it is asked of", context do
+    test "an amount is part of the one day it is asked of, in its leave type's unit", context do
       changeset = asking(context, %{"amount" => "4.5"})
 
       assert [%{unit: :hours, amount: amount}] = Leave.days_for(context.person, changeset)
       assert Decimal.equal?(amount, "4.50")
+
+      sick =
+        Fixtures.leave_type(%{
+          organisation_id: context.organisation.id,
+          name: "Sick leave",
+          unit: :days
+        })
+
+      Fixtures.offering(%{
+        leave_policy_id: context.entitlement.leave_policy_id,
+        leave_type_id: sick.id
+      })
+
+      changeset = asking(context, %{"leave_type_id" => sick.id, "amount" => "0.5"})
+
+      assert [%{unit: :days, amount: amount}] = Leave.days_for(context.person, changeset)
+      assert Decimal.equal?(amount, "0.5")
     end
 
-    test "hours are refused of a stretch, and of anything that is not a figure", context do
+    test "part of a day is refused of a stretch, and of anything that is not a figure", context do
       assert said(asking(context, %{"to" => to_string(@friday), "amount" => "4"})) ==
-               ["Hours off can only be asked of a single day."]
+               ["Part of a day can only be asked of a single day."]
 
       assert said(asking(context, %{"amount" => "half"})) ==
-               ["The hours off have to be a number."]
+               ["The time off has to be a number."]
 
       assert said(asking(context, %{"amount" => "0"})) ==
-               ["The hours off have to be more than nothing."]
+               ["The time off has to be more than nothing."]
     end
 
     test "a last day before the first is refused, and draws on nothing", context do

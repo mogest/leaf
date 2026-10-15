@@ -4,10 +4,10 @@ defmodule Leaf.Leave.Day do
 
   This is the unit a day off is split into, so a single date can draw on more than one leave type.
 
-  An amount is held in the unit it was asked for, not in the leave type's. "The whole of Tuesday
-  off" is a fact about the work pattern on that Tuesday, so converting it when the request is
-  filed would freeze an hours figure the person never chose: drop to a seven-hour day before the
-  date and a day off is seven hours. `in_unit/3` does the conversion instead, on the hours worked
+  An amount is held in the unit it was asked for, which for a whole day is days, and for part of
+  one is the leave type's own. "The whole of Tuesday off" is a fact about the work pattern on that
+  Tuesday, so converting it when the request is filed would freeze an hours figure the person never
+  chose: drop to a seven-hour day before the date and a day off is seven hours. `in_unit/3` does the conversion instead, on the hours worked
   on the date, every time it is asked for.
 
   `hours_in_day` is not stored for the same reason. It is here only so that a date the person does
@@ -19,11 +19,15 @@ defmodule Leaf.Leave.Day do
   reaches back over it, which is how a sick day found after go-live is entered (§4.10). Removing
   that pattern afterwards leaves the day with no hours on record, which `Leaf.Ledger.ready?/2`
   answers for.
+
+  A leave type counted in days is never held in hours: half a day stays half the day whatever the
+  day comes to. `counted_in`, the leave type's unit, is here to refuse one that is.
   """
 
   use Leaf.Schema
 
   alias Leaf.Leave.Request
+  alias Leaf.Policies
   alias Leaf.Policies.LeaveType
 
   @type t :: %__MODULE__{}
@@ -33,7 +37,7 @@ defmodule Leaf.Leave.Day do
 
   @units [:hours, :days]
 
-  @fields [:leave_type_id, :date, :amount, :unit, :hours_in_day]
+  @fields [:leave_type_id, :date, :amount, :unit, :hours_in_day, :counted_in]
 
   @required [:leave_type_id, :date, :amount, :unit]
 
@@ -42,6 +46,7 @@ defmodule Leaf.Leave.Day do
     field :amount, :decimal
     field :unit, Ecto.Enum, values: @units
     field :hours_in_day, :decimal, virtual: true
+    field :counted_in, Ecto.Enum, values: @units, virtual: true
 
     belongs_to :leave_request, Request
     belongs_to :leave_type, LeaveType
@@ -56,6 +61,7 @@ defmodule Leaf.Leave.Day do
     |> validate_required(@required)
     |> as_stored(:amount, greater_than: 0)
     |> validate_working_day()
+    |> validate_counted()
     |> assoc_constraint(:leave_request)
     |> assoc_constraint(:leave_type)
     |> unique_constraint([:leave_request_id, :date, :leave_type_id], error_key: :date)
@@ -76,6 +82,15 @@ defmodule Leaf.Leave.Day do
   defp worth(%{unit: :days} = day, :hours, hours, true), do: Decimal.mult(day.amount, hours)
   defp worth(%{unit: :hours} = day, :days, hours, true), do: Decimal.div(day.amount, hours)
 
+  @doc "What the leave type counts in, or nil where there is no such type."
+  @spec counted_in(Ecto.UUID.t() | nil) :: unit() | nil
+  def counted_in(leave_type_id) do
+    case Policies.fetch_leave_type(leave_type_id) do
+      {:ok, leave_type} -> leave_type.unit
+      :error -> nil
+    end
+  end
+
   defp validate_working_day(changeset) do
     known(changeset, get_field(changeset, :hours_in_day))
   end
@@ -84,6 +99,15 @@ defmodule Leaf.Leave.Day do
     do: add_error(changeset, :date, "is before the first work pattern on record")
 
   defp known(changeset, hours), do: worked(changeset, Decimal.positive?(hours))
+
+  defp validate_counted(changeset) do
+    counted(changeset, get_field(changeset, :unit), get_field(changeset, :counted_in))
+  end
+
+  defp counted(changeset, :hours, :days),
+    do: add_error(changeset, :unit, "must be days for a leave type counted in days")
+
+  defp counted(changeset, _unit, _counted_in), do: changeset
 
   defp worked(changeset, true), do: changeset
   defp worked(changeset, false), do: add_error(changeset, :date, "is not a working day")

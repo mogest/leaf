@@ -8,9 +8,9 @@ defmodule Leaf.Leave.Order do
 
   The two dates are one span: a last day left blank asks for the first day on its own, and somebody
   still in the first field has not left the last one out. A blank amount asks for the whole of each
-  day, which is a day whatever the leave type counts in. An amount given is hours, because hours are
-  what somebody can count — nobody knows offhand what 0.4 of a nine-hour Wednesday is — and hours
-  are a thing about one day, so a stretch cannot be asked for in them.
+  day, which is a day whatever the leave type counts in. An amount given is part of one day, counted
+  in the leave type's own unit — half a day of sick leave, three hours of annual — so a stretch
+  cannot be asked for in it.
 
   A refusal is read in a list of them rather than under the field it is about, so each one is a
   sentence that stands on its own.
@@ -21,6 +21,8 @@ defmodule Leaf.Leave.Order do
   import Ecto.Changeset
   import Leaf.Changeset
 
+  alias Leaf.Leave.Day
+
   @type t :: %__MODULE__{}
 
   @fields [:leave_type_id, :from, :to, :amount, :note]
@@ -29,7 +31,7 @@ defmodule Leaf.Leave.Order do
     leave_type_id: "Choose a leave type.",
     from: "Give a first day.",
     to: "Give a last day.",
-    amount: "The hours off have to be a number."
+    amount: "The time off has to be a number."
   }
 
   @primary_key false
@@ -38,7 +40,7 @@ defmodule Leaf.Leave.Order do
     field :from, :date
     field :to, :date
     field :amount, :decimal
-    field :unit, Ecto.Enum, values: [:hours, :days]
+    field :counted_in, Ecto.Enum, values: [:hours, :days], virtual: true
     field :note, :string
     field :span, :any, virtual: true
   end
@@ -52,7 +54,7 @@ defmodule Leaf.Leave.Order do
     |> within_reach()
     |> spanning()
     |> measured()
-    |> as_stored(:amount, greater_than: 0, message: "The hours off have to be more than nothing.")
+    |> as_stored(:amount, greater_than: 0, message: "The time off has to be more than nothing.")
     |> one_day()
   end
 
@@ -84,24 +86,20 @@ defmodule Leaf.Leave.Order do
   defp spanned(nil, from, to), do: Date.range(from || to, to || from)
   defp spanned(_refused, _from, _to), do: nil
 
-  # A blank amount is said to be days and left blank: a whole day put in it is a figure the form
-  # would show back in a field nobody typed into. What a day of it comes to is `days_for/2`'s.
   defp measured(changeset) do
-    put_change(changeset, :unit, unit(get_change(changeset, :amount)))
+    put_change(changeset, :counted_in, Day.counted_in(get_field(changeset, :leave_type_id)))
   end
-
-  defp unit(nil), do: :days
-  defp unit(_hours), do: :hours
 
   defp one_day(changeset) do
-    asked_of(changeset, get_field(changeset, :unit), get_field(changeset, :span))
+    asked_of(changeset, get_field(changeset, :amount), get_field(changeset, :span))
   end
 
-  defp asked_of(changeset, :hours, %Date.Range{first: date, last: date}), do: changeset
+  defp asked_of(changeset, nil, _span), do: changeset
+  defp asked_of(changeset, _amount, %Date.Range{first: date, last: date}), do: changeset
 
-  defp asked_of(changeset, :hours, %Date.Range{}) do
-    add_error(changeset, :amount, "Hours off can only be asked of a single day.")
+  defp asked_of(changeset, _amount, %Date.Range{}) do
+    add_error(changeset, :amount, "Part of a day can only be asked of a single day.")
   end
 
-  defp asked_of(changeset, _unit, _span), do: changeset
+  defp asked_of(changeset, _amount, _span), do: changeset
 end

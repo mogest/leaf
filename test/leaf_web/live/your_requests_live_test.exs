@@ -26,7 +26,7 @@ defmodule LeafWeb.YourRequestsLiveTest do
     {:ok, live, html} = live(context.conn, ~p"/leave")
 
     assert html =~ "Mon 4 Mar"
-    assert html =~ "8 hours"
+    assert html =~ "1 day"
     assert html =~ "Pending"
     assert has_element?(live, ~s(th a[href="/leave/#{request.id}/amend"]))
   end

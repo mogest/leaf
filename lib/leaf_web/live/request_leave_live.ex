@@ -7,10 +7,8 @@ defmodule LeafWeb.RequestLeaveLive do
   covers the days in the range the person actually works, and nothing else.
 
   A stretch of dates is whole days, whatever those days turn out to be worth, and a last day left
-  blank asks for the first day on its own. Part of a day is asked of one day and asked in hours,
-  because hours are what somebody can count: nobody knows offhand what 0.4 of a nine-hour Wednesday
-  is. What the hours draw is the leave type's business rather than the request's, and the balance
-  says so — 4.5 hours against sick leave counted in days is half a day of it.
+  blank asks for the first day on its own. Part of a day is asked of one day, in what its leave
+  type counts in: three hours of annual leave, half a day of sick leave.
 
   Amending replaces what a request asks for, so it is the same instruction given again. Days this
   cannot say — a stretch that is not whole days, or more than one leave type — are shown as what
@@ -91,8 +89,8 @@ defmodule LeafWeb.RequestLeaveLive do
             :if={@portion}
             field={@form[:amount]}
             type="text"
-            label="Hours off"
-            placeholder={@portion}
+            label={@portion.label}
+            placeholder={@portion.whole}
           />
           <.input field={@form[:note]} type="textarea" label="Note" />
         </section>
@@ -262,24 +260,25 @@ defmodule LeafWeb.RequestLeaveLive do
      }, replaced}
   end
 
-  # What the days ask for as this form would ask for it, and whether there is no saying it: hours
-  # off one day, or a stretch of whole days, and one leave type across the lot of them.
+  # What the days ask for as this form would ask for it, and whether there is no saying it: part of
+  # one day in its leave type's unit, or a stretch of whole days, and one leave type across the lot.
   defp sayable(days) do
     case Enum.uniq_by(days, & &1.leave_type_id) do
-      [_one] -> said(days)
+      [_one] -> said(days, Enum.all?(days, &whole?/1))
       _several -> {"", true}
     end
   end
 
-  defp said([%{unit: :hours} = day]), do: {Wording.number(day.amount), false}
-  defp said(days), do: blank_for(Enum.all?(days, &whole?/1))
+  # A blank is the whole day, so it stands for days that are all whole days and for nothing else.
+  defp said(_days, true), do: {"", false}
+
+  defp said([%{unit: unit, leave_type: %{unit: unit}} = day], false),
+    do: {Wording.number(day.amount), false}
+
+  defp said(_days, false), do: {"", true}
 
   defp whole?(%{unit: :days, amount: amount}), do: Decimal.equal?(amount, 1)
   defp whole?(_day), do: false
-
-  # A blank is the whole day, so it stands for days that are all whole days and for nothing else.
-  defp blank_for(true), do: {"", false}
-  defp blank_for(false), do: {"", true}
 
   # The two dates are one span, so each end minds the other: the end just left fills in a blank
   # other end and drags an other end that is the wrong side of it. This is settled on the way out of
@@ -328,15 +327,23 @@ defmodule LeafWeb.RequestLeaveLive do
   # Part of a day can only be asked of one day, so the field is there for one date and gone for a
   # stretch. It turns on the dates alone and not on what has been typed into it, so that a half
   # finished number cannot take the field out from under whoever is typing it.
-  defp portion(socket, %{span: %Date.Range{first: date, last: date}}) do
-    whole_day(socket.assigns.person, date)
+  defp portion(socket, %{span: %Date.Range{first: date, last: date}} = order) do
+    %{
+      label: off(order.counted_in),
+      whole: whole_day(order.counted_in, socket.assigns.person, date)
+    }
   end
 
   defp portion(_socket, _order), do: nil
 
+  defp off(:days), do: "Days off"
+  defp off(_hours), do: "Hours off"
+
   # The whole day the field would replace is named in it, so that nothing has to be worked out to
   # fill it in and no fraction has to be trusted.
-  defp whole_day(person, date) do
+  defp whole_day(:days, _person, _date), do: "the whole day (1 day)"
+
+  defp whole_day(_hours, person, date) do
     case Leave.working_days(person, Date.range(date, date)) do
       [{_date, hours}] -> "the whole day (#{Wording.figure(hours, :hours)})"
       [] -> "the whole day"

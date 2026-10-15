@@ -53,7 +53,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     )
   end
 
-  # Hours off are asked of a day, so the field is only there once a single day has been entered.
+  # Part of a day is asked of one day, so the field is only there once a single day has been entered.
   defp asking_hours(live, context, params) do
     live |> form("#request", request: asking(context, %{})) |> render_change()
     live |> form("#request", request: asking(context, params))
@@ -321,25 +321,31 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert Enum.all?(request.days, &(&1.unit == :days and Decimal.equal?(&1.amount, 1)))
   end
 
-  test "part of a day is asked in hours, whatever its leave type counts in", context do
+  test "part of a day is asked in what its leave type counts in", context do
     sick = sick_leave(context)
 
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
 
-    params = %{"leave_type_id" => sick.id, "amount" => "4"}
+    html = live |> asking_hours(context, %{}) |> render_change()
+
+    assert html =~ "Hours off"
+    assert html =~ "the whole day (8 hours)"
+
+    params = %{"leave_type_id" => sick.id, "amount" => "0.5"}
     html = live |> asking_hours(context, params) |> render_change()
 
-    assert html =~ "the whole day (8 hours)"
+    assert html =~ "Days off"
+    assert html =~ "the whole day (1 day)"
     refute html =~ "Day by day"
 
     live |> form("#request", request: asking(context, params)) |> render_submit()
 
     assert [%{days: [part]}] = Leave.requests(context.person)
-    assert part.unit == :hours
-    assert Decimal.equal?(part.amount, 4)
+    assert part.unit == :days
+    assert Decimal.equal?(part.amount, "0.5")
   end
 
-  test "hours off are not asked of a stretch of days", context do
+  test "part of a day is not asked of a stretch of days", context do
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
 
     html =
@@ -347,8 +353,8 @@ defmodule LeafWeb.RequestLeaveLiveTest do
       |> asking_hours(context, %{"to" => to_string(@friday), "amount" => "4"})
       |> render_change()
 
-    assert html =~ "Hours off can only be asked of a single day."
-    refute html =~ "Hours off</span>"
+    assert html =~ "Part of a day can only be asked of a single day."
+    refute has_element?(live, ~s(input[name="request[amount]"]))
     assert Leave.requests(context.person) == []
   end
 
@@ -357,7 +363,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     html = live |> asking_hours(context, %{"amount" => "half"}) |> render_change()
 
-    assert html =~ "The hours off have to be a number."
+    assert html =~ "The time off has to be a number."
     assert Leave.requests(context.person) == []
   end
 
@@ -528,5 +534,35 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert html =~ "<td>2 days</td>"
     assert html =~ "Those days do not all ask for the whole day."
     assert html =~ "Saving this replaces what they ask for."
+  end
+
+  test "amending part of a day starts from it, in its leave type's unit", context do
+    sick = sick_leave(context)
+
+    {:ok, request} =
+      Leave.request(context.person, context.person, %{
+        days: [%{leave_type_id: sick.id, date: @monday, amount: "0.5", unit: :days}]
+      })
+
+    {:ok, amend, html} = live(context.conn, ~p"/leave/#{request}/amend")
+
+    assert has_element?(amend, ~s(input[name="request[amount]"][value="0.50"]))
+    refute html =~ "Those days do not all ask for the whole day."
+  end
+
+  # Before a type counted in days was always held in days, the form filed its part days in hours.
+  test "amending sick leave held in hours says saving replaces it", context do
+    sick = sick_leave(context)
+
+    request =
+      Fixtures.leave_request(%{
+        person_id: context.person.id,
+        status: :pending,
+        days: [%{leave_type_id: sick.id, date: @monday, amount: "4", unit: :hours}]
+      })
+
+    {:ok, _amend, html} = live(context.conn, ~p"/leave/#{request.id}/amend")
+
+    assert html =~ "Those days do not all ask for the whole day."
   end
 end
