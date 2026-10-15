@@ -373,6 +373,26 @@ defmodule Leaf.LeaveTest do
              })
   end
 
+  test "a request decided elsewhere is recorded as it was, over what the day already holds",
+       context do
+    {:ok, _filed} = file(context, [@friday])
+    days = [entry(context.leave_type, @friday)]
+
+    assert {:ok, %{status: :approved}} =
+             Leave.record(context.person, %{status: :approved, days: days})
+
+    assert %{action: "leave_request.recorded", actor_id: nil} =
+             Repo.one(from entry in Entry, where: entry.action == "leave_request.recorded")
+
+    assert {:error, changeset} =
+             Leave.record(context.person, %{
+               status: :approved,
+               days: [entry(context.leave_type, @saturday)]
+             })
+
+    assert [%{date: ["is not a working day"]}] = errors_on(changeset).days
+  end
+
   test "a day holds its hours and no more, however many leave types share it", context do
     sick =
       Fixtures.leave_type(%{

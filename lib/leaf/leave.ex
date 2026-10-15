@@ -143,6 +143,23 @@ defmodule Leaf.Leave do
   end
 
   @doc """
+  Records a request another system already decided, as the system.
+
+  For bringing history in: `attrs` carries the `:status` it was decided with alongside its `:days`.
+  Who decided it, and when, is the other system's to know, so it records neither. Nobody is told,
+  since nothing is happening now. Each day is still checked against the person's
+  hours on its date and against what their policy offered, but not against the rest of their leave:
+  the other system let it stand, and this is a record of what it let stand.
+  """
+  @spec record(Person.t(), map()) :: Audit.written(Request.t())
+  def record(person, %{status: status} = attrs) do
+    %Request{person_id: person.id, submitted_by_id: person.id, status: status}
+    |> Request.changeset(measured(person, attrs))
+    |> Offer.validate(person)
+    |> Audit.write("leave_request.recorded", nil, person.id)
+  end
+
+  @doc """
   Records an opening balance or an adjustment.
 
   An adjustment needs a reason; an opening balance is its own explanation.
