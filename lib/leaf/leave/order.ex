@@ -48,6 +48,7 @@ defmodule Leaf.Leave.Order do
     order
     |> cast(attrs, @fields, message: &invalid/2)
     |> validate_date_order(:from, :to, message: "The last day comes before the first.")
+    |> within_reach()
     |> spanning()
     |> measured()
     |> as_stored(:amount, greater_than: 0, message: "The hours off have to be more than nothing.")
@@ -56,21 +57,31 @@ defmodule Leaf.Leave.Order do
 
   defp invalid(field, _meta), do: @invalid[field]
 
-  defp spanning(changeset) do
-    put_change(changeset, :span, spanned(get_field(changeset, :from), get_field(changeset, :to)))
+  defp within_reach(changeset) do
+    reach(changeset, get_field(changeset, :from), get_field(changeset, :to))
   end
 
-  defp spanned(nil, nil), do: nil
-  defp spanned(from, to), do: bounded(from || to, to || from)
-
-  # Dates the wrong way round span nothing, which is what stops anything being asked over a stretch
-  # that does not exist. What is wrong with them is already said, against the last day.
-  defp bounded(first, last) do
-    case Date.after?(first, last) do
-      true -> nil
-      false -> Date.range(first, last)
+  defp reach(changeset, %Date{} = from, %Date{} = to) do
+    case Date.after?(to, Date.shift(from, year: 2)) do
+      true -> add_error(changeset, :to, "Leave can be asked for at most two years at a time.")
+      false -> changeset
     end
   end
+
+  defp reach(changeset, _from, _to), do: changeset
+
+  # Refused dates span nothing, which is what stops anything being asked over a stretch that does
+  # not exist or is too long to walk. What is wrong with them is already said, against the last day.
+  defp spanning(changeset) do
+    from = get_field(changeset, :from)
+    to = get_field(changeset, :to)
+
+    put_change(changeset, :span, spanned(changeset.errors[:to], from, to))
+  end
+
+  defp spanned(_refused, nil, nil), do: nil
+  defp spanned(nil, from, to), do: Date.range(from || to, to || from)
+  defp spanned(_refused, _from, _to), do: nil
 
   # A blank amount is said to be days and left blank: a whole day put in it is a figure the form
   # would show back in a field nobody typed into. What a day of it comes to is `days_for/2`'s.

@@ -850,6 +850,14 @@ defmodule Leaf.LeaveTest do
       assert Leave.days_for(context.person, changeset) == []
     end
 
+    test "a stretch longer than two years is refused, and spans nothing", context do
+      changeset = asking(context, %{"to" => "9999-12-31"})
+
+      assert said(changeset) == ["Leave can be asked for at most two years at a time."]
+      assert Ecto.Changeset.apply_changes(changeset).span == nil
+      assert said(asking(context, %{"to" => to_string(Date.shift(@thursday, year: 2))})) == []
+    end
+
     test "a leave type nobody offered over the span is refused", context do
       {:ok, _closed} =
         Policies.update_entitlement(context.entitlement, nil, %{effective_to: @thursday})
