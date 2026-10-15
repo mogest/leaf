@@ -48,6 +48,7 @@ defmodule Leaf.Leave.Order do
     order
     |> cast(attrs, @fields, message: &invalid/2)
     |> validate_date_order(:from, :to, message: "The last day comes before the first.")
+    |> validate_length(:note, max: 1000, message: "A note can be at most 1,000 characters.")
     |> within_reach()
     |> spanning()
     |> measured()

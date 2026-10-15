@@ -41,6 +41,7 @@ defmodule Leaf.Leave.Request do
   def changeset(request, attrs) do
     request
     |> cast(attrs, [:note])
+    |> validate_length(:note, max: 1000)
     |> validate_required([:person_id, :submitted_by_id, :status])
     |> cast_assoc(:days, required: true)
     |> assoc_constraint(:person)
@@ -72,6 +73,7 @@ defmodule Leaf.Leave.Request do
   def review_changeset(request, attrs) do
     request
     |> cast(attrs, @review_fields)
+    |> validate_length(:review_comment, max: 1000)
     |> validate_required([:status, :reviewed_by_id, :reviewed_at])
     |> validate_inclusion(:status, @decided)
     |> assoc_constraint(:reviewed_by)

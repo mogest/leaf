@@ -474,6 +474,22 @@ defmodule Leaf.LeaveTest do
     assert [%{date: @thursday}] = amended.days
   end
 
+  test "a note or comment longer than 1,000 characters is refused", context do
+    long = String.duplicate("a", 1001)
+    day = entry(context.leave_type, @thursday)
+
+    assert {:error, %{errors: [note: _]}} =
+             Leave.request(context.person, context.person, %{days: [day], note: long})
+
+    {:ok, pending} = file(context, [@thursday])
+    {:ok, request} = Leave.fetch_request(pending.id)
+
+    assert {:error, %{errors: [review_comment: _]}} =
+             Leave.approve(request, context.manager, long)
+
+    assert said(asking(context, %{"note" => long})) == ["A note can be at most 1,000 characters."]
+  end
+
   test "a decision records who made it, and only their manager or an admin may make it",
        context do
     {:ok, pending} = file(context, [@thursday])
