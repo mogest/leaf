@@ -23,6 +23,22 @@ defmodule Leaf.WordingTest do
     end
   end
 
+  describe "filed/4" do
+    test "a request decided before it was brought in says so, having nobody to name" do
+      day = %Leaf.Leave.Day{
+        date: ~D[2026-08-21],
+        amount: Decimal.new(8),
+        unit: :hours,
+        leave_type: %Leaf.Policies.LeaveType{name: "Annual leave", unit: :hours}
+      }
+
+      request = %Leaf.Leave.Request{status: :approved, reviewed_by: nil, days: [day]}
+
+      assert %{progress: "decided before Leaf"} =
+               Wording.filed(request, ~D[2026-10-16], "Pacific/Auckland")
+    end
+  end
+
   describe "month/2" do
     test "a month in the year being read in is named without it" do
       assert Wording.month(~D[2030-08-01], ~D[2030-02-14]) == "August"

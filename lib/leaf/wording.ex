@@ -375,6 +375,8 @@ defmodule Leaf.Wording do
     "#{request.reviewed_by.name} said “#{comment}”"
   end
 
+  defp progress(%{reviewed_by: nil}, _zone, _awaiting), do: "decided before Leaf"
+
   defp progress(request, zone, _awaiting) do
     "#{request.reviewed_by.name} · #{brief_date(request.reviewed_at, zone)}"
   end
