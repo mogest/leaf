@@ -112,6 +112,18 @@ defmodule LeafWeb.PeopleLiveTest do
     assert [^assigned_calendar] = People.calendar_assignments(context.person)
   end
 
+  test "an administrator demoted while a page is open has its next removal refused", context do
+    [pattern] = People.work_patterns(context.person)
+    {:ok, live, _html} = live(context.conn, ~p"/people/#{context.person}")
+
+    {:ok, _demoted} = People.update_person(context.admin, nil, %{role: :member})
+
+    assert render_click(live, "remove-work-pattern", %{"id" => pattern.id}) =~
+             "That is not yours to do."
+
+    assert People.work_patterns(context.person) == [pattern]
+  end
+
   test "the form is not a member's to open", context do
     assert {:error, {:redirect, %{to: "/", flash: flash}}} =
              live(sign_in(context.conn, context.person), ~p"/people/#{context.person}/edit")

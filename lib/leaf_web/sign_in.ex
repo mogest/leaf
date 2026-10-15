@@ -37,10 +37,11 @@ defmodule LeafWeb.SignIn do
 
   `:current_person` assigns the person twice over: as themselves, which is the actor every context
   write takes even while impersonated, and as a `Viewer`, which is all the chrome around a page is
-  given. `:zone` is their time zone, which every stored instant is shown in. It also puts
-  `LeafWeb.AuthorizedEvents` in front of every event, since a page a member may open can still
-  carry an administrator's buttons. An impersonated page sends itself to sign in when the hour is
-  up, rather than waiting for the next mount to find it over.
+  given. `:zone` is their time zone, which every stored instant is shown in. Each event reads
+  `:current_person` afresh, so a role changed since mount counts on a page already open, and then
+  goes through `LeafWeb.AuthorizedEvents`, since a page a member may open can still carry an
+  administrator's buttons. The `Viewer` keeps what mount saw. An impersonated page sends itself to sign in when the
+  hour is up, rather than waiting for the next mount to find it over.
 
   A session naming nobody is sent to sign in, the same as `require_person/2` sends the dead render.
   The requirement is not a hook of its own: every live session needs `:current_person`, so a page
@@ -143,8 +144,16 @@ defmodule LeafWeb.SignIn do
     |> Component.assign(:current_person, person)
     |> Component.assign(:viewer, Viewer.new(person, impersonation != nil))
     |> Component.assign(:zone, People.time_zone(person))
+    |> LiveView.attach_hook(:current_person, :handle_event, &current/3)
     |> AuthorizedEvents.enforce()
     |> expiring(impersonation, LiveView.connected?(socket))
+  end
+
+  defp current(_event, _params, socket) do
+    case People.fetch_person(socket.assigns.current_person.id) do
+      {:ok, person} -> {:cont, Component.assign(socket, :current_person, person)}
+      :error -> {:halt, LiveView.redirect(socket, to: "/sign-in")}
+    end
   end
 
   defp expiring(socket, {_impersonator, until}, true) do

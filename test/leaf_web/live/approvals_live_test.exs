@@ -6,6 +6,7 @@ defmodule LeafWeb.ApprovalsLiveTest do
   alias Leaf.Fixtures
   alias Leaf.Leave
   alias Leaf.Ledger
+  alias Leaf.People
 
   @date ~D[2030-03-04]
 
@@ -127,6 +128,20 @@ defmodule LeafWeb.ApprovalsLiveTest do
     assert html =~ "The request is approved."
     assert html =~ "Nothing is waiting on you."
     assert [%{status: :approved}] = Leave.requests(context.person)
+  end
+
+  test "an administrator demoted while the page is open cannot decide for others", context do
+    admin =
+      Fixtures.person(%{organisation_id: context.organisation.id, name: "Kit Rua", role: :admin})
+
+    {:ok, live, _html} = live(sign_in(context.conn, admin), ~p"/approvals")
+
+    {:ok, _demoted} = People.update_person(admin, nil, %{role: :member})
+
+    assert live |> element("main form") |> render_submit(%{"decision" => "approve"}) =~
+             "That is not yours to decide."
+
+    assert [%{status: :pending}] = Leave.requests(context.person)
   end
 
   test "the comment is a labelled textarea, so pressing Enter in it cannot decide", context do
