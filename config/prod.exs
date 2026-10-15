@@ -15,7 +15,7 @@ config :leaf, LeafWeb.Endpoint, cache_static_manifest: "priv/static/cache_manife
 # front of it. A host exclusion would be read off the client's own `Host` header, so anybody
 # sending `Host: localhost` would be excluding themselves.
 config :leaf, LeafWeb.Endpoint,
-  force_ssl: [rewrite_on: [:x_forwarded_proto], exclude: [paths: ["/healthz"]]]
+  force_ssl: [rewrite_on: [:x_forwarded_proto], exclude: [paths: ["/healthz", "/healthz/ready"]]]
 
 # Everything reaches production over HTTPS, so the session cookie says `Secure`.
 config :leaf, secure_cookie: true
