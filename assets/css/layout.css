@@ -326,7 +326,7 @@ main > header:has(> nav) {
   }
 }
 
-main > section {
+main > :is(section, div > section) {
   display: flex;
   flex-direction: column;
   gap: var(--step-3);
@@ -375,12 +375,6 @@ main:has(> :is(aside, .balance-sheet)) {
     display: flex;
     flex-direction: column;
     gap: var(--step-8);
-  }
-
-  & > div > section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--step-3);
   }
 
   & > aside {
