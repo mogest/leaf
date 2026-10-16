@@ -4,7 +4,8 @@ defmodule Leaf.Reports.Payroll do
 
   A request belongs to the period its first day falls in and goes whole, so periods laid end to end
   send each one exactly once. A request drawing on more than one leave type goes as a row a type,
-  since a row names one.
+  since a row names one. iPayroll refuses Days on leave it counts in hours, so Days is filled only
+  for a type kept in days.
 
   Leave of a type with no payroll code has nothing to go under and is left out, and somebody with
   no employee number goes with a blank one, for the upload to refuse rather than for their leave to go
@@ -62,7 +63,7 @@ defmodule Leaf.Reports.Payroll do
       Enum.min(dates, Date),
       Enum.max(dates, Date),
       worth.hours,
-      worth.days,
+      if(leave_type.unit == :days, do: worth.days),
       request.note
     ]
   end

@@ -40,13 +40,15 @@ defmodule Leaf.ReportsTest do
   end
 
   describe "the iPayroll export" do
-    test "takes each approved request whole into the period its first day falls in", context do
+    test "takes each approved request whole into its first day's period, Days blank for hours leave",
+         context do
       %{organisation: organisation, person: person, leave_type: leave_type} = context
 
       sick =
         Fixtures.leave_type(%{
           organisation_id: organisation.id,
           name: "Sick leave",
+          unit: :days,
           position: 2,
           payroll_code: "SICK"
         })
@@ -76,12 +78,12 @@ defmodule Leaf.ReportsTest do
 
       assert ipayroll(person, "2026-09-01", "2026-09-30") ==
                {@heading <>
-                  "1001,Rae Halloran,AL,30/09/2026,02/10/2026,20.00,2.50," <>
+                  "1001,Rae Halloran,AL,30/09/2026,02/10/2026,20.00,," <>
                   ~s("The ""big"" wedding, out of town"\r\n), []}
 
       assert ipayroll(person, "2026-10-01", "2026-10-31") ==
                {@heading <>
-                  "1001,Rae Halloran,AL,05/10/2026,05/10/2026,8.00,1.00,\r\n" <>
+                  "1001,Rae Halloran,AL,05/10/2026,05/10/2026,8.00,,\r\n" <>
                   "1001,Rae Halloran,SICK,06/10/2026,06/10/2026,8.00,1.00,\r\n", []}
     end
 
@@ -99,7 +101,7 @@ defmodule Leaf.ReportsTest do
       take(unpatterned, leave_type, [{~D[2026-10-09], "8", :hours}])
 
       assert ipayroll(person, "2026-10-01", "2026-10-31") ==
-               {@heading <> ",Ines Vasquez,AL,07/10/2026,07/10/2026,8.00,1.00,\r\n",
+               {@heading <> ",Ines Vasquez,AL,07/10/2026,07/10/2026,8.00,,\r\n",
                 [
                   "Quarterly leave has no payroll code, so it is left out of 2 requests.",
                   "Ines Vasquez has no employee number, so the Id on their rows is blank.",
