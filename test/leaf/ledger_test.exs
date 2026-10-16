@@ -771,6 +771,44 @@ defmodule Leaf.LedgerTest do
     assert Decimal.equal?(statement.balance, "300.82")
   end
 
+  test "ending an entitlement lapses what arose under it for those who have since moved off it",
+       context do
+    person = context.person
+    full_time(person)
+    annual = leave_type(context, %{})
+    entitlement(context, annual, %{grant_amount: "200", effective_to: ~D[2026-06-30]})
+
+    senior = Fixtures.leave_policy(%{organisation_id: context.organisation.id, name: "Senior"})
+    entitlement(%{context | policy: senior}, annual, %{grant_amount: "400"})
+
+    Fixtures.policy_assignment(%{
+      person_id: person.id,
+      leave_policy_id: senior.id,
+      effective_from: ~D[2024-09-01]
+    })
+
+    Fixtures.balance_entry(%{
+      person_id: person.id,
+      leave_type_id: annual.id,
+      kind: :adjustment,
+      date: ~D[2024-05-01],
+      amount: "10",
+      reason: "Carried over by agreement"
+    })
+
+    statement = statement(person, annual, ~D[2026-07-01])
+
+    assert movements(statement) == [
+             {:adjustment, ~D[2024-05-01], Decimal.new("10.00"), ~D[2026-06-30]},
+             {:accrual, ~D[2024-08-31], Decimal.new("99.18"), ~D[2026-06-30]},
+             {:accrual, ~D[2025-03-03], Decimal.new("201.64"), nil},
+             {:accrual, ~D[2026-03-03], Decimal.new("400.00"), nil},
+             {:expiry, ~D[2026-06-30], Decimal.new("-99.18"), nil},
+             {:expiry, ~D[2026-06-30], Decimal.new("-10.00"), nil},
+             {:accrual, ~D[2026-07-01], Decimal.new("131.51"), nil}
+           ]
+  end
+
   test "changing hours part-way through a year splits the accrual too", context do
     person = context.person
     full_time(person)

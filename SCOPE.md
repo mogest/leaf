@@ -177,10 +177,14 @@ deadline is spent before one without it, and nothing lapses that could have been
 disturbing anything it granted before then. Two dates matter and they may differ: the date
 granting stops, and the date the leave type stops being usable. Setting the second later than the
 first gives a wind-down — "we are dropping quarterly leave from 1 January, use what you have
-left by 31 March". Whatever balance remains on the final day expires like any other lapse, visibly and
-in the audit log. Leave already taken is untouched, and leave dated while the entitlement was
-still offered can still be filed afterwards (§5.2). An entitlement may also be re-offered later;
-the gap is part of the record.
+left by 31 March". Whatever balance arose under it and remains on the final day expires like any
+other lapse, visibly and in the audit log. Leave already taken is untouched, and leave dated while
+the entitlement was still offered can still be filed afterwards (§5.2). An entitlement may also be
+re-offered later; the gap is part of the record.
+
+What a person holds keeps the rules of the entitlement it arose under, even after they move to
+another policy. So ending an entitlement also lapses what arose under it for people who have since
+left the policy, even if their new policy offers the same leave type.
 
 **"The year" is by default the person's employment anniversary year**, not a shared financial or
 calendar year, and that is the anchor for anything that accrues. Anything anchored that way —
