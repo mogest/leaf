@@ -25,6 +25,8 @@ defmodule Leaf.Ledger do
   alias Leaf.People
   alias Leaf.People.Person
   alias Leaf.Policies
+  alias Leaf.Policies.PolicyEntitlement
+  alias Leaf.Repo
 
   @forever ~D[9999-12-31]
 
@@ -177,6 +179,62 @@ defmodule Leaf.Ledger do
     person
     |> balances(People.today(person), days)
     |> Enum.filter(&MapSet.member?(drawn, &1.leave_type.id))
+  end
+
+  @doc """
+  The days of booked leave that amending `entitlement` with `attrs` would leave short, by person.
+
+  Only where it does nothing but close the entitlement sooner, which lapses what that leave was to be
+  paid out of; any other change to one leave has been taken against is refused anyway. Whoever still
+  holds what it granted is reached, on the policy now or not, so each person's account is read as
+  amended against as it stands. The amendment is made to be read and then rolled back.
+  """
+  @spec unfunded_by(PolicyEntitlement.t(), map()) :: [{Person.t(), [Date.t()]}]
+  def unfunded_by(entitlement, attrs) do
+    case Policies.closes_sooner?(entitlement, attrs) do
+      true -> unfunded(entitlement, attrs)
+      false -> []
+    end
+  end
+
+  defp unfunded(entitlement, attrs) do
+    people = People.on_policy(entitlement.leave_policy_id)
+    short = fn -> Map.new(people, &{&1.id, short(&1, entitlement.leave_type_id)}) end
+    standing = short.()
+
+    {:error, amended} =
+      Repo.transact(fn ->
+        case Policies.update_entitlement(entitlement, nil, attrs) do
+          {:ok, _amended} -> Repo.rollback(short.())
+          {:error, _refused} -> Repo.rollback(standing)
+        end
+      end)
+
+    for person <- people,
+        dates = amended[person.id] -- standing[person.id],
+        dates != [],
+        do: {person, dates}
+  end
+
+  # Read to the last day booked, so that whatever lapses before it has.
+  defp short(person, leave_type_id) do
+    booked = Enum.map(Leave.days(person, :approved), & &1.date)
+
+    person
+    |> statements(Enum.max([People.today(person) | booked], Date), Leave.days(person, :pending))
+    |> Enum.filter(&(&1.leave_type.id == leave_type_id))
+    |> Enum.flat_map(&overdrawn/1)
+  end
+
+  defp overdrawn(statement) do
+    running =
+      Enum.scan(statement.movements, {nil, Decimal.new(0)}, fn movement, {_last, total} ->
+        {movement, Decimal.add(total, movement.amount)}
+      end)
+
+    for {%{kind: :taken} = movement, total} <- running,
+        Decimal.negative?(Decimal.round(total, 2)),
+        do: movement.date
   end
 
   @doc """

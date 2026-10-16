@@ -314,6 +314,39 @@ defmodule LeafWeb.SettingsLiveTest do
     assert [%{effective_to: ~D[2027-03-31]}] = Policies.entitlements(policy.id)
   end
 
+  test "closing an entitlement under booked leave warns, and saves once told to", context do
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+    leave_type = Fixtures.leave_type(%{organisation_id: context.organisation.id})
+    person = Fixtures.person(%{organisation_id: context.organisation.id, name: "Ari Moana"})
+    Fixtures.work_pattern(%{person_id: person.id})
+    Fixtures.policy_assignment(%{person_id: person.id, leave_policy_id: policy.id})
+
+    entitlement =
+      Fixtures.policy_entitlement(%{leave_policy_id: policy.id, leave_type_id: leave_type.id})
+
+    Fixtures.leave_request(%{
+      person_id: person.id,
+      days: [%{leave_type_id: leave_type.id, date: ~D[2024-11-04], amount: "8", unit: :hours}]
+    })
+
+    {:ok, live, _html} =
+      live(context.conn, ~p"/settings/policies/#{policy}/entitlements/#{entitlement}")
+
+    closed = %{"granted_to" => "2024-09-30", "effective_to" => "2024-09-30"}
+    warned = live |> form("#entitlement", policy_entitlement: closed) |> render_submit()
+
+    assert warned =~ "Ari Moana: 4 November 2024"
+    assert [%{effective_to: nil}] = Policies.entitlements(policy.id)
+
+    live
+    |> form("#entitlement", policy_entitlement: closed)
+    |> put_submitter("button[name=confirmed]")
+    |> render_submit()
+
+    assert_redirect(live, ~p"/settings/policies/#{policy}")
+    assert [%{effective_to: ~D[2024-09-30]}] = Policies.entitlements(policy.id)
+  end
+
   test "a calendar will not let a holiday off another calendar", context do
     calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
 

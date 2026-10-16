@@ -12,6 +12,7 @@ defmodule LeafWeb.EntitlementLive do
   on_mount {LeafWeb.SignIn, :admin}
 
   alias Leaf.Changeset
+  alias Leaf.Ledger
   alias Leaf.Org
   alias Leaf.Policies
   alias Phoenix.HTML.Form
@@ -59,12 +60,19 @@ defmodule LeafWeb.EntitlementLive do
   def handle_event("validate", %{"policy_entitlement" => params}, socket) do
     changeset = change(socket.assigns, params)
 
-    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
+    socket =
+      socket
+      |> assign(:form, to_form(changeset, action: :validate))
+      |> assign(:unfunded, [])
+
+    {:noreply, socket}
   end
 
   @role :admin
-  def handle_event("save", %{"policy_entitlement" => params}, socket) do
-    {:noreply, saved(socket, write(socket.assigns, params))}
+  def handle_event("save", %{"policy_entitlement" => params} = submitted, socket) do
+    written = write(socket.assigns, params, submitted["confirmed"] == "true")
+
+    {:noreply, socket |> assign(:unfunded, []) |> saved(written)}
   end
 
   @impl Phoenix.LiveView
@@ -166,8 +174,26 @@ defmodule LeafWeb.EntitlementLive do
           />
         </section>
 
+        <section :if={@unfunded != []}>
+          <header>
+            <h2>Leave already booked would go unpaid for</h2>
+          </header>
+          <p>
+            What these days draw on lapses before them. Saving anyway leaves each person's balance
+            negative by what they take.
+          </p>
+          <ul>
+            <li :for={{person, dates} <- @unfunded}>
+              {person.name}: {Enum.map_join(dates, ", ", &Wording.date/1)}
+            </li>
+          </ul>
+        </section>
+
         <footer>
-          <button class="button" type="submit">Save</button>
+          <button :if={@unfunded == []} class="button" type="submit">Save</button>
+          <button :if={@unfunded != []} class="button" type="submit" name="confirmed" value="true">
+            Save anyway
+          </button>
           <.link navigate={~p"/settings/policies/#{@policy}"}>Cancel</.link>
         </footer>
       </.form>
@@ -195,6 +221,7 @@ defmodule LeafWeb.EntitlementLive do
       |> assign(:leave_types, Enum.map(offered, &{Wording.leave_type(&1), &1.id}))
       |> assign(:types, Map.new(types, &{&1.id, &1}))
       |> assign(:choices, choices())
+      |> assign(:unfunded, [])
 
     assign(socket, :form, to_form(change(socket.assigns, opening(entitlement, organisation))))
   end
@@ -258,12 +285,19 @@ defmodule LeafWeb.EntitlementLive do
     %{sources: @sources, bases: @bases, periods: @periods, timings: @timings, rules: @rules}
   end
 
-  defp write(%{entitlement: nil} = assigns, params) do
+  defp write(%{entitlement: nil} = assigns, params, _confirmed) do
     created(assigns, params, chosen(assigns, params))
   end
 
-  defp write(assigns, params) do
+  defp write(assigns, params, true) do
     Policies.update_entitlement(assigns.entitlement, assigns.current_person, params)
+  end
+
+  defp write(assigns, params, false) do
+    case Ledger.unfunded_by(assigns.entitlement, params) do
+      [] -> write(assigns, params, true)
+      unfunded -> {:unfunded, unfunded}
+    end
   end
 
   # An unchosen leave type is a blank the changeset already knows how to refuse.
@@ -278,6 +312,8 @@ defmodule LeafWeb.EntitlementLive do
     |> put_flash(:info, "Saved.")
     |> push_navigate(to: ~p"/settings/policies/#{socket.assigns.policy}")
   end
+
+  defp saved(socket, {:unfunded, unfunded}), do: assign(socket, :unfunded, unfunded)
 
   defp saved(socket, {:error, :drawn_on}) do
     put_flash(

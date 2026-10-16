@@ -137,11 +137,26 @@ defmodule Leaf.Policies do
   defp amended(_entitlement, %{valid?: false} = changeset, _write), do: {:error, changeset}
 
   defp amended(entitlement, changeset, write) do
-    case Map.keys(changeset.changes) -- [:granted_to, :effective_to] do
-      [] -> write.(entitlement)
-      _terms -> unless_drawn_on(entitlement, write)
+    case closing?(changeset) do
+      true -> write.(entitlement)
+      false -> unless_drawn_on(entitlement, write)
     end
   end
+
+  defp closing?(changeset), do: Map.keys(changeset.changes) -- [:granted_to, :effective_to] == []
+
+  @doc "Whether amending `entitlement` with `attrs` does nothing but close it sooner than it closes now."
+  @spec closes_sooner?(PolicyEntitlement.t(), map()) :: boolean()
+  def closes_sooner?(entitlement, attrs) do
+    changeset = PolicyEntitlement.changeset(entitlement, attrs)
+    effective_to = Ecto.Changeset.get_field(changeset, :effective_to)
+
+    changeset.valid? and closing?(changeset) and sooner?(effective_to, entitlement.effective_to)
+  end
+
+  defp sooner?(nil, _was), do: false
+  defp sooner?(_effective_to, nil), do: true
+  defp sooner?(effective_to, was), do: Date.before?(effective_to, was)
 
   @doc """
   Removes an entitlement outright.

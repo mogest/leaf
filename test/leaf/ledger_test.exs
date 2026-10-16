@@ -1,11 +1,13 @@
 defmodule Leaf.LedgerTest do
   use Leaf.DataCase, async: true
 
+  alias Leaf.Audit.Entry
   alias Leaf.Fixtures
   alias Leaf.Leave
   alias Leaf.Leave.Day
   alias Leaf.Ledger
   alias Leaf.People
+  alias Leaf.Policies
 
   @started ~D[2024-03-04]
 
@@ -1162,6 +1164,60 @@ defmodule Leaf.LedgerTest do
     assert movements(statement(corrected, longevity, ~D[2025-03-31])) == [
              {:grant, ~D[2024-06-01], Decimal.new("1.00"), ~D[2025-05-31]}
            ]
+  end
+
+  test "closing an entitlement sooner names the booked leave it leaves unpaid for", context do
+    stayer = context.person
+    full_time(stayer)
+    quarterly = leave_type(context, %{name: "Quarterly leave", position: 2})
+
+    offered =
+      entitlement(context, quarterly, %{
+        grant_amount: "8",
+        grant_basis: :calendar_year,
+        grant_period: :quarter,
+        grant_timing: :period_start,
+        pro_rated_by_fte: false
+      })
+
+    # Somebody who moved in October to a policy recording quarterly leave but granting none, and is
+    # spending what the first policy granted.
+    mover = Fixtures.person(%{organisation_id: context.organisation.id, name: "Ari Moana"})
+    full_time(mover)
+    recording = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+    Fixtures.offering(%{leave_policy_id: recording.id, leave_type_id: quarterly.id})
+    Fixtures.policy_assignment(%{person_id: mover.id, leave_policy_id: context.policy.id})
+
+    Fixtures.policy_assignment(%{
+      person_id: mover.id,
+      leave_policy_id: recording.id,
+      effective_from: ~D[2024-10-01]
+    })
+
+    take(stayer, quarterly, ~D[2024-08-05], "8", :hours)
+    take(stayer, quarterly, ~D[2024-11-04], "8", :hours)
+    take(mover, quarterly, ~D[2024-11-04], "8", :hours)
+
+    Fixtures.leave_request(%{
+      person_id: stayer.id,
+      status: :pending,
+      days: [%{leave_type_id: quarterly.id, date: ~D[2024-11-05], amount: "8", unit: :hours}]
+    })
+
+    # April and July's 16 hours lapse at the end of September, so August is paid for and November
+    # is not. Stopping granting alone leaves them spendable, and warns of nothing.
+    closed = %{"granted_to" => "2024-09-30", "effective_to" => "2024-09-30"}
+
+    unfunded = Ledger.unfunded_by(offered, closed)
+
+    assert Enum.map(unfunded, fn {person, dates} -> {person.id, dates} end) == [
+             {mover.id, [~D[2024-11-04]]},
+             {stayer.id, [~D[2024-11-04], ~D[2024-11-05]]}
+           ]
+
+    assert Ledger.unfunded_by(offered, %{"granted_to" => "2024-09-30"}) == []
+    assert [%{effective_to: nil}] = Policies.entitlements(context.policy.id)
+    assert Repo.all(Entry) == []
   end
 
   test "an account appears for each leave type the person holds one in", context do
