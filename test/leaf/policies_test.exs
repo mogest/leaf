@@ -170,6 +170,10 @@ defmodule Leaf.PoliciesTest do
         ] do
       assert Policies.update_entitlement(raised, admin, attrs) == {:error, :drawn_on}
     end
+
+    closed = %{effective_to: ~D[2026-09-30]}
+    assert Policies.closes_sooner?(raised, Map.put(closed, :suspension_allowance_weeks, "2"))
+    refute Policies.closes_sooner?(raised, Map.put(closed, :suspension_allowance_weeks, "0.5"))
   end
 
   test "an entitlement nobody has drawn on comes off", context do

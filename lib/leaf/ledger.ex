@@ -184,8 +184,8 @@ defmodule Leaf.Ledger do
   @doc """
   The days of booked leave that amending `entitlement` with `attrs` would leave short, by person.
 
-  Only where it does nothing but close the entitlement sooner, which lapses what that leave was to be
-  paid out of; any other change to one leave has been taken against is refused anyway. Whoever still
+  Only where it closes the entitlement sooner, which lapses what that leave was to be paid out of, by
+  a change still allowed once leave has been taken against it; any other is refused. Whoever still
   holds what it granted is reached, on the policy now or not, so each person's account is read as
   amended against as it stands. The amendment is made to be read and then rolled back.
   """

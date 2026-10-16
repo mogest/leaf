@@ -139,16 +139,19 @@ defmodule Leaf.Policies do
   defp amended(_entitlement, %{valid?: false} = changeset, _write), do: {:error, changeset}
 
   defp amended(entitlement, changeset, write) do
-    case {terms(changeset), raised?(changeset)} do
-      {[], _raised} -> write.(entitlement)
-      {[:suspension_allowance_weeks], true} -> write.(entitlement)
-      _terms -> unless_drawn_on(entitlement, write)
+    case allowed_once_drawn?(changeset) do
+      true -> write.(entitlement)
+      false -> unless_drawn_on(entitlement, write)
     end
   end
 
-  defp terms(changeset), do: Map.keys(changeset.changes) -- [:granted_to, :effective_to]
-
-  defp closing?(changeset), do: terms(changeset) == []
+  defp allowed_once_drawn?(changeset) do
+    case Map.keys(changeset.changes) -- [:granted_to, :effective_to] do
+      [] -> true
+      [:suspension_allowance_weeks] -> raised?(changeset)
+      _terms -> false
+    end
+  end
 
   defp raised?(%{
          data: %{suspension_allowance_weeks: was},
@@ -158,13 +161,14 @@ defmodule Leaf.Policies do
 
   defp raised?(_changeset), do: false
 
-  @doc "Whether amending `entitlement` with `attrs` does nothing but close it sooner than it closes now."
+  @doc "Whether amending `entitlement` with `attrs` closes it sooner, by a change allowed once drawn on."
   @spec closes_sooner?(PolicyEntitlement.t(), map()) :: boolean()
   def closes_sooner?(entitlement, attrs) do
     changeset = PolicyEntitlement.changeset(entitlement, attrs)
     effective_to = Ecto.Changeset.get_field(changeset, :effective_to)
 
-    changeset.valid? and closing?(changeset) and sooner?(effective_to, entitlement.effective_to)
+    changeset.valid? and allowed_once_drawn?(changeset) and
+      sooner?(effective_to, entitlement.effective_to)
   end
 
   defp sooner?(nil, _was), do: false

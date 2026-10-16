@@ -142,7 +142,8 @@ entitlement date out by the excess: taking that excess off accrual instead leave
 about the same leave by that pushed-out date, provided the time after is worked, without moving any
 period boundary. NZ annual leave sets one week; UK entitlements leave it empty. Raising the
 allowance recalculates every period under that entitlement, which only ever adds leave, so it may
-be raised after leave has been taken against the entitlement; it may not be lowered or removed.
+be raised after leave has been taken against the entitlement; from then on it may not be lowered
+or removed.
 
 **Block grant.** The whole entitlement lands at once, on the first day of its grant period.
 Block grants exist because NZ and UK law grant some leave — sick leave in particular — as a
