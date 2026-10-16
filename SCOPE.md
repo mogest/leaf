@@ -115,6 +115,10 @@ How much of it each grant period forgives is a term of the entitlement it shrink
 leave allowance (§4.7). A type that grants nothing has no balance to go under, so filing it says
 nothing about one.
 
+A type may **need no approval**: leave of it is agreed outside Leaf — a contractor's time off,
+arranged with their manager — and is approved as it is filed (§5.3). A contractor's policy offers
+such a type, which is how Leaf is one place to see who is off without employee rules applying.
+
 ### 4.7 Granting: accrual and block grants
 Two mechanisms, chosen per leave type in the policy.
 
@@ -309,6 +313,8 @@ configurable delegate in v1.
 - Request goes to the person's manager, or to an administrator where there isn't one
   available.
 - Manager approves or declines, with an optional comment.
+- A request whose days are all of types that need no approval (§4.6) is approved as it is filed,
+  by whoever filed it. Its approvers are told of it, and of each change to it, rather than asked.
 - Pending requests are visible to the approver as a queue and appear on calendars as
   tentative.
 - People are told by Slack direct message, outgoing only: nobody replies to Leaf in Slack. Email
@@ -324,6 +330,11 @@ configurable delegate in v1.
 - The requester may cancel or amend a request **while it is still pending**.
 - Once approved, **only a manager or administrator can cancel or amend it**. This is
   deliberate — people should not be able to quietly remove leave they've already taken.
+  Leave approved as it was filed is the exception: its requester may still cancel it, or amend it
+  to other days that need no approval, and its approvers are told. That is recorded on the request,
+  so it holds whatever its types are later set to. A manager amending it into leave that needs
+  approval takes it out of the requester's reach for good, and leave a manager approved never comes
+  into it.
 - Cancellation returns the balance and is recorded in the log.
 
 ### 5.5 Calendars
@@ -394,7 +405,7 @@ not an afterthought.
 8. **Nothing country-specific is hardcoded.** New Zealand's rules are the most complex, so if
    the model handles NZ it handles the rest; but jurisdictions are expressed as configuration
    (calendars, policies, leave types), not code.
-9. **Approved leave is not self-serve-deletable.**
+9. **Approved leave is not self-serve-deletable**, except leave approved as it was filed (§5.4).
 10. **Employee vs contractor is a policy, not a type.**
 11. **The leave year is by default the person's employment anniversary year**, not a shared one.
     Where an entitlement genuinely needs a calendar or financial year, that is configuration.

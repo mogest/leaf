@@ -159,7 +159,6 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:done, "Your request is filed.")
     |> assign(:request, nil)
     |> assign(:replaced, false)
-    |> assign(:decider, decider(nil, person, person))
     |> holding(person)
     |> filled(%{})
   end
@@ -188,7 +187,6 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:done, "The request is changed.")
     |> assign(:request, request)
     |> assign(:replaced, replaced)
-    |> assign(:decider, decider(request, request.person, socket.assigns.current_person))
     |> holding(request.person)
     |> filled(params)
   end
@@ -207,11 +205,15 @@ defmodule LeafWeb.RequestLeaveLive do
   end
 
   # Amending an approved request leaves it approved, so there is nobody left to decide it.
-  defp decider(%{status: :approved}, _person, _viewer), do: nil
+  defp decider(%{request: %{status: :approved}}), do: nil
 
-  defp decider(_request, person, viewer) do
+  defp decider(%{request: nil, chosen: %{needs_approval: false}, person: person} = assigns) do
+    "#{whose(person, assigns.current_person)} leave needs no approval: it is approved as it is filed"
+  end
+
+  defp decider(%{person: person} = assigns) do
     reviewer = People.manager_name(person) || "an administrator"
-    "#{whose(person, viewer)} leave will be reviewed by #{reviewer}"
+    "#{whose(person, assigns.current_person)} leave will be reviewed by #{reviewer}"
   end
 
   defp whose(%{id: id}, %{id: id}), do: "Your"
@@ -231,11 +233,9 @@ defmodule LeafWeb.RequestLeaveLive do
     today = socket.assigns.today
     offered = Leave.requestable(socket.assigns.person, order.span || Date.range(today, today))
 
-    assign(
-      socket,
-      :leave_types,
-      Enum.map(offered, &{offering(&1, socket.assigns.held[&1.id]), &1.id})
-    )
+    socket
+    |> assign(:leave_types, Enum.map(offered, &{offering(&1, socket.assigns.held[&1.id]), &1.id}))
+    |> assign(:chosen, Enum.find(offered, &(&1.id == order.leave_type_id)))
   end
 
   # A type is offered with what is left in it, so that choosing one is not a guess.
@@ -307,8 +307,10 @@ defmodule LeafWeb.RequestLeaveLive do
     problems = problems(socket, changeset, order, days)
     entries = filable(days, problems)
 
+    socket = choices(socket, order)
+
     socket
-    |> choices(order)
+    |> assign(:decider, decider(socket.assigns))
     |> assign(:form, to_form(changeset, as: :request))
     |> assign(:order, order)
     |> assign(:entries, entries)

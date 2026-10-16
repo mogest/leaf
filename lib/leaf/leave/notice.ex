@@ -7,6 +7,9 @@ defmodule Leaf.Leave.Notice do
   that is every administrator who is, each sent the same message. Nobody is sent word of what they
   did themselves.
 
+  Leave nobody has to approve is approved as it is filed, so its approvers are told of it instead,
+  and told again of each change to it.
+
   The requester is sent a message of their own whenever somebody else changes or settles their
   request. Those go under a topic apart, so that rewriting the approvers' messages never reaches
   theirs. An edit notifies nobody, so anything somebody has to act on goes out as a new message.
@@ -20,19 +23,20 @@ defmodule Leaf.Leave.Notice do
   alias Leaf.Repo
   alias Leaf.Wording
 
-  @doc "Tells the approvers there is a request to decide."
+  @doc "Tells the approvers there is a request to decide, or leave they need only know of."
   @spec filed(Request.t(), Person.t()) :: :ok
   def filed(request, actor) do
     request = read(request)
 
-    ask(request, actor, asked(request))
+    ask(request, actor, filing(request))
   end
 
   @doc """
-  Tells the requester their request has changed, and the approvers where it is still to decide.
+  Tells the requester their request has changed, and the approvers what it is now.
 
-  A pending request needs deciding afresh, so the approvers are sent it again, and their earlier
-  messages say what it asks for now.
+  The approvers' earlier messages are rewritten to say what it is for now. They are sent it again
+  where it is pending, since it needs deciding afresh, or approved as it was filed, since nothing
+  else tells them of it.
   """
   @spec amended(Request.t(), Person.t()) :: :ok
   def amended(request, actor) do
@@ -67,26 +71,45 @@ defmodule Leaf.Leave.Notice do
   def cancelled(request, actor) do
     request = read(request)
 
-    Messaging.revise(topic(request), %Message{
-      text: "#{asked(request)} Cancelled by #{actor.name}."
-    })
+    cancelled = "#{cancelling(request)} Cancelled by #{actor.name}."
+    Messaging.revise(topic(request), %Message{text: cancelled})
+    inform(request, actor, cancelled)
 
     tell(request, actor, "#{actor.name} cancelled your request for #{leave(request)}.")
   end
 
-  defp ask_again(%{status: :pending, person: person} = request, actor) do
-    amended =
-      "#{person.name}'s request was amended by #{actor.name}, and is now for #{leave(request)}."
+  defp ask_again(request, actor) do
+    amended = amendment(request, actor)
 
-    Messaging.revise(topic(request), %Message{text: amended, path: "/approvals"})
-    ask(request, actor, amended)
+    Messaging.revise(topic(request), %Message{text: amended, path: path(request)})
+    inform(request, actor, amended)
   end
 
-  defp ask_again(_request, _actor), do: :ok
+  defp inform(%{status: status, approved_on_filing: on_filing} = request, actor, text)
+       when status == :pending or on_filing,
+       do: ask(request, actor, text)
+
+  defp inform(_request, _actor, _text), do: :ok
+
+  defp amendment(%{status: :pending} = request, actor), do: now_for(request, actor)
+
+  defp amendment(%{approved_on_filing: true} = request, actor),
+    do: "#{filing(request)} Amended by #{actor.name}."
+
+  # Leave brought in from another system has nobody here who approved it.
+  defp amendment(%{reviewed_by: nil} = request, actor), do: now_for(request, actor)
+
+  defp amendment(request, actor),
+    do: "#{now_for(request, actor)} Approved by #{request.reviewed_by.name}."
+
+  defp now_for(request, actor) do
+    "#{request.person.name}'s request was amended by #{actor.name}, and is now for " <>
+      "#{leave(request)}."
+  end
 
   defp ask(request, actor, text) do
     {approvers, note} = approvers(request.person)
-    message = %Message{text: Enum.join([text | note], " "), path: "/approvals"}
+    message = %Message{text: Enum.join([text | note], " "), path: path(request)}
 
     for approver <- approvers, approver.id != actor.id do
       Messaging.deliver(approver, topic(request), message)
@@ -121,7 +144,21 @@ defmodule Leaf.Leave.Notice do
 
   defp routed(administrators, _person), do: {administrators, []}
 
+  defp filing(%{approved_on_filing: true} = request),
+    do: "#{request.person.name} is away for #{leave(request)}."
+
+  defp filing(request), do: asked(request)
+
+  defp cancelling(%{approved_on_filing: true} = request),
+    do: "#{request.person.name} was to be away for #{leave(request)}."
+
+  defp cancelling(request), do: asked(request)
+
   defp asked(request), do: "#{request.person.name} asked for #{leave(request)}."
+
+  defp path(%{status: :pending}), do: "/approvals"
+  defp path(%{status: :cancelled}), do: nil
+  defp path(_request), do: "/away"
 
   defp leave(request) do
     "#{Wording.types(request)}, #{Wording.dates(request)} (#{Wording.amount(request)})"

@@ -8,17 +8,18 @@ defmodule Leaf.Leave do
 
   Every write takes whoever is acting, because who may do what turns on them. While a request is
   pending the person it belongs to may revise it; once it is approved only their manager or an
-  administrator may, so that nobody can quietly remove leave they have already taken. Where a
-  person has no manager, an administrator stands in. A refusal comes back as `{:error, :forbidden}`
-  rather than a changeset — nothing about it is a matter of what was filled in — and a write that
-  goes through records itself in the audit log. Once it has, `Leaf.Leave.Notice` tells whoever has
-  to hear about it.
+  administrator may, so that nobody can quietly remove leave they have already taken — unless it
+  was approved as it was filed, which leaves it the person's own. Where a person has no manager, an
+  administrator stands in. A refusal comes back as `{:error, :forbidden}` rather than a changeset —
+  nothing about it is a matter of what was filled in — and a write that goes through records itself
+  in the audit log. Once it has, `Leaf.Leave.Notice` tells whoever has to hear about it.
 
   Every write against one person's leave happens one at a time, and reads what it is about inside
   that: two of them cannot each find the same day free, nor each decide a request the other has
   already decided.
   """
 
+  import Ecto.Changeset, only: [apply_changes: 1, change: 2]
   import Ecto.Query
 
   alias Leaf.Audit
@@ -78,6 +79,8 @@ defmodule Leaf.Leave do
   @doc """
   Files a request for `person`, pending a decision.
 
+  Leave of types that need no approval is approved as it is filed, by whoever filed it.
+
   `attrs` carries a `:days` list of `t:entry/0` and an optional `:note`.
   """
   @spec request(Person.t(), Person.t(), map()) ::
@@ -89,6 +92,7 @@ defmodule Leaf.Leave do
         |> Request.changeset(measured(person, attrs))
         |> Offer.validate(person)
         |> Booked.validate(person)
+        |> filed_by(actor)
         |> Audit.write("leave_request.requested", actor, person.id)
       end
     end)
@@ -104,12 +108,15 @@ defmodule Leaf.Leave do
           {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden}
   def amend(request, actor, attrs) do
     as_it_stands(request, fn request ->
-      with :ok <- permit(revisable?(request, actor)) do
-        request
-        |> Request.changeset(measured(request.person, attrs))
-        |> Offer.validate(request.person)
-        |> Booked.validate(request.person)
-        |> Audit.write("leave_request.amended", actor, request.person_id)
+      with :ok <- permit(revisable?(request, actor)),
+           changeset =
+             request
+             |> Request.changeset(measured(request.person, attrs))
+             |> Offer.validate(request.person)
+             |> Booked.validate(request.person)
+             |> refiled(request, actor),
+           :ok <- permit(revisable?(apply_changes(changeset), actor)) do
+        Audit.write(changeset, "leave_request.amended", actor, request.person_id)
       end
     end)
     |> notify(&Notice.amended(&1, actor))
@@ -531,7 +538,11 @@ defmodule Leaf.Leave do
     actor.id in [request.person_id, request.submitted_by_id] or approver?(request.person, actor)
   end
 
-  def revisable?(%{status: :approved} = request, actor), do: approver?(request.person, actor)
+  def revisable?(%{status: :approved} = request, actor) do
+    approver?(request.person, actor) or
+      (actor.id == request.person_id and request.approved_on_filing)
+  end
+
   def revisable?(_request, _actor), do: false
 
   @doc "One of a person's balance entries, unless it has been archived."
@@ -559,6 +570,50 @@ defmodule Leaf.Leave do
   end
 
   defp overseen(approver), do: dynamic([_request, person], person.manager_id == ^approver.id)
+
+  defp filed_by(%{valid?: false} = changeset, _actor), do: changeset
+
+  defp filed_by(changeset, actor) do
+    case needs_approval?(changeset) do
+      true ->
+        changeset
+
+      false ->
+        change(changeset,
+          approved_on_filing: true,
+          status: :approved,
+          reviewed_by_id: actor.id,
+          reviewed_at: now()
+        )
+    end
+  end
+
+  # Leave stays its requester's only while none of it needs approval, and nothing makes it theirs
+  # again. Whoever amends it into leave that does is the one approving it.
+  defp refiled(%{valid?: true} = changeset, %{approved_on_filing: true}, actor) do
+    case needs_approval?(changeset) do
+      true ->
+        change(changeset,
+          approved_on_filing: false,
+          reviewed_by_id: actor.id,
+          reviewed_at: now()
+        )
+
+      false ->
+        changeset
+    end
+  end
+
+  defp refiled(changeset, _request, _actor), do: changeset
+
+  defp needs_approval?(changeset) do
+    changeset
+    |> Request.filing()
+    |> Repo.preload(:leave_type)
+    |> Enum.any?(& &1.leave_type.needs_approval)
+  end
+
+  defp now, do: DateTime.truncate(DateTime.utc_now(), :second)
 
   defp decide(request, actor, status, comment) do
     as_it_stands(request, fn request ->
@@ -595,7 +650,7 @@ defmodule Leaf.Leave do
     |> Request.review_changeset(%{
       status: status,
       reviewed_by_id: actor.id,
-      reviewed_at: DateTime.truncate(DateTime.utc_now(), :second),
+      reviewed_at: now(),
       review_comment: comment
     })
     |> Audit.write("leave_request.#{status}", actor, request.person_id)

@@ -7,8 +7,10 @@ defmodule Leaf.Leave.Request do
   Who a request belongs to is settled when it is made and never cast again, so an amendment cannot
   move it to somebody else. `changeset/2` covers requesting and amending, and always owns the days.
   Deciding one is a distinct state, so `review_changeset/2` handles it separately and cannot touch
-  the days. Which decisions may follow which is `Leaf.Leave`'s to say — it turns on who is acting,
-  which a changeset cannot see.
+  the days. `approved_on_filing` is set, never cast, on leave approved as it was filed because nobody
+  had to approve it, and cleared by an amendment giving it a day that needs approval. It is what
+  keeps the leave its requester's to revise, whatever its types say later. Which decisions may
+  follow which is `Leaf.Leave`'s to say — it turns on who is acting, which a changeset cannot see.
   """
 
   use Leaf.Schema
@@ -28,6 +30,7 @@ defmodule Leaf.Leave.Request do
     field :note, :string
     field :reviewed_at, :utc_datetime
     field :review_comment, :string
+    field :approved_on_filing, :boolean, default: false
 
     belongs_to :person, Person
     belongs_to :submitted_by, Person

@@ -141,6 +141,59 @@ defmodule Leaf.LeaveTest do
     assert subject == context.person.id
   end
 
+  test "leave needing no approval is approved as filed, and stays its requester's to revise",
+       context do
+    {:ok, _unavailable} =
+      Policies.update_leave_type(context.leave_type, nil, %{needs_approval: false})
+
+    annual = Fixtures.leave_type(%{organisation_id: context.organisation.id, position: 2})
+
+    Fixtures.policy_entitlement(%{
+      leave_policy_id: context.entitlement.leave_policy_id,
+      leave_type_id: annual.id
+    })
+
+    mixed = [entry(context.leave_type, @thursday), entry(annual, @friday)]
+
+    assert {:ok, %{status: :pending} = pending} =
+             Leave.request(context.person, context.person, %{days: mixed})
+
+    assert {:ok, _cancelled} = Leave.cancel(reload(pending), context.person)
+
+    assert {:ok, request} = file(context, [@thursday])
+    assert %{status: :approved, approved_on_filing: true, reviewed_by_id: reviewer} = request
+    assert reviewer == context.person.id
+
+    assert {:error, :forbidden} =
+             Leave.amend(reload(request), context.person, %{days: [entry(annual, @friday)]})
+
+    assert {:ok, %{status: :approved}} =
+             Leave.amend(reload(request), context.person, %{
+               days: [entry(context.leave_type, @friday)]
+             })
+
+    assert {:ok, %{note: "Moved"}} =
+             Leave.amend(reload(request), context.person, %{note: "Moved"})
+
+    assert {:ok, %{approved_on_filing: false}} =
+             Leave.amend(reload(request), context.manager, %{days: [entry(annual, @friday)]})
+
+    refute Leave.revisable?(reload(request), context.person)
+  end
+
+  test "leave a manager approved stays out of its requester's reach when its type stops needing it",
+       context do
+    {:ok, request} = file(context, [@thursday])
+    {:ok, _approved} = Leave.approve(reload(request), context.manager)
+    {:ok, _type} = Policies.update_leave_type(context.leave_type, nil, %{needs_approval: false})
+    refute Leave.revisable?(reload(request), context.person)
+
+    {:ok, _amended} =
+      Leave.amend(reload(request), context.manager, %{days: [entry(context.leave_type, @friday)]})
+
+    refute Leave.revisable?(reload(request), context.person)
+  end
+
   test "leave cannot be filed on a day the person does not work", context do
     assert {:error, changeset} = file(context, [@saturday])
 

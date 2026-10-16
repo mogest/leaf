@@ -9,6 +9,7 @@ defmodule Leaf.MessagingTest do
   alias Leaf.Leave
   alias Leaf.Messaging.Slack.API
   alias Leaf.People
+  alias Leaf.Policies
 
   @thursday ~D[2026-08-20]
   @friday ~D[2026-08-21]
@@ -113,6 +114,26 @@ defmodule Leaf.MessagingTest do
       assert_received {:updated, "D-" <> ^manager, ^revised}
       refute_received {:posted, ^manager, _text}
 
+      {:ok, approved} = settled(Leave.approve(reload(request), context.manager))
+      {:ok, _amended} = settled(Leave.amend(reload(approved), context.manager, %{note: "Moved"}))
+
+      kept =
+        "Rae Halloran's request was amended by Ines Vasquez, and is now for Annual leave, " <>
+          "Thursday 20 August (8 hours). Approved by Ines Vasquez.#{link("/away")}"
+
+      assert_received {:updated, "D-" <> ^manager, ^kept}
+
+      {:ok, recorded} =
+        Leave.record(context.person, %{status: :approved, days: [day(context, @friday)]})
+
+      {:ok, _amended} = settled(Leave.amend(reload(recorded), context.manager, %{note: "Moved"}))
+
+      recorded_told =
+        "Ines Vasquez amended your request. It is now for Annual leave, Friday 21 August " <>
+          "(8 hours).#{link("/leave")}"
+
+      assert_received {:posted, ^requester, ^recorded_told}
+
       {:ok, _cancelled} = settled(Leave.cancel(reload(request), context.manager))
 
       cancelled =
@@ -120,6 +141,49 @@ defmodule Leaf.MessagingTest do
           link("/leave")
 
       assert_received {:posted, ^requester, ^cancelled}
+    end
+
+    test "leave needing no approval is told to the manager as it is filed, amended and cancelled",
+         context do
+      %{manager: %{email: manager}} = context
+      {:ok, type} = Policies.update_leave_type(context.leave_type, nil, %{needs_approval: false})
+      {:ok, request} = file(context)
+
+      away =
+        "Rae Halloran is away for Annual leave, Thursday 20 August (8 hours).#{link("/away")}"
+
+      assert_received {:posted, ^manager, ^away}
+
+      {:ok, _amended} =
+        settled(Leave.amend(reload(request), context.person, %{days: [day(context, @friday)]}))
+
+      amended =
+        "Rae Halloran is away for Annual leave, Friday 21 August (8 hours). " <>
+          "Amended by Rae Halloran.#{link("/away")}"
+
+      assert_received {:updated, "D-" <> ^manager, ^amended}
+      assert_received {:posted, ^manager, ^amended}
+
+      {:ok, _cancelled} = settled(Leave.cancel(reload(request), context.person))
+
+      cancelled =
+        "Rae Halloran was to be away for Annual leave, Friday 21 August (8 hours). " <>
+          "Cancelled by Rae Halloran."
+
+      assert_received {:updated, "D-" <> ^manager, ^cancelled}
+      assert_received {:posted, ^manager, ^cancelled}
+
+      {:ok, again} = file(context)
+      {:ok, _type} = Policies.update_leave_type(type, nil, %{needs_approval: true})
+
+      {:ok, _amended} =
+        settled(Leave.amend(reload(again), context.manager, %{days: [day(context, @friday)]}))
+
+      rewritten =
+        "Rae Halloran's request was amended by Ines Vasquez, and is now for Annual leave, " <>
+          "Friday 21 August (8 hours). Approved by Ines Vasquez.#{link("/away")}"
+
+      assert_received {:updated, "D-" <> ^manager, ^rewritten}
     end
 
     test "with no manager, every administrator employed there is asked, and told who decided",

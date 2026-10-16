@@ -431,8 +431,13 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     {:ok, _person} = People.update_person(context.person, nil, %{manager_id: manager.id})
 
-    {:ok, _live, html} = live(context.conn, ~p"/leave/new")
+    {:ok, live, html} = live(context.conn, ~p"/leave/new")
     assert html =~ "Your leave will be reviewed by Ines Vasquez"
+
+    {:ok, _type} = Policies.update_leave_type(context.leave_type, nil, %{needs_approval: false})
+
+    assert live |> form("#request", request: asking(context, %{})) |> render_change() =~
+             "Your leave needs no approval: it is approved as it is filed"
   end
 
   test "a request that is no longer open to change is not there to edit", context do
@@ -454,6 +459,8 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     live |> form("#request", request: asking(context, %{})) |> render_submit()
     [request] = Leave.requests(context.person)
 
+    # Amending does not approve, so a pending request stays one whatever its type now says.
+    {:ok, _type} = Policies.update_leave_type(context.leave_type, nil, %{needs_approval: false})
     {:ok, amend, html} = live(context.conn, ~p"/leave/#{request}/amend")
 
     assert html =~ "Edit a request"
@@ -463,7 +470,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     |> form("#request", request: asking(context, %{"to" => to_string(@sunday)}))
     |> render_submit()
 
-    assert [%{id: same, days: days}] = Leave.requests(context.person)
+    assert [%{id: same, days: days, status: :pending}] = Leave.requests(context.person)
     assert same == request.id
     assert length(days) == 5
   end
