@@ -26,6 +26,9 @@ defmodule LeafWeb.ReportsLive do
      [:as_at]},
     {"Expiring soon", "expiring", "Leave that lapses within so many days unless it is taken.",
      [:as_at, :within]},
+    {"Over limit", "over_limit",
+     "Everyone holding more than so many weeks of leave, a week being their own working week.",
+     [:as_at, :leave_type_id, :weeks]},
     {"iPayroll export", "ipayroll",
      "Approved requests whose first day falls in the period, each whole, as iPayroll's Leave " <>
        "Requests upload takes them.", [:from, :to]}
@@ -109,6 +112,13 @@ defmodule LeafWeb.ReportsLive do
         />
         <.input :if={:as_at in @fields} field={@form[:as_at]} type="date" label="As at" />
         <.input :if={:within in @fields} field={@form[:within]} type="number" label="Days ahead" />
+        <.input
+          :if={:weeks in @fields}
+          field={@form[:weeks]}
+          type="number"
+          label="Limit in weeks"
+          step="any"
+        />
         <.link :if={@table} class="button" href={@download}>Download CSV</.link>
       </.form>
 

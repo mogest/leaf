@@ -12,6 +12,7 @@ defmodule Leaf.Reports do
   alias Leaf.Reports.Balances
   alias Leaf.Reports.Expiring
   alias Leaf.Reports.Options
+  alias Leaf.Reports.OverLimit
   alias Leaf.Reports.Payroll
   alias Leaf.Reports.Reconciliation
   alias Leaf.Reports.Table
@@ -66,5 +67,9 @@ defmodule Leaf.Reports do
 
   defp table(:expiring, person, options) do
     Expiring.table(person.organisation_id, options.as_at, options.within)
+  end
+
+  defp table(:over_limit, person, options) do
+    OverLimit.table(person.organisation_id, options.as_at, options.leave_type_id, options.weeks)
   end
 end

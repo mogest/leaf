@@ -437,6 +437,10 @@ defmodule Leaf.People do
   @spec weekly_hours(WorkPattern.t()) :: Decimal.t()
   defdelegate weekly_hours(work_pattern), to: WorkPattern
 
+  @doc "The days worked in a full week under a work pattern."
+  @spec weekly_days(WorkPattern.t()) :: non_neg_integer()
+  defdelegate weekly_days(work_pattern), to: WorkPattern
+
   @doc "The hours worked on `date` under a work pattern."
   @spec hours_on(WorkPattern.t(), Date.t()) :: Decimal.t()
   defdelegate hours_on(work_pattern, date), to: WorkPattern

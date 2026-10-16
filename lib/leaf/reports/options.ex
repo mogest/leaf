@@ -14,9 +14,9 @@ defmodule Leaf.Reports.Options do
 
   @type t :: %__MODULE__{}
 
-  @reports [:taken, :reconciliation, :balances, :expiring, :ipayroll]
+  @reports [:taken, :reconciliation, :balances, :expiring, :over_limit, :ipayroll]
 
-  @required [:report, :from, :to, :cut_off, :as_at, :within]
+  @required [:report, :from, :to, :cut_off, :as_at, :within, :weeks]
   @fields @required ++ [:country_id, :leave_type_id]
 
   @primary_key false
@@ -27,6 +27,7 @@ defmodule Leaf.Reports.Options do
     field :cut_off, :date
     field :as_at, :date
     field :within, :integer
+    field :weeks, :decimal
     field :country_id, :binary_id
     field :leave_type_id, :binary_id
   end
@@ -42,12 +43,14 @@ defmodule Leaf.Reports.Options do
       to: Date.end_of_month(today),
       cut_off: Date.add(from, -1),
       as_at: today,
-      within: 60
+      within: 60,
+      weeks: Decimal.new(4)
     }
     |> cast(params, @fields)
     |> validate_required(@required)
     |> validate_date_order(:from, :to)
     |> validate_number(:within, greater_than: 0, less_than_or_equal_to: 3660)
+    |> validate_number(:weeks, greater_than: 0, less_than_or_equal_to: 520)
   end
 
   @doc "The dates from `from` to `to`."

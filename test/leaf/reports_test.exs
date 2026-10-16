@@ -278,6 +278,56 @@ defmodule Leaf.ReportsTest do
                 "Rae Halloran,Sick leave,9.00,days,03/03/2026\r\n", unready}
   end
 
+  test "over the limit is more than so many of each person's own weeks", context do
+    %{organisation: organisation, person: person, leave_type: leave_type} = context
+    [assignment] = People.policy_assignments(person)
+    part_timer = Fixtures.person(%{organisation_id: organisation.id, name: "Odile Brannigan"})
+    Fixtures.work_pattern(%{person_id: part_timer.id, thursday_hours: "0", friday_hours: "4"})
+
+    Fixtures.policy_assignment(%{
+      person_id: part_timer.id,
+      leave_policy_id: assignment.leave_policy_id
+    })
+
+    lieu =
+      Fixtures.leave_type(%{
+        organisation_id: organisation.id,
+        name: "Lieu",
+        unit: :days,
+        position: 2
+      })
+
+    Fixtures.offering(%{leave_policy_id: assignment.leave_policy_id, leave_type_id: lieu.id})
+
+    for {someone, type, amount} <- [
+          {person, leave_type, "50"},
+          {part_timer, leave_type, "30"},
+          {person, lieu, "5"},
+          {part_timer, lieu, "5"}
+        ] do
+      Fixtures.balance_entry(%{person_id: someone.id, leave_type_id: type.id, amount: amount})
+    end
+
+    asked = %{"report" => "over_limit", "as_at" => "2026-02-01", "leave_type_id" => leave_type.id}
+    heading = "Person,Leave type,Balance,Limit,Excess,Unit\r\n"
+
+    # Odile works 28 hours a week, Rae 40.
+    assert {^heading <> over, _unready} = csv(person, Map.put(asked, "weeks", "1"))
+
+    assert over ==
+             "Odile Brannigan,Annual leave,30.00,28.00,2.00,hours\r\n" <>
+               "Rae Halloran,Annual leave,50.00,40.00,10.00,hours\r\n"
+
+    assert {^heading, _unready} = csv(person, Map.put(asked, "weeks", "1.25"))
+
+    # Odile works 4 days a week, Rae 5.
+    lieu_asked = %{asked | "leave_type_id" => lieu.id}
+
+    assert csv(person, Map.put(lieu_asked, "weeks", "1")) ==
+             {heading <> "Odile Brannigan,Lieu,5.00,4.00,1.00,days\r\n",
+              ["Ines Vasquez's work pattern does not cover their leave, so it is left out."]}
+  end
+
   test "a period that ends before it starts is refused", %{person: person} do
     assert {:error, changeset} =
              Reports.run(person, %{

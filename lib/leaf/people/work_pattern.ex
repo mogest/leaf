@@ -55,6 +55,11 @@ defmodule Leaf.People.WorkPattern do
     @hour_fields |> Enum.map(&Map.fetch!(pattern, &1)) |> Enum.reduce(&Decimal.add/2)
   end
 
+  @doc "The days worked in a full week under this pattern."
+  @spec weekly_days(t()) :: non_neg_integer()
+  def weekly_days(pattern),
+    do: Enum.count(@hour_fields, &Decimal.positive?(Map.fetch!(pattern, &1)))
+
   @doc "The hours worked on `date` under this pattern."
   @spec hours_on(t(), Date.t()) :: Decimal.t()
   def hours_on(pattern, date) do

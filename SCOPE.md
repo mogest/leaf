@@ -184,10 +184,10 @@ the gap is part of the record.
 
 **"The year" is by default the person's employment anniversary year**, not a shared financial or
 calendar year, and that is the anchor for anything that accrues. Anything anchored that way —
-accrual, anniversary block grants, longevity leave lapsing, sick leave rollover caps,
-excess-balance thresholds — therefore starts on a different date for each person, which is the
-price of having entitlement tie back to when they actually started. Where an entitlement needs a
-shared year instead, that is configuration (§4.7), not an exception in code.
+accrual, anniversary block grants, longevity leave lapsing, sick leave rollover caps — therefore
+starts on a different date for each person, which is the price of having entitlement tie back to
+when they actually started. Where an entitlement needs a shared year instead, that is
+configuration (§4.7), not an exception in code.
 
 Reporting is unaffected — reports run over whatever date range is asked for (a payroll month,
 a quarter, a financial year). The anniversary year governs *entitlement*, not *reporting
@@ -328,8 +328,9 @@ Reports are the payroll handover, so they matter as much as the request flow.
   run) so admins can see what needs to be picked up this cycle rather than eyeballing colours
   in a spreadsheet.
 - **Current balances** — per person, per leave type, as at a date.
-- **Excess balance / upper threshold** — people whose accrued balance exceeds a configured
-  threshold, so it can be actioned before it becomes a liability.
+- **Over limit** — people whose balance of a leave type exceeds a limit in weeks, asked for when
+  the report is run rather than stored, so it can be actioned before it becomes a liability. A week
+  is the person's own: their weekly hours, or working days where the type counts in days.
 - **Public holidays in a period** — who observes them, who has them in their entitlement,
   what FTE and work pattern applied.
 - **Expiring soon** — balances about to lapse (quarterly, birthday, longevity).
@@ -347,8 +348,8 @@ audit log holds is the change that caused them, and who made it.
 
 ### 5.8 Query interface (MCP / API)
 An interface that lets admins ask the system questions in natural language via an AI assistant
-— "who took leave last month", "build me a sheet of hours for August", "who is over their
-threshold". This replaces a lot of manual spreadsheet assembly and is a first-class goal,
+— "who took leave last month", "build me a sheet of hours for August", "who holds more than
+six weeks". This replaces a lot of manual spreadsheet assembly and is a first-class goal,
 not an afterthought.
 
 ### 5.9 Accounts and access
@@ -390,7 +391,7 @@ rollover and expiry, public holiday treatments, retrospective editing and recalc
 manual adjustments.
 
 **Phase 3 — the handover.** Reporting suite, payroll reconciliation report, exports,
-threshold and expiry alerts.
+over-limit and expiring-soon reports.
 
 **Phase 4 — the assistant.** MCP/API query interface.
 
