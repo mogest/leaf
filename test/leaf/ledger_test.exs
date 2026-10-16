@@ -744,6 +744,79 @@ defmodule Leaf.LedgerTest do
     assert Decimal.equal?(statement(person, annual, ~D[2024-03-31]).balance, "28.00")
   end
 
+  test "a year's first week of suspended time accrues in full, and only time beyond it shrinks it",
+       context do
+    person = context.person
+    full_time(person)
+    annual = leave_type(context, %{})
+    unpaid = leave_type(context, %{name: "Unpaid leave", position: 3, suspends_accrual: true})
+    entitlement(context, annual, %{suspension_allowance_weeks: "1"})
+
+    for date <- Date.range(~D[2024-04-08], ~D[2024-04-10]),
+        do: take(person, unpaid, date, "1", :days)
+
+    assert Decimal.equal?(statement(person, annual, ~D[2025-03-03]).balance, "160.00")
+
+    # Twelve days more make 120 of the year's 2,088 hours, 40 of them excused: 160 × 2008 ÷ 2088.
+    for date <- Date.range(~D[2024-07-01], ~D[2024-07-16]), Date.day_of_week(date) < 6 do
+      take(person, unpaid, date, "1", :days)
+    end
+
+    assert Decimal.equal?(statement(person, annual, ~D[2025-03-03]).balance, "153.87")
+
+    # The allowance starts again with the next year.
+    take(person, unpaid, ~D[2025-03-04], "1", :days)
+
+    assert Decimal.equal?(statement(person, annual, ~D[2025-03-31]).balance, "166.14")
+  end
+
+  test "an allowance raised once leave is drawn applies to every period the entitlement has covered",
+       context do
+    person = context.person
+    full_time(person)
+    annual = leave_type(context, %{})
+    unpaid = leave_type(context, %{name: "Unpaid leave", position: 3, suspends_accrual: true})
+    offered = entitlement(context, annual, %{})
+    admin = Fixtures.person(%{organisation_id: context.organisation.id, role: :admin})
+
+    take(person, annual, ~D[2024-04-15], "8", :hours)
+
+    for date <- Date.range(~D[2024-05-06], ~D[2024-05-10]),
+        do: take(person, unpaid, date, "1", :days)
+
+    refute Decimal.equal?(statement(person, annual, ~D[2025-03-03]).balance, "152.00")
+
+    assert {:ok, _raised} =
+             Policies.update_entitlement(offered, admin, %{suspension_allowance_weeks: "1"})
+
+    assert Decimal.equal?(statement(person, annual, ~D[2025-03-03]).balance, "152.00")
+  end
+
+  test "the first suspended week by date is the one excused, whenever it was filed", context do
+    person = context.person
+    full_time(person)
+    annual = leave_type(context, %{})
+    unpaid = leave_type(context, %{name: "Unpaid leave", position: 3, suspends_accrual: true})
+    entitlement(context, annual, %{suspension_allowance_weeks: "1"})
+
+    take(person, annual, ~D[2024-08-05], "8", :hours)
+
+    for date <- Date.range(~D[2024-09-16], ~D[2024-09-20]),
+        do: take(person, unpaid, date, "1", :days)
+
+    year = fn ->
+      statement(person, annual, ~D[2025-03-03]) |> movements() |> Enum.map(&elem(&1, 2))
+    end
+
+    assert year.() == [Decimal.new("67.95"), Decimal.new("-8.00"), Decimal.new("92.05")]
+
+    # May's week, filed afterwards, takes the allowance, so September's goes back to shrinking.
+    for date <- Date.range(~D[2024-05-06], ~D[2024-05-10]),
+        do: take(person, unpaid, date, "1", :days)
+
+    assert year.() == [Decimal.new("67.95"), Decimal.new("-8.00"), Decimal.new("88.99")]
+  end
+
   test "moving to another policy part-way through a year splits the accrual", context do
     person = context.person
     full_time(person)

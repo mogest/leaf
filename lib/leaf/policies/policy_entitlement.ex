@@ -39,7 +39,8 @@ defmodule Leaf.Policies.PolicyEntitlement do
     :pro_rated_by_fte,
     :expiry_rule,
     :rollover_cap,
-    :expiry_window_days | @grant_fields
+    :expiry_window_days,
+    :suspension_allowance_weeks | @grant_fields
   ]
 
   schema "policy_entitlements" do
@@ -55,6 +56,7 @@ defmodule Leaf.Policies.PolicyEntitlement do
     field :expiry_rule, Ecto.Enum, values: @expiry_rules
     field :rollover_cap, :decimal
     field :expiry_window_days, :integer
+    field :suspension_allowance_weeks, :decimal
 
     belongs_to :leave_policy, LeavePolicy
     belongs_to :leave_type, LeaveType
@@ -76,9 +78,11 @@ defmodule Leaf.Policies.PolicyEntitlement do
     ])
     |> validate_amount_source()
     |> validate_expiry_rule()
+    |> validate_suspension_allowance()
     |> as_stored(:grant_amount, greater_than_or_equal_to: 0)
     |> as_stored(:rollover_cap, greater_than_or_equal_to: 0)
     |> as_stored(:expiry_window_days, greater_than: 0)
+    |> as_stored(:suspension_allowance_weeks, greater_than: 0)
     |> validate_date_order(:effective_from, :granted_to)
     |> validate_date_order(:effective_from, :effective_to)
     |> validate_date_order(:granted_to, :effective_to)
@@ -146,5 +150,23 @@ defmodule Leaf.Policies.PolicyEntitlement do
 
   defp validate_expiry_rule(changeset, _rule) do
     validate_absent(changeset, [:rollover_cap, :expiry_window_days])
+  end
+
+  defp validate_suspension_allowance(changeset) do
+    weeks = get_field(changeset, :suspension_allowance_weeks)
+    terms = {get_field(changeset, :amount_source), get_field(changeset, :grant_timing)}
+
+    validate_suspension_allowance(changeset, weeks, terms)
+  end
+
+  defp validate_suspension_allowance(changeset, nil, _terms), do: changeset
+  defp validate_suspension_allowance(changeset, _weeks, {:fixed, :daily}), do: changeset
+
+  defp validate_suspension_allowance(changeset, _weeks, _terms) do
+    add_error(
+      changeset,
+      :suspension_allowance_weeks,
+      "applies only to a fixed amount accrued daily"
+    )
   end
 end

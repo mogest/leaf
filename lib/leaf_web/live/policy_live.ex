@@ -120,7 +120,16 @@ defmodule LeafWeb.PolicyLive do
   defp grant(%{amount_source: :none}), do: "Grants nothing — leave of this type is recorded only."
 
   defp grant(entitlement) do
-    "#{amount(entitlement)}, #{anchored(entitlement)}, #{landing(entitlement)}#{pro_rated(entitlement)}."
+    "#{amount(entitlement)}, #{anchored(entitlement)}, #{landing(entitlement)}#{pro_rated(entitlement)}" <>
+      "#{allowing(entitlement)}."
+  end
+
+  defp allowing(%{suspension_allowance_weeks: nil}), do: ""
+
+  defp allowing(entitlement) do
+    weeks = Wording.figure(entitlement.suspension_allowance_weeks, :weeks)
+
+    ", still accruing over the first #{weeks} of unpaid leave each #{entitlement.grant_period}"
   end
 
   defp amount(%{amount_source: :public_holidays} = entitlement) do

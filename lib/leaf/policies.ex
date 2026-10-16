@@ -119,8 +119,10 @@ defmodule Leaf.Policies do
   setting `granted_to` and opening the next row the day after: two grant windows for one leave type
   under one policy may not overlap, but their lives may.
 
-  Once leave has been taken against one, those two dates are all that may change: anything else is
-  refused with `{:error, :drawn_on}`, since it would rewrite what the leave already taken drew on.
+  Once leave has been taken against one, those two dates are all that may change, along with a
+  raised unpaid leave allowance. That applies to every period the entitlement has covered, not
+  just from now, and so only adds to what that leave drew on. Anything else is refused with
+  `{:error, :drawn_on}`, since it would rewrite what the leave already taken drew on.
   """
   @spec update_entitlement(PolicyEntitlement.t(), Person.t() | nil, map()) ::
           Audit.written(PolicyEntitlement.t()) | {:error, :drawn_on}
@@ -137,13 +139,24 @@ defmodule Leaf.Policies do
   defp amended(_entitlement, %{valid?: false} = changeset, _write), do: {:error, changeset}
 
   defp amended(entitlement, changeset, write) do
-    case closing?(changeset) do
-      true -> write.(entitlement)
-      false -> unless_drawn_on(entitlement, write)
+    case {terms(changeset), raised?(changeset)} do
+      {[], _raised} -> write.(entitlement)
+      {[:suspension_allowance_weeks], true} -> write.(entitlement)
+      _terms -> unless_drawn_on(entitlement, write)
     end
   end
 
-  defp closing?(changeset), do: Map.keys(changeset.changes) -- [:granted_to, :effective_to] == []
+  defp terms(changeset), do: Map.keys(changeset.changes) -- [:granted_to, :effective_to]
+
+  defp closing?(changeset), do: terms(changeset) == []
+
+  defp raised?(%{
+         data: %{suspension_allowance_weeks: was},
+         changes: %{suspension_allowance_weeks: %Decimal{} = now}
+       }),
+       do: Decimal.gt?(now, was || 0)
+
+  defp raised?(_changeset), do: false
 
   @doc "Whether amending `entitlement` with `attrs` does nothing but close it sooner than it closes now."
   @spec closes_sooner?(PolicyEntitlement.t(), map()) :: boolean()

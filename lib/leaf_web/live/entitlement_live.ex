@@ -154,6 +154,14 @@ defmodule LeafWeb.EntitlementLive do
             prompt="not granted"
             options={@choices.timings}
           />
+          <.input
+            field={@form[:suspension_allowance_weeks]}
+            type="text"
+            label="Unpaid leave allowance (weeks)"
+          />
+          <p>
+            Leave that suspends accrual still accrues for this many of the person's weeks each period.
+          </p>
         </section>
 
         <section>
@@ -320,7 +328,8 @@ defmodule LeafWeb.EntitlementLive do
       socket,
       :error,
       "Leave has been taken against this entitlement, so only when it stops granting and being " <>
-        "spendable can change. To change its terms, stop it granting and add another."
+        "spendable can change, or its unpaid leave allowance go up. To change its terms, stop it " <>
+        "granting and add another."
     )
   end
 

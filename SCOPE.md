@@ -111,7 +111,9 @@ set:
 
 A type may **suspend accrual**: time on it counts as not worked, so daily accrual shrinks over it
 (§4.7). That is what the leave is rather than how a policy grants it, so it is set on the type.
-A type that grants nothing has no balance to go under, so filing it says nothing about one.
+How much of it each grant period forgives is a term of the entitlement it shrinks, its unpaid
+leave allowance (§4.7). A type that grants nothing has no balance to go under, so filing it says
+nothing about one.
 
 ### 4.7 Granting: accrual and block grants
 Two mechanisms, chosen per leave type in the policy.
@@ -125,6 +127,18 @@ off it: a stretch accrues `normal × (1 − suspended hours ÷ scheduled hours)`
 those of their work pattern. Measured in hours, the weekends inside a stretch of it accrue nothing
 either, and a half day suspends half. The year's entitlement shrinks; the anniversary does not move.
 Block grants, the public holiday allowance included, are never reduced.
+
+An entitlement may set an **unpaid leave allowance** in weeks: the first that many weeks of
+suspended time in each grant period, by date, still accrue, and only time beyond it shrinks
+accrual. A week is the person's own weekly hours, from the work pattern of the stretch being
+accrued, so a change of hours part-way through a period sizes it from the new pattern, against the
+hours already used since the period began. It resets each grant period, whatever the period is.
+This follows the NZ Holidays Act, under which unpaid leave beyond one week in a year pushes the
+entitlement date out by the excess: taking that excess off accrual instead leaves the person with
+about the same leave by that pushed-out date, provided the time after is worked, without moving any
+period boundary. NZ annual leave sets one week; UK entitlements leave it empty. Raising the
+allowance recalculates every period under that entitlement, which only ever adds leave, so it may
+be raised after leave has been taken against the entitlement; it may not be lowered or removed.
 
 **Block grant.** The whole entitlement lands at once, on the first day of its grant period.
 Block grants exist because NZ and UK law grant some leave — sick leave in particular — as a

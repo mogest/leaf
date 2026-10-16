@@ -230,7 +230,7 @@ defmodule Leaf.Wording do
   end
 
   @doc "An amount with its unit in full: 9 hours, 1 day."
-  @spec figure(Decimal.t(), Day.unit()) :: String.t()
+  @spec figure(Decimal.t(), Day.unit() | :weeks) :: String.t()
   def figure(amount, unit), do: "#{number(amount)} #{unit(amount, unit)}"
 
   @doc "A figure rounded where it is shown and nowhere before it, with nothing trailing: 33."
@@ -346,6 +346,8 @@ defmodule Leaf.Wording do
   defp named(:hours, false), do: "hours"
   defp named(:days, true), do: "day"
   defp named(:days, false), do: "days"
+  defp named(:weeks, true), do: "week"
+  defp named(:weeks, false), do: "weeks"
 
   defp total(amounts), do: Enum.reduce(amounts, &Decimal.add/2)
 

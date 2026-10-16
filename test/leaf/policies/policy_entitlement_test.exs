@@ -117,6 +117,15 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
     assert errors_on(changeset(attrs)).expiry_window_days == ["can't be blank"]
   end
 
+  test "an unpaid leave allowance is only for a fixed amount accrued daily" do
+    daily = %{@quarterly | grant_timing: :daily}
+
+    assert changeset(Map.put(daily, :suspension_allowance_weeks, "1")).valid?
+
+    assert errors_on(changeset(Map.put(@quarterly, :suspension_allowance_weeks, "1"))) ==
+             %{suspension_allowance_weeks: ["applies only to a fixed amount accrued daily"]}
+  end
+
   test "grants may stop before the entitlement ends" do
     attrs = Map.merge(@quarterly, %{granted_to: ~D[2006-12-31], effective_to: ~D[2007-03-31]})
 

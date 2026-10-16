@@ -9,15 +9,17 @@ defmodule Leaf.Ledger.Grant do
   — the hours worked and the days elapsed multiplied together before dividing once — so that the
   pieces of a span sum back to the span, and a year of accruals to the year's entitlement, instead
   of drifting by a rounding error per piece. Suspended leave is the exception: it is measured
-  piece by piece, below. A piece lapses when the accrual it was cut from would
-  have, so taking leave does not bring a lapse forward.
+  piece by piece, below. A piece lapses when the accrual it was cut from would have, so taking
+  leave does not bring a lapse forward.
 
   Leave of a type that suspends accrual takes its share of the person's working time out of an
   accrual, in the same division: a piece earns `normal × (1 − suspended hours ÷ scheduled hours)`
   over its own dates, so what leave drew on is what had accrued by then, whatever is suspended
   later. Measuring in hours rather than dates leaves the weekends inside a stretch of it unworked
-  too, and suspends a half day by half. A block grant is not an accrual and is never reduced (§4.7),
-  and nor is a public holiday allowance, which counts holidays rather than time.
+  too, and suspends a half day by half. The first of a period's suspended time, by date, up to the
+  entitlement's allowance in weeks of the span's work pattern, is excused. A block grant is not an
+  accrual and is never reduced (§4.7), and nor is a public holiday allowance, which counts holidays
+  rather than time.
   """
 
   alias Leaf.Dates
@@ -155,7 +157,8 @@ defmodule Leaf.Ledger.Grant do
          num,
          den
        ) do
-    lost = Decimals.total(for {date, hours} <- suspended, date in measured, do: hours)
+    lost =
+      Decimals.total(for {date, hours} <- charged(span, suspended), date in measured, do: hours)
 
     case Decimal.positive?(lost) do
       false ->
@@ -168,6 +171,28 @@ defmodule Leaf.Ledger.Grant do
   end
 
   defp by_time_suspended(_span, _measured, _suspended, num, den), do: {num, den}
+
+  defp charged(span, suspended) do
+    {charged, _left} =
+      suspended
+      |> Enum.filter(fn {date, _hours} -> date in span.period end)
+      |> Enum.sort_by(fn {date, _hours} -> date end, Date)
+      |> Enum.map_reduce(allowance(span), fn {date, hours}, left ->
+        {{date, Decimal.max(Decimal.sub(hours, left), 0)},
+         Decimal.max(Decimal.sub(left, hours), 0)}
+      end)
+
+    charged
+  end
+
+  defp allowance(%{entitlement: %{suspension_allowance_weeks: nil}}), do: Decimal.new(0)
+
+  defp allowance(span) do
+    Decimal.mult(
+      span.entitlement.suspension_allowance_weeks,
+      People.weekly_hours(span.work_pattern)
+    )
+  end
 
   defp expires_on(entitlement, period, granted_on) do
     Dates.earliest(lapses_on(entitlement, period, granted_on), entitlement.effective_to)

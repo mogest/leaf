@@ -146,6 +146,32 @@ defmodule Leaf.PoliciesTest do
              })
   end
 
+  test "an entitlement leave has been taken against may raise its unpaid leave allowance",
+       context do
+    %{organisation: organisation, policy: policy, annual: annual} = context
+    admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+    person = Fixtures.person(%{organisation_id: organisation.id})
+    offered = Fixtures.policy_entitlement(%{leave_policy_id: policy.id, leave_type_id: annual.id})
+
+    Fixtures.policy_assignment(%{person_id: person.id, leave_policy_id: policy.id})
+
+    Fixtures.leave_request(%{
+      person_id: person.id,
+      days: [%{leave_type_id: annual.id, date: ~D[2026-08-20], amount: "4", unit: :hours}]
+    })
+
+    assert {:ok, raised} =
+             Policies.update_entitlement(offered, admin, %{suspension_allowance_weeks: "1"})
+
+    for attrs <- [
+          %{suspension_allowance_weeks: "0.5"},
+          %{suspension_allowance_weeks: nil},
+          %{suspension_allowance_weeks: "2", grant_amount: "200"}
+        ] do
+      assert Policies.update_entitlement(raised, admin, attrs) == {:error, :drawn_on}
+    end
+  end
+
   test "an entitlement nobody has drawn on comes off", context do
     %{organisation: organisation, policy: policy, annual: annual, quarterly: quarterly} = context
     admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
