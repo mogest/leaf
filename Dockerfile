@@ -34,10 +34,6 @@ RUN apt-get update \
 # prepare build dir
 WORKDIR /app
 
-# QEMU mishandles the JIT's double memory mapping, so the BEAM crashes on an emulated
-# amd64 build from an arm64 host. This turns that mapping off.
-ENV ERL_FLAGS="+JPperf true"
-
 # install hex + rebar
 RUN mix local.hex --force \
   && mix local.rebar --force
