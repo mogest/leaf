@@ -31,8 +31,9 @@ defmodule Leaf.Leave.Diary do
   @doc """
   Every date in `range`, in order, marked with `filed` and with the person's own dates.
 
-  A date they are on no work pattern for is one they do not work: nobody may book it either way,
-  and a calendar has nothing to say about why.
+  A date they are not employed on carries nothing: not worked, no leave, no holiday. One they are on
+  no work pattern for is simply not worked: nobody may book it either way, and a calendar has
+  nothing to say about why.
   """
   @spec over(Person.t(), Date.Range.t(), [Day.t()]) :: [day()]
   def over(person, range, filed) do
@@ -42,10 +43,16 @@ defmodule Leaf.Leave.Diary do
       filed: Enum.group_by(filed, & &1.date)
     }
 
-    Enum.map(range, &day(&1, marks))
+    employed = People.employment_dates(person)
+
+    Enum.map(range, &day(&1, &1 in employed, marks))
   end
 
-  defp day(date, marks) do
+  defp day(date, false, _marks) do
+    %{date: date, working?: false, leave: nil, part?: false, holiday: nil}
+  end
+
+  defp day(date, true, marks) do
     hours = Map.get(marks.hours, date, @none)
     {leave, part?} = leave(Map.get(marks.filed, date, []), hours)
 

@@ -36,6 +36,8 @@ defmodule Leaf.People do
   alias Leaf.Policies.LeavePolicy
   alias Leaf.Repo
 
+  @forever ~D[9999-12-31]
+
   @typedoc "A stretch of dates over which one answer holds."
   @type segment(value) :: {Date.Range.t(), value}
 
@@ -345,6 +347,12 @@ defmodule Leaf.People do
       policy_assignments: [leave_policy: Policies.entitlements_preload()],
       calendar_assignments: [calendar: Org.holidays_preload()]
     ])
+  end
+
+  @doc "The dates the person is employed over, running on for ever where they have not left."
+  @spec employment_dates(Person.t()) :: Date.Range.t()
+  def employment_dates(person) do
+    Date.range(person.employment_start_date, person.employment_end_date || @forever)
   end
 
   @doc "Everyone an organisation employs over any part of `range`, by name, `dated/1`."

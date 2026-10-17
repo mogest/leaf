@@ -754,6 +754,22 @@ defmodule Leaf.LeaveTest do
     assert %{leave: nil, holiday: nil, working?: false} = days[@saturday]
   end
 
+  test "a calendar has nothing on a day before somebody started or after they left", context do
+    observes(context, ~D[2024-03-01])
+    {:ok, approving} = file(context, [@friday])
+    {:ok, _approved} = approving |> reload() |> Leave.approve(context.manager)
+    {:ok, left} = People.update_person(context.person, nil, %{employment_end_date: @thursday})
+
+    assert [%{weeks: [[_, _, _, _, before_start | _] | _]}] =
+             Leave.calendar(left, Date.range(~D[2024-03-01], ~D[2024-03-31]))
+
+    assert [%{weeks: [_, _, _, [_, _, _, _, after_end | _] | _]}] =
+             Leave.calendar(left, Date.range(~D[2026-08-01], ~D[2026-08-31]))
+
+    assert %{date: ~D[2024-03-01], holiday: nil, working?: false} = before_start
+    assert %{date: @friday, leave: nil, working?: false} = after_end
+  end
+
   test "who is away costs the same queries however many it shows, and leaves out who has left",
        context do
     observes_in_region(context, @friday)

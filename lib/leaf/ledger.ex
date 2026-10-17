@@ -28,8 +28,6 @@ defmodule Leaf.Ledger do
   alias Leaf.Policies.PolicyEntitlement
   alias Leaf.Repo
 
-  @forever ~D[9999-12-31]
-
   @doc """
   An account for each leave type the person holds one in, as at `as_at`.
 
@@ -129,9 +127,7 @@ defmodule Leaf.Ledger do
 
   # Each entitlement that grants the person something, over the part of its life they are on it.
   defp lives(person) do
-    employed = Date.range(person.employment_start_date, person.employment_end_date || @forever)
-
-    for {span, policy} <- People.leave_policy_segments(person, employed),
+    for {span, policy} <- People.leave_policy_segments(person, People.employment_dates(person)),
         entitlement <- Policies.entitlements(policy.id, span),
         entitlement.amount_source != :none,
         {:ok, life} <- [
