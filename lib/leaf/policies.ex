@@ -204,6 +204,11 @@ defmodule Leaf.Policies do
     end)
   end
 
+  @doc "Whether leave has been taken against `entitlement`, so that only `update_entitlement/3`'s few changes apply."
+  @spec drawn_on?(PolicyEntitlement.t()) :: boolean()
+  def drawn_on?(entitlement),
+    do: drawn_on?(People.on_policy(entitlement.leave_policy_id), entitlement)
+
   # Leave draws on a pool rather than on the row that filled it, so what counts as having drawn on
   # an entitlement is leave of its type taken by somebody its policy governed while it was in force.
   defp drawn_on?(people, entitlement) do

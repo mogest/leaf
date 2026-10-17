@@ -265,6 +265,59 @@ defmodule LeafWeb.SettingsLiveTest do
     assert Enum.map(observed, & &1.name) == ["Anniversary", "Labour Day"]
   end
 
+  test "an entitlement shows how it plays out for sample people as it is edited", context do
+    leave_type = Fixtures.leave_type(%{organisation_id: context.organisation.id})
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+
+    entitlement =
+      Fixtures.policy_entitlement(%{
+        leave_policy_id: policy.id,
+        leave_type_id: leave_type.id,
+        grant_amount: "365"
+      })
+
+    {:ok, live, _html} =
+      live(context.conn, ~p"/settings/policies/#{policy}/entitlements/#{entitlement}")
+
+    html = render_async(live, 2000)
+    assert html =~ "How it plays out"
+    assert html =~ "After a year"
+    refute html =~ "above the cap"
+
+    live
+    |> form("#entitlement", policy_entitlement: %{"expiry_rule" => "cap", "rollover_cap" => "40"})
+    |> render_change()
+
+    assert render_async(live, 2000) =~ "Loses 325 hours above the cap on 3 March 2025"
+
+    assert live |> element("button", "Three days a week") |> render_click() =~
+             "Loses 179 hours above the cap on 3 March 2025"
+
+    live |> form("#entitlement", policy_entitlement: %{"grant_amount" => "-1"}) |> render_change()
+
+    html = render_async(live, 2000)
+    assert html =~ "Fix the errors to see how it plays out."
+    assert html =~ "Loses 179 hours above the cap on 3 March 2025"
+  end
+
+  test "a new entitlement shows nothing playing out once its leave type is cleared", context do
+    leave_type = Fixtures.leave_type(%{organisation_id: context.organisation.id})
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+
+    {:ok, live, html} = live(context.conn, ~p"/settings/policies/#{policy}/entitlements/new")
+    refute html =~ "How it plays out"
+
+    live
+    |> form("#entitlement",
+      policy_entitlement: %{"leave_type_id" => leave_type.id, "grant_amount" => "160"}
+    )
+    |> render_change()
+
+    live |> form("#entitlement", policy_entitlement: %{"leave_type_id" => ""}) |> render_change()
+
+    refute render_async(live, 2000) =~ "How it plays out"
+  end
+
   test "a policy will not act on another policy's entitlement", context do
     policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
     other = Fixtures.leave_policy(%{organisation_id: context.organisation.id, name: "Contractor"})
@@ -315,6 +368,8 @@ defmodule LeafWeb.SettingsLiveTest do
 
     {:ok, live, _html} =
       live(context.conn, ~p"/settings/policies/#{policy}/entitlements/#{entitlement}")
+
+    assert render_async(live, 2000) =~ "so changes to its terms can&#39;t be saved"
 
     assert live
            |> form("#entitlement", policy_entitlement: %{"grant_amount" => "200"})

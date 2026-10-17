@@ -2,6 +2,7 @@ defmodule Leaf.LedgerTest do
   use Leaf.DataCase, async: true
 
   alias Leaf.Audit.Entry
+  alias Leaf.Changeset
   alias Leaf.Fixtures
   alias Leaf.Leave
   alias Leaf.Leave.Day
@@ -953,6 +954,60 @@ defmodule Leaf.LedgerTest do
         do: take(person, unpaid, date, "1", :days)
 
     assert year.() == [Decimal.new("67.95"), Decimal.new("-8.00"), Decimal.new("88.99")]
+  end
+
+  test "a rehearsal runs an entitlement for sample people, drawn on or new, and leaves nothing behind",
+       context do
+    annual = leave_type(context, %{})
+    leave_type(context, %{name: "Parental leave", position: 2, suspends_accrual: true})
+    standing = entitlement(context, annual, %{grant_amount: "365"})
+    full_time(context.person)
+    take(context.person, annual, ~D[2024-05-01], "1", :days)
+    policies = Policies.leave_policies(context.organisation.id)
+    entries = Repo.aggregate(Entry, :count)
+    capped = %{"expiry_rule" => "cap", "rollover_cap" => "40"}
+
+    rehearsed = fn changeset ->
+      {:ok, rehearsals} = Ledger.rehearse(changeset)
+
+      for rehearsal <- rehearsals do
+        {_date, a_year_in} = Enum.at(rehearsal.balances, 12)
+        [first_lost | _later] = rehearsal.losses
+
+        {rehearsal.name, Decimal.to_string(a_year_in), first_lost.date,
+         Decimal.round(first_lost.amount, 2)}
+      end
+    end
+
+    amended = rehearsed.(Changeset.change(standing, capped))
+
+    # A year of 365 hours trimmed to 40 the day before the anniversary, and the anniversary's hour
+    # on top. Twelve weeks away from the sixth month takes their share of the year off accrual.
+    assert amended == [
+             {"Full time", "41.00", ~D[2025-03-03], Decimal.new("-325.00")},
+             {"Three days a week", "40.60", ~D[2025-03-03], Decimal.new("-179.00")},
+             {"Full time, 12 weeks' parental leave", "41.00", ~D[2025-03-03],
+              Decimal.new("-241.09")}
+           ]
+
+    assert Policies.drawn_on?(standing)
+
+    new =
+      Policies.change_entitlement(
+        context.policy,
+        annual,
+        Map.merge(Map.from_struct(standing), %{expiry_rule: :cap, rollover_cap: "40"})
+      )
+
+    assert rehearsed.(new) == amended
+
+    assert {:error, %{errors: [grant_amount: _error]}} =
+             Ledger.rehearse(Changeset.change(standing, %{"grant_amount" => "-1"}))
+
+    assert [%{expiry_rule: :never}] = Policies.entitlements(context.policy.id)
+    assert People.people(context.organisation.id) == [context.person]
+    assert Policies.leave_policies(context.organisation.id) == policies
+    assert Repo.aggregate(Entry, :count) == entries
   end
 
   test "moving to another policy part-way through a year splits the accrual", context do

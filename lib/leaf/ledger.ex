@@ -19,9 +19,11 @@ defmodule Leaf.Ledger do
   alias Leaf.Ledger.Drawdown
   alias Leaf.Ledger.Grant
   alias Leaf.Ledger.Movement
+  alias Leaf.Ledger.Rehearsal
   alias Leaf.Ledger.Span
   alias Leaf.Ledger.Statement
   alias Leaf.Org
+  alias Leaf.Org.Organisation
   alias Leaf.People
   alias Leaf.People.Person
   alias Leaf.Policies
@@ -253,6 +255,44 @@ defmodule Leaf.Ledger do
         Decimal.negative?(Decimal.round(total, 2)),
         do: movement.date
   end
+
+  @doc """
+  How the entitlement `changeset` describes would run for a few sample people.
+
+  It runs as a new entitlement on a policy of its own, written to be read and then rolled back along
+  with the people: amending the real one would wait on the leave of everybody on its policy, and
+  would be refused outright once any of it drew on the entitlement. So nothing else the real policy
+  grants of the same leave type plays a part.
+  """
+  @spec rehearse(Ecto.Changeset.t()) :: {:ok, [Rehearsal.t()]} | {:error, Ecto.Changeset.t()}
+  def rehearse(%{valid?: false} = changeset), do: {:error, changeset}
+
+  def rehearse(changeset) do
+    terms = Ecto.Changeset.apply_changes(changeset)
+    {:ok, leave_type} = Policies.fetch_leave_type(terms.leave_type_id)
+    {:ok, policy} = Policies.fetch_leave_policy(terms.leave_policy_id)
+    {:ok, organisation} = Org.fetch_organisation(policy.organisation_id)
+
+    {:error, rehearsals} =
+      Repo.transact(fn ->
+        {:ok, alone} = Policies.create_leave_policy(organisation, nil, %{name: policy.name})
+
+        {:ok, entitlement} =
+          Policies.create_entitlement(alone, leave_type, nil, Map.from_struct(terms))
+
+        Repo.rollback(Rehearsal.all(organisation, alone, entitlement))
+      end)
+
+    {:ok, rehearsals}
+  end
+
+  @doc "The names of the sample people `rehearse/1` runs, in its order, for showing before it has."
+  @spec rehearsal_names(Ecto.UUID.t()) :: [String.t()]
+  defdelegate rehearsal_names(organisation_id), to: Rehearsal, as: :names
+
+  @doc "The first and last dates `rehearse/1` reads, for an entitlement offered from `effective_from`."
+  @spec rehearsal_dates(Organisation.t(), Date.t()) :: {Date.t(), Date.t()}
+  defdelegate rehearsal_dates(organisation, effective_from), to: Rehearsal, as: :dates
 
   @doc """
   What each leave type has been asked for and not yet decided, in the unit the type counts in.

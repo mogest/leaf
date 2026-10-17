@@ -24,13 +24,13 @@ defmodule LeafWeb.EntitlementLive do
   ]
 
   @bases [
-    {"Their employment start date", "employment_date"},
-    {"Their birthday", "birthday"},
-    {"The calendar year", "calendar_year"},
-    {"The organisation's financial year", "organisation_year"}
+    {"Employee start date", "employment_date"},
+    {"Employee birthdate", "birthday"},
+    {"Calendar year", "calendar_year"},
+    {"Financial year", "organisation_year"}
   ]
 
-  @periods [{"a month", "month"}, {"a quarter", "quarter"}, {"a year", "year"}]
+  @periods [{"Month", "month"}, {"Quarter", "quarter"}, {"Year", "year"}]
 
   @timings [
     {"Accrues day by day", "daily"},
@@ -43,6 +43,10 @@ defmodule LeafWeb.EntitlementLive do
     {"Lapses at the end of its period", "grant_period_end"},
     {"Lapses a fixed window after it lands", "window"}
   ]
+
+  @checkpoints [{"After a year", 12}, {"After two years", 24}, {"After three years", 36}]
+
+  @lost_to %{expiry: "to expiry", rollover_cap: "above the cap"}
 
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
@@ -64,8 +68,14 @@ defmodule LeafWeb.EntitlementLive do
       socket
       |> assign(:form, to_form(changeset, action: :validate))
       |> assign(:unfunded, [])
+      |> rehearsing(changeset)
 
     {:noreply, socket}
+  end
+
+  @role :admin
+  def handle_event("show", %{"index" => index}, socket) do
+    {:noreply, assign(socket, :shown, String.to_integer(index))}
   end
 
   @role :admin
@@ -76,9 +86,19 @@ defmodule LeafWeb.EntitlementLive do
   end
 
   @impl Phoenix.LiveView
+  def handle_async(:rehearsal, {:ok, {:ok, rehearsals}}, socket) do
+    {:noreply, assign(socket, rehearsals: rehearsals, rehearsing: false, refused: false)}
+  end
+
+  # Refused or crashed, the last result stays, marked as no longer describing the form.
+  def handle_async(:rehearsal, _refused, socket) do
+    {:noreply, assign(socket, rehearsing: false, refused: true)}
+  end
+
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
+    <Layouts.app flash={@flash} page="entitlement" rail="settings" viewer={@viewer}>
       <header>
         <nav aria-label="Breadcrumb">
           <.link navigate={~p"/settings/policies"}>Leave policies</.link>
@@ -100,17 +120,28 @@ defmodule LeafWeb.EntitlementLive do
             prompt="Choose one"
             options={@leave_types}
           />
-          <.input field={@form[:effective_from]} type="date" label="Offered from" />
           <.input
-            field={@form[:granted_to]}
+            field={@form[:effective_from]}
             type="date"
-            label="Stops granting after (optional)"
+            phx-debounce="500"
+            label="Offered from"
           />
-          <.input
-            field={@form[:effective_to]}
-            type="date"
-            label="Stops being spendable after (optional)"
-          />
+          <div>
+            <.input
+              field={@form[:granted_to]}
+              type="date"
+              phx-debounce="500"
+              label="Stops granting after"
+              help="Optional. The last day it grants anything. What it has already granted can still be spent."
+            />
+            <.input
+              field={@form[:effective_to]}
+              type="date"
+              phx-debounce="500"
+              label="Stops being spendable after"
+              help="Optional. The last day what it granted can be spent. Anything still unspent then lapses."
+            />
+          </div>
         </section>
 
         <section>
@@ -122,12 +153,10 @@ defmodule LeafWeb.EntitlementLive do
             type="select"
             label="Where the amount comes from"
             options={@choices.sources}
+            help="A share of the public holiday calendar makes holidays ordinary working days, taken as leave. It
+              suits part-timers who don't work the days most holidays fall on, who would otherwise get fewer of
+              them off than everyone else."
           />
-          <p>
-            A share of the public holiday calendar makes holidays ordinary working days, taken as
-            leave. It suits part-timers who don't work the days most holidays fall on, who would
-            otherwise get fewer of them off than everyone else.
-          </p>
           <.input
             field={@form[:pro_rated_by_fte]}
             type="checkbox"
@@ -136,67 +165,76 @@ defmodule LeafWeb.EntitlementLive do
           <.input
             field={@form[:grant_amount]}
             type="text"
-            label={amount_label(@types[@form[:leave_type_id].value], @form[:pro_rated_by_fte].value)}
+            phx-debounce="500"
+            label={amount_label(@form[:pro_rated_by_fte].value)}
+            unit={unit(@types[@form[:leave_type_id].value])}
           />
-          <.input
-            field={@form[:grant_period]}
-            type="select"
-            label="Granted each"
-            prompt="not granted"
-            options={@choices.periods}
-          />
-          <.input
-            field={@form[:grant_basis]}
-            type="select"
-            label="Reckoned from"
-            prompt="not granted"
-            options={@choices.bases}
-          />
-          <.input
-            field={@form[:grant_timing]}
-            type="select"
-            label="How it arrives"
-            prompt="not granted"
-            options={@choices.timings}
-          />
-          <.input
-            field={@form[:suspension_allowance_weeks]}
-            type="text"
-            label="Unpaid leave allowance (weeks)"
-          />
-          <p>
-            Leave that suspends accrual still accrues for this many of the person's weeks each period.
-          </p>
+          <div>
+            <.input
+              field={@form[:grant_period]}
+              type="select"
+              label="Grant period"
+              prompt="not granted"
+              options={@choices.periods}
+            />
+            <.input
+              field={@form[:grant_basis]}
+              type="select"
+              label="Reckoned from"
+              prompt="not granted"
+              options={@choices.bases}
+            />
+          </div>
+          <div>
+            <.input
+              field={@form[:grant_timing]}
+              type="select"
+              label="How it arrives"
+              prompt="not granted"
+              options={@choices.timings}
+            />
+            <.input
+              field={@form[:suspension_allowance_weeks]}
+              type="text"
+              phx-debounce="500"
+              label="Unpaid leave allowance"
+              unit="weeks"
+              help="Leave that suspends accrual still accrues for this many of the person's weeks each period."
+            />
+          </div>
         </section>
 
         <section>
           <header>
             <h2>How long a new starter waits</h2>
           </header>
-          <.input
-            field={@form[:qualifying_months]}
-            type="number"
-            label="Months' service before it is first granted (optional)"
-          />
-          <p>
-            For a fixed amount reckoned from their start date. Grant periods then run from that many
-            months after it, for people already employed too, so a successor that adds one grants no
-            block for the period it starts part-way through.
-          </p>
-          <.input
-            field={@form[:takeable_after_months]}
-            type="number"
-            label="Months' service before it can be taken (optional)"
-          />
-          <p>
-            Left empty, it can be taken from their start date, going negative before anything is
-            granted. Leave already filed inside the wait can be approved or cancelled but not amended.
-          </p>
+          <div>
+            <.input
+              field={@form[:qualifying_months]}
+              type="number"
+              phx-debounce="500"
+              label="First granted after"
+              unit="months' service"
+              help="Optional. For a fixed amount reckoned from their start date. Grant periods then run from
+                that many months after it, for people already employed too, so a successor that adds one grants no
+                block for the period it starts part-way through."
+            />
+            <.input
+              field={@form[:takeable_after_months]}
+              type="number"
+              phx-debounce="500"
+              label="Can be taken after"
+              unit="months' service"
+              help="Left empty, it can be taken from their start date, going negative before
+                anything is granted. Leave already filed inside the wait can be approved or cancelled but not
+                amended."
+            />
+          </div>
         </section>
 
         <section>
           <header>
-            <h2>What becomes of it</h2>
+            <h2>What happens to unused leave</h2>
           </header>
           <.input
             field={@form[:expiry_rule]}
@@ -204,12 +242,25 @@ defmodule LeafWeb.EntitlementLive do
             label="Rollover"
             options={@choices.rules}
           />
-          <.input field={@form[:rollover_cap]} type="text" label="Cap, where it rolls over to one" />
-          <.input
-            field={@form[:expiry_window_days]}
-            type="number"
-            label="Days before it lapses, where it lapses on a window"
-          />
+          <div>
+            <.input
+              field={@form[:rollover_cap]}
+              type="text"
+              phx-debounce="500"
+              label="Rollover cap"
+              unit={unit(@types[@form[:leave_type_id].value])}
+              help="Only where it rolls over up to a cap. Whatever is held above it at the end of each period is lost."
+            />
+            <.input
+              field={@form[:expiry_window_days]}
+              type="number"
+              phx-debounce="500"
+              label="Lapses after"
+              unit="days"
+              help="Only where it lapses a fixed window after it lands. Each grant lapses this many days after it
+                arrives."
+            />
+          </div>
         </section>
 
         <section :if={@unfunded != []}>
@@ -235,7 +286,60 @@ defmodule LeafWeb.EntitlementLive do
           <.link navigate={~p"/settings/policies/#{@policy}"}>Cancel</.link>
         </footer>
       </.form>
+
+      <aside :if={@rehearsing or @refused or @rehearsals != []} aria-busy={to_string(@rehearsing)}>
+        <header>
+          <h2>How it plays out</h2>
+          <p :if={@refused} role="status">Fix the errors to see how it plays out.</p>
+          <p :if={@drawn_on}>
+            Leave has been taken against this entitlement, so changes to its terms can't be saved.
+            To change them, stop it granting and add another.
+          </p>
+        </header>
+        <p>
+          <button
+            :for={{name, index} <- Enum.with_index(@samples)}
+            type="button"
+            phx-click="show"
+            phx-value-index={index}
+            aria-pressed={to_string(index == @shown)}
+          >
+            {name}
+          </button>
+        </p>
+        <.played_out
+          name={Enum.at(@samples, @shown)}
+          rehearsal={Enum.at(@rehearsals, @shown, @placeholder)}
+        />
+      </aside>
     </Layouts.app>
+    """
+  end
+
+  attr :name, :string, required: true
+  attr :rehearsal, :map, required: true
+
+  defp played_out(assigns) do
+    ~H"""
+    <figure>
+      <svg viewBox="0 0 600 200" role="img" aria-label={"Balance over three years, #{@name}"}>
+        <line x1="0" y1={@rehearsal.line.zero} x2="600" y2={@rehearsal.line.zero} />
+        <line :for={x <- [200, 400]} x1={x} y1="0" x2={x} y2="200" />
+        <polyline points={@rehearsal.line.points} />
+      </svg>
+      <figcaption>
+        <span>{@rehearsal.from}</span><span>{@rehearsal.to}</span>
+      </figcaption>
+      <dl>
+        <div :for={{label, figure} <- @rehearsal.figures}>
+          <dt>{label}</dt>
+          <dd>{figure}</dd>
+        </div>
+      </dl>
+      <ul :if={@rehearsal.losses != []}>
+        <li :for={loss <- @rehearsal.losses}>{loss}</li>
+      </ul>
+    </figure>
     """
   end
 
@@ -246,8 +350,8 @@ defmodule LeafWeb.EntitlementLive do
     {:ok, organisation} = Org.fetch_organisation(policy.organisation_id)
     offered = Policies.leave_types_offered(policy.organisation_id)
 
-    # The picker offers only what is still offered, but the amount label names the unit of the type
-    # this entitlement is already on, which may be one that has since been withdrawn.
+    # The picker offers only what is still offered, but the amount's unit is that of the type this
+    # entitlement is already on, which may be one that has since been withdrawn.
     types = Policies.leave_types(policy.organisation_id)
 
     socket =
@@ -260,8 +364,22 @@ defmodule LeafWeb.EntitlementLive do
       |> assign(:types, Map.new(types, &{&1.id, &1}))
       |> assign(:choices, choices())
       |> assign(:unfunded, [])
+      |> assign(:samples, Ledger.rehearsal_names(policy.organisation_id))
+      |> assign(:rehearsals, [])
+      |> assign(:rehearsing, false)
+      |> assign(:refused, false)
+      |> assign(:shown, 0)
+      |> assign(:drawn_on, entitlement != nil and Policies.drawn_on?(entitlement))
 
-    assign(socket, :form, to_form(change(socket.assigns, opening(entitlement, organisation))))
+    changeset = change(socket.assigns, opening(entitlement, organisation))
+
+    {from, to} =
+      Ledger.rehearsal_dates(organisation, Ecto.Changeset.get_field(changeset, :effective_from))
+
+    socket
+    |> assign(:form, to_form(changeset))
+    |> assign(:placeholder, placeholder(from, to))
+    |> rehearsing(changeset)
   end
 
   defp opened(socket, policy, :error) do
@@ -305,18 +423,84 @@ defmodule LeafWeb.EntitlementLive do
 
   defp opening(_entitlement, _organisation), do: %{}
 
-  # The amount is in the leave type's own unit, and is a full-time figure only where it is
-  # pro-rated, so the label says so once both are chosen.
-  defp amount_label(type, pro_rated), do: "Amount#{counted_in(type)}#{at_full_time(pro_rated)}"
-
-  defp counted_in(nil), do: ""
-  defp counted_in(type), do: " in #{type.unit}"
-
-  defp at_full_time(pro_rated) do
+  # The amount is a full-time figure only where it is pro-rated, so the label says so.
+  defp amount_label(pro_rated) do
     case Form.normalize_value("checkbox", pro_rated) do
-      true -> ", at 1.0 FTE"
-      false -> ""
+      true -> "Amount, at 1.0 FTE"
+      false -> "Amount"
     end
+  end
+
+  defp unit(nil), do: nil
+  defp unit(type), do: to_string(type.unit)
+
+  # A new run supersedes the one in flight, whose result is then ignored; it is left to roll back
+  # rather than killed mid-transaction. With no leave type there is nothing to run, but one is still
+  # started so that the superseded result is ignored.
+  defp rehearsing(socket, changeset) do
+    leave_type = socket.assigns.types[Ecto.Changeset.get_field(changeset, :leave_type_id)]
+
+    socket
+    |> assign(:rehearsing, leave_type != nil)
+    |> start_async(:rehearsal, fn -> rehearsed(changeset, leave_type) end)
+  end
+
+  defp rehearsed(_changeset, nil), do: {:ok, []}
+
+  defp rehearsed(changeset, leave_type) do
+    with {:ok, rehearsals} <- Ledger.rehearse(changeset) do
+      {:ok, Enum.map(rehearsals, &described(&1, leave_type.unit))}
+    end
+  end
+
+  defp described(rehearsal, unit) do
+    {from, _opening} = List.first(rehearsal.balances)
+    {to, _closing} = List.last(rehearsal.balances)
+
+    %{
+      from: Wording.brief_date(from),
+      to: Wording.brief_date(to),
+      line: line(rehearsal.balances),
+      figures:
+        for(
+          {label, month} <- @checkpoints,
+          do: {label, figure(Enum.at(rehearsal.balances, month), unit)}
+        ),
+      losses: Enum.map(rehearsal.losses, &lost(&1, unit))
+    }
+  end
+
+  defp placeholder(from, to) do
+    %{
+      from: Wording.brief_date(from),
+      to: Wording.brief_date(to),
+      line: %{zero: 195, points: ""},
+      figures: for({label, _month} <- @checkpoints, do: {label, ""}),
+      losses: []
+    }
+  end
+
+  # Drawn in a 600 by 200 box, from the lower of zero and the least balance up to the greatest.
+  defp line(balances) do
+    figures = Enum.map(balances, fn {_date, balance} -> Decimal.to_float(balance) end)
+    bottom = Enum.min([0 | figures])
+    height = Enum.max([bottom + 1 | figures]) - bottom
+    y = &round(195 - (&1 - bottom) * 190 / height)
+    step = 600 / (length(figures) - 1)
+
+    points =
+      figures
+      |> Enum.with_index()
+      |> Enum.map_join(" ", fn {figure, month} -> "#{round(month * step)},#{y.(figure)}" end)
+
+    %{zero: y.(0), points: points}
+  end
+
+  defp figure({_date, balance}, unit), do: Wording.figure(balance, unit)
+
+  defp lost(movement, unit) do
+    "Loses #{Wording.figure(Decimal.abs(movement.amount), unit)} #{@lost_to[movement.kind]} on " <>
+      Wording.date(movement.date)
   end
 
   defp choices do

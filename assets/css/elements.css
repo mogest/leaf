@@ -260,6 +260,14 @@ form {
     max-inline-size: 28rem;
   }
 
+  & div:has(> div > label) {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+    align-items: start;
+    gap: var(--step-4);
+    max-inline-size: 28rem;
+  }
+
   & label {
     display: flex;
     flex-direction: column;

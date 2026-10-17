@@ -1220,3 +1220,109 @@ main.reports {
     }
   }
 }
+
+main.entitlement {
+  & > form {
+    flex: 1 1 28rem;
+  }
+
+  & > aside {
+    flex: 1 1 24rem;
+    position: sticky;
+    inset-block-start: var(--step-6);
+    gap: var(--step-4);
+    padding: var(--step-6);
+    border: 1px solid var(--edge);
+    border-radius: var(--radius-panel);
+    background: var(--sheet);
+    box-shadow: var(--lift);
+
+    &[aria-busy="true"] > :not(header),
+    &:has(> header > [role="status"]) > :not(header) {
+      opacity: 0.4;
+      transition: opacity 0.2s 0.15s;
+    }
+  }
+
+  & aside > header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--step-2);
+
+    & > p {
+      font-size: var(--size-sm);
+      color: var(--ink-soft);
+    }
+  }
+
+  & aside > p {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--step-2);
+  }
+
+  & aside button {
+    padding: var(--step-1) var(--step-3);
+    border: 1px solid var(--edge);
+    border-radius: var(--pill);
+    font-size: var(--size-sm);
+    color: var(--ink-quiet);
+
+    &[aria-pressed="true"] {
+      border-color: var(--ink);
+      background: var(--ink);
+      color: var(--sheet);
+    }
+  }
+
+  & figure {
+    display: flex;
+    flex-direction: column;
+    gap: var(--step-3);
+    margin: 0;
+  }
+
+  & figure svg {
+    inline-size: 100%;
+    block-size: auto;
+    overflow: visible;
+  }
+
+  & figure svg line {
+    stroke: var(--rule-firm);
+    vector-effect: non-scaling-stroke;
+  }
+
+  & figure svg polyline {
+    fill: none;
+    stroke: var(--green);
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  & figcaption {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--size-xs);
+    color: var(--ink-soft);
+  }
+
+  & dl > div {
+    display: flex;
+    justify-content: space-between;
+    padding-block: var(--step-2);
+    border-block-start: 1px solid var(--rule);
+    font-size: var(--size-base);
+  }
+
+  & dd {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  & figure > ul {
+    font-size: var(--size-base);
+    color: var(--ochre);
+  }
+}

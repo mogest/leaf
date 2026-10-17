@@ -99,9 +99,12 @@ defmodule LeafWeb.PagesTest do
       theirs(context, context.admin) ++
         the_administrators(context) ++ [~p"/people", ~p"/people/#{context.other}"]
 
+    # A page working something out in the background is left to finish, rather than holding the
+    # test's connection while the next page waits for it.
     Enum.each(paths, fn path ->
-      assert {:ok, _live, html} = live(context.conn, path)
+      assert {:ok, live, html} = live(context.conn, path)
       assert html =~ "<h1>"
+      render_async(live, 2000)
     end)
   end
 
