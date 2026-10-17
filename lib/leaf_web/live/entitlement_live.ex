@@ -125,6 +125,8 @@ defmodule LeafWeb.EntitlementLive do
             type="date"
             phx-debounce="500"
             label="Offered from"
+            help="The day these terms start. To change them later, set Stops granting after on this entitlement
+              and add a new one from the next day."
           />
           <div>
             <.input
@@ -132,14 +134,17 @@ defmodule LeafWeb.EntitlementLive do
               type="date"
               phx-debounce="500"
               label="Stops granting after"
-              help="Optional. The last day it grants anything. What it has already granted can still be spent."
+              help="Leave empty unless these terms are ending. Nothing more is granted after this day, but
+                balances already granted can still be taken."
             />
             <.input
               field={@form[:effective_to]}
               type="date"
               phx-debounce="500"
               label="Stops being spendable after"
-              help="Optional. The last day what it granted can be spent. Anything still unspent then lapses."
+              help="Leave empty unless this leave is being withdrawn. Leave dated after this day can't be taken,
+                and unused balances are lost. Set it later than Stops granting after to give people time to use
+                what they have."
             />
           </div>
         </section>
@@ -153,14 +158,17 @@ defmodule LeafWeb.EntitlementLive do
             type="select"
             label="Where the amount comes from"
             options={@choices.sources}
-            help="A share of the public holiday calendar makes holidays ordinary working days, taken as leave. It
-              suits part-timers who don't work the days most holidays fall on, who would otherwise get fewer of
-              them off than everyone else."
+            help="A fixed amount: a set number of hours or days each period. Their share of the public holiday
+              calendar: holidays become ordinary working days, and each person gets leave to cover the ones on
+              their calendar, so a part-timer who never works Mondays still gets their share. Nothing: no
+              balance, the leave is only recorded, as for unpaid leave."
           />
           <.input
             field={@form[:pro_rated_by_fte]}
             type="checkbox"
             label="Pro-rated by the hours they work"
+            help="Tick to scale the amount to each person's hours: someone working three days a week gets 60% of
+              it. Leave unticked to give everyone the same amount."
           />
           <.input
             field={@form[:grant_amount]}
@@ -168,6 +176,8 @@ defmodule LeafWeb.EntitlementLive do
             phx-debounce="500"
             label={amount_label(@form[:pro_rated_by_fte].value)}
             unit={unit(@types[@form[:leave_type_id].value])}
+            help="How much one person gets each grant period. When pro-rated, enter what someone working full
+              time gets."
           />
           <div>
             <.input
@@ -176,6 +186,9 @@ defmodule LeafWeb.EntitlementLive do
               label="Grant period"
               prompt="not granted"
               options={@choices.periods}
+              help="The stretch of time the amount is for. It builds up across each period or lands at its start.
+                A rollover cap, or lapsing at the end of the period, applies as each period ends. Must be Year when
+                aligned to a birthdate."
             />
             <.input
               field={@form[:grant_basis]}
@@ -183,6 +196,11 @@ defmodule LeafWeb.EntitlementLive do
               label="Aligned to"
               prompt="not granted"
               options={@choices.bases}
+              help="When each period starts. Employee start date: periods run from the day they joined, so years
+                start on each work anniversary. Employee birthdate: years start on their birthday. Year only, and
+                anyone with no birthdate recorded gets nothing. Calendar year: years start on 1 January, quarters
+                every three months from it, months on the 1st. Financial year: the same, counted from the first
+                month of your financial year."
             />
           </div>
           <div>
@@ -192,6 +210,10 @@ defmodule LeafWeb.EntitlementLive do
               label="How it arrives"
               prompt="not granted"
               options={@choices.timings}
+              help="Accrues day by day: the balance builds through the period from their first day. Lands whole:
+                the full amount arrives on the period's first day. Anyone who joins or moves onto these terms
+                part-way through a period gets nothing until the next one, including everyone if this entitlement
+                starts mid-period."
             />
             <.input
               field={@form[:suspension_allowance_weeks]}
@@ -199,7 +221,10 @@ defmodule LeafWeb.EntitlementLive do
               phx-debounce="500"
               label="Unpaid leave allowance"
               unit="weeks"
-              help="Leave that suspends accrual still accrues for this many of the person's weeks each period."
+              help="Only for a fixed amount that accrues day by day. Leave that pauses accrual, such as unpaid
+                leave, normally earns nothing. In each period, up to this many weeks of it still earn leave,
+                counted afresh every period. Once leave has been taken, this can be raised but not lowered or
+                removed."
             />
           </div>
         </section>
@@ -215,9 +240,10 @@ defmodule LeafWeb.EntitlementLive do
               phx-debounce="500"
               label="First granted after"
               unit="months' service"
-              help="Optional. For a fixed amount aligned to their start date. Grant periods then run from
-                that many months after it, for people already employed too, so a successor that adds one grants no
-                block for the period it starts part-way through."
+              help="Leave empty to grant from their first day. Only for a fixed amount aligned to their start
+                date, up to 12 months. With 6, nothing is granted until six months after they join, and each
+                period runs from that date. Current staff's periods move too, so replacing an entitlement that
+                lands whole skips the grant for the period the replacement starts in."
             />
             <.input
               field={@form[:takeable_after_months]}
@@ -225,9 +251,9 @@ defmodule LeafWeb.EntitlementLive do
               phx-debounce="500"
               label="Can be taken after"
               unit="months' service"
-              help="Left empty, it can be taken from their start date, going negative before
-                anything is granted. Leave already filed inside the wait can be approved or cancelled but not
-                amended."
+              help="Leave empty to let them book it from their first day, going into a negative balance if
+                nothing has been granted yet. Leave already booked inside the wait can be approved or cancelled,
+                but not changed. Up to 12 months."
             />
           </div>
         </section>
@@ -241,6 +267,9 @@ defmodule LeafWeb.EntitlementLive do
             type="select"
             label="Rollover"
             options={@choices.rules}
+            help="What happens to an unused balance at the end of each period: carried over in full, carried over
+              up to a cap, or lost. Lapsing a fixed window after it lands suits leave tied to a date, such as a
+              birthday."
           />
           <div>
             <.input
@@ -249,7 +278,8 @@ defmodule LeafWeb.EntitlementLive do
               phx-debounce="500"
               label="Rollover cap"
               unit={unit(@types[@form[:leave_type_id].value])}
-              help="Only where it rolls over up to a cap. Whatever is held above it at the end of each period is lost."
+              help="Only for rolling over up to a cap. The most that carries into the next period. Anything above
+                it is lost when the period ends."
             />
             <.input
               field={@form[:expiry_window_days]}
@@ -257,8 +287,8 @@ defmodule LeafWeb.EntitlementLive do
               phx-debounce="500"
               label="Lapses after"
               unit="days"
-              help="Only where it lapses a fixed window after it lands. Each grant lapses this many days after it
-                arrives."
+              help="Only for lapsing a fixed window after it lands. How long each grant can be used: 14 means
+                birthday leave must be taken within two weeks of the birthday."
             />
           </div>
         </section>
