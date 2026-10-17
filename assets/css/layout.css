@@ -536,18 +536,25 @@ main.request-leave {
     align-items: start;
     gap: var(--step-8) var(--step-9);
 
-    & > section {
+    & > section,
+    & > div {
       flex: 1 1 26rem;
       max-inline-size: 30rem;
     }
 
-    & > footer {
-      flex-basis: 100%;
+    & > div {
+      display: flex;
+      flex-direction: column;
+      gap: var(--step-8);
+    }
 
-      & > ul {
-        flex-basis: 100%;
-        color: var(--clay-ink);
-      }
+    & footer {
+      margin-block-start: var(--step-2);
+    }
+
+    & footer > ul {
+      flex-basis: 100%;
+      color: var(--clay-ink);
     }
   }
 

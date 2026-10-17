@@ -259,7 +259,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
       |> render_change()
 
     refute html =~ "Unpaid leave —"
-    refute html =~ "What it would leave"
+    refute has_element?(live, "h2", "Balance")
 
     asked = asking(context, %{"leave_type_id" => bereavement.id})
     html = live |> form("#request", request: asked) |> render_change()

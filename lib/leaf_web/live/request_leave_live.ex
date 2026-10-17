@@ -57,9 +57,6 @@ defmodule LeafWeb.RequestLeaveLive do
 
       <.form id="request" for={@form} phx-change="validate" phx-submit="save">
         <section>
-          <header>
-            <h2>The request</h2>
-          </header>
           <.input
             field={@form[:leave_type_id]}
             type="select"
@@ -93,58 +90,60 @@ defmodule LeafWeb.RequestLeaveLive do
             placeholder={@portion.whole}
           />
           <.input field={@form[:note]} type="textarea" label="Note" />
+
+          <footer>
+            <ul :if={@problems != []}>
+              <li :for={problem <- @problems}>{problem}</li>
+            </ul>
+            <button class="button" type="submit" disabled={@entries == []}>{@action}</button>
+            <.link navigate={@back}>Cancel</.link>
+          </footer>
         </section>
 
-        <section :if={@filing || @replacing}>
-          <header>
-            <h2>Day by day</h2>
-          </header>
-          <table :if={@filing}>
-            <thead>
-              <tr>
-                <th scope="col">Date</th>
-                <th scope="col">Off</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={day <- @filing.days} data-working={day.working}>
-                <th scope="row">{day.date}</th>
-                <td>{day.off}</td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr>
-                <th scope="row">Total</th>
-                <td>{@filing.total}</td>
-              </tr>
-            </tfoot>
-          </table>
-          <p :if={@replacing}>{@replacing}</p>
-        </section>
+        <div>
+          <section :if={@balance}>
+            <header>
+              <h2>Balance</h2>
+            </header>
+            <p>{@balance.name} on {@balance.date}</p>
+            <dl>
+              <dt>Without this request</dt>
+              <dd>{@balance.without}</dd>
+              <dt>If approved</dt>
+              <dd data-tone={@balance.overdrawn && "wrong"}>{@balance.left}</dd>
+            </dl>
+            <p :if={@balance.overdrawn}>
+              That is more leave than the balance holds. It can still be approved.
+            </p>
+          </section>
 
-        <section :if={@balance}>
-          <header>
-            <h2>What it would leave</h2>
-          </header>
-          <p>{@balance.name} on {@balance.date}</p>
-          <dl>
-            <dt>Without this request</dt>
-            <dd>{@balance.without}</dd>
-            <dt>If approved</dt>
-            <dd data-tone={@balance.overdrawn && "wrong"}>{@balance.left}</dd>
-          </dl>
-          <p :if={@balance.overdrawn}>
-            That is more leave than the balance holds. It can still be approved.
-          </p>
-        </section>
-
-        <footer>
-          <ul :if={@problems != []}>
-            <li :for={problem <- @problems}>{problem}</li>
-          </ul>
-          <button class="button" type="submit" disabled={@entries == []}>{@action}</button>
-          <.link navigate={@back}>Cancel</.link>
-        </footer>
+          <section :if={@filing || @replacing}>
+            <header>
+              <h2>Day by day</h2>
+            </header>
+            <table :if={@filing}>
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Off</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr :for={day <- @filing.days} data-working={day.working}>
+                  <th scope="row">{day.date}</th>
+                  <td>{day.off}</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th scope="row">Total</th>
+                  <td>{@filing.total}</td>
+                </tr>
+              </tfoot>
+            </table>
+            <p :if={@replacing}>{@replacing}</p>
+          </section>
+        </div>
       </.form>
     </Layouts.app>
     """
