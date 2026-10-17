@@ -107,6 +107,12 @@ defmodule LeafWeb.CoreComponents do
     doc: "a form field struct retrieved from the form, for example: @form[:email]"
 
   attr :errors, :list, default: []
+
+  attr :help, :string,
+    default: nil,
+    doc: "shown while the icon by the label is hovered or the field has focus"
+
+  attr :unit, :string, default: nil, doc: "what the value counts, shown after the box"
   attr :checked, :boolean, doc: "the checked flag for checkbox inputs"
   attr :prompt, :string, default: nil, doc: "the prompt for select inputs"
   attr :options, :list, doc: "the options to pass to Phoenix.HTML.Form.options_for_select/2"
@@ -154,11 +160,12 @@ defmodule LeafWeb.CoreComponents do
             name={@name}
             value="true"
             checked={@checked}
-            {invalid(@id, @errors)}
+            {described(@id, @errors, @help)}
             {@rest}
-          />{@label}
+          />{@label}<.info :if={@help} />
         </span>
       </label>
+      <p :if={@help} id={help_id(@id)} role="tooltip">{@help}</p>
       <.errors id={@id} errors={@errors} />
     </div>
     """
@@ -168,12 +175,13 @@ defmodule LeafWeb.CoreComponents do
     ~H"""
     <div>
       <label for={@id}>
-        <span :if={@label}>{@label}</span>
-        <select id={@id} name={@name} multiple={@multiple} {invalid(@id, @errors)} {@rest}>
+        <span :if={@label}>{@label}<.info :if={@help} /></span>
+        <select id={@id} name={@name} multiple={@multiple} {described(@id, @errors, @help)} {@rest}>
           <option :if={@prompt} value="">{@prompt}</option>
           {Form.options_for_select(@options, @value)}
         </select>
       </label>
+      <p :if={@help} id={help_id(@id)} role="tooltip">{@help}</p>
       <.errors id={@id} errors={@errors} />
     </div>
     """
@@ -183,9 +191,10 @@ defmodule LeafWeb.CoreComponents do
     ~H"""
     <div>
       <label for={@id}>
-        <span :if={@label}>{@label}</span>
-        <textarea id={@id} name={@name} {invalid(@id, @errors)} {@rest}>{Form.normalize_value("textarea", @value)}</textarea>
+        <span :if={@label}>{@label}<.info :if={@help} /></span>
+        <textarea id={@id} name={@name} {described(@id, @errors, @help)} {@rest}>{Form.normalize_value("textarea", @value)}</textarea>
       </label>
+      <p :if={@help} id={help_id(@id)} role="tooltip">{@help}</p>
       <.errors id={@id} errors={@errors} />
     </div>
     """
@@ -196,16 +205,18 @@ defmodule LeafWeb.CoreComponents do
     ~H"""
     <div>
       <label for={@id}>
-        <span :if={@label}>{@label}</span>
+        <span :if={@label}>{@label}<.info :if={@help} /></span>
         <input
           type={@type}
           name={@name}
           id={@id}
           value={Form.normalize_value(@type, @value)}
-          {invalid(@id, @errors)}
+          {described(@id, @errors, @help)}
           {@rest}
         />
+        <span :if={@unit}>{@unit}</span>
       </label>
+      <p :if={@help} id={help_id(@id)} role="tooltip">{@help}</p>
       <.errors id={@id} errors={@errors} />
     </div>
     """
@@ -217,14 +228,32 @@ defmodule LeafWeb.CoreComponents do
     """
   end
 
-  defp invalid(_id, []), do: []
-
-  defp invalid(id, errors) do
-    [
-      "aria-invalid": "true",
-      "aria-describedby": Enum.map_join(1..length(errors), " ", &error_id(id, &1))
-    ]
+  # Hidden from a screen reader, which is given the help as the field's description instead.
+  defp info(assigns) do
+    ~H"""
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="8" cy="8" r="6.5" /><path d="M8 7.25v4M8 4.75v.01" />
+    </svg>
+    """
   end
+
+  defp described(id, errors, help) do
+    ids = [help && help_id(id) | Enum.map(1..length(errors)//1, &error_id(id, &1))]
+    by = ids |> Enum.reject(&is_nil/1) |> Enum.join(" ")
+
+    ["aria-invalid": errors != [] && "true", "aria-describedby": by != "" && by]
+  end
+
+  defp help_id(id), do: "#{id}-help"
 
   defp error_id(id, n), do: "#{id}-error-#{n}"
 
