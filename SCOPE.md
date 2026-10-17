@@ -115,6 +115,12 @@ How much of it each grant period forgives is a term of the entitlement it shrink
 leave allowance (§4.7). A type that grants nothing has no balance to go under, so filing it says
 nothing about one.
 
+Since every policy shares the type, it has to be right in every country that uses it. Family and
+sick leave types never suspend: UK statutory leave keeps accruing through maternity, paternity,
+adoption and shared parental leave and through sickness, and a shared type that suspended would
+leave UK staff short. Only leave genuinely unpaid by agreement suspends. Where that should differ
+by country beyond what the unpaid leave allowance already varies, it is one type per country.
+
 A type may **need no approval**: leave of it is agreed outside Leaf — a contractor's time off,
 arranged with their manager — and is approved as it is filed (§5.3). A contractor's policy offers
 such a type, which is how Leaf is one place to see who is off without employee rules applying.
