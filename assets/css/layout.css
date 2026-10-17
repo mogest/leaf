@@ -1118,26 +1118,62 @@ main.settings section > ol > li {
   }
 }
 
-main.reports {
-  & > form {
-    flex-flow: row wrap;
-    align-items: start;
-    gap: var(--step-4);
+:is(main.reports, main.audit) > form {
+  flex-flow: row wrap;
+  align-items: start;
+  gap: var(--step-4);
 
-    & div:has(> label) {
-      flex: 0 1 13rem;
+  & div:has(> label) {
+    flex: 0 1 13rem;
+  }
+
+  & :is(input, select),
+  & > a {
+    block-size: 2.5rem;
+  }
+
+  & > a {
+    align-self: end;
+  }
+}
+
+main.audit {
+  & nav[aria-label^="Pages"] {
+    display: flex;
+    align-items: center;
+    justify-content: end;
+    gap: var(--step-3);
+    font-size: var(--size-sm);
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+
+    & > a {
+      padding: var(--step-1) var(--step-3);
+      border: 1px solid var(--edge);
+      border-radius: var(--pill);
+      background: var(--sheet);
+      color: var(--ink-quiet);
+      text-decoration: none;
     }
 
-    & :is(input, select),
-    & > a {
-      block-size: 2.5rem;
+    & > a[href]:hover {
+      border-color: var(--green);
+      color: var(--green);
     }
 
-    & > a {
-      align-self: end;
+    & > a:not([href]) {
+      color: var(--ink-faint);
     }
   }
 
+  & > form > nav {
+    align-self: end;
+    block-size: 2.5rem;
+    margin-inline-start: auto;
+  }
+}
+
+main.reports {
   & > p,
   & > section > p {
     font-size: var(--size-base);

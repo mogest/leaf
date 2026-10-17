@@ -3,9 +3,11 @@ defmodule LeafWeb.SettingsLiveTest do
 
   import Phoenix.LiveViewTest
 
+  alias Leaf.Audit.Entry
   alias Leaf.Fixtures
   alias Leaf.Org
   alias Leaf.Policies
+  alias Leaf.Repo
 
   setup %{conn: conn} do
     organisation = Fixtures.organisation()
@@ -378,7 +380,7 @@ defmodule LeafWeb.SettingsLiveTest do
     assert [^holiday] = Org.public_holidays(other.id)
   end
 
-  test "the audit log says who changed what, and narrows to one person", context do
+  test "the audit log says who changed what, and narrows to one person and a day", context do
     {:ok, _leave_type} =
       Policies.create_leave_type(context.organisation, context.admin, %{
         name: "Study leave",
@@ -391,11 +393,57 @@ defmodule LeafWeb.SettingsLiveTest do
     assert html =~ "leave type created"
     assert html =~ "Kit Rua"
 
-    html = live |> form("#filter", filter: %{"person_id" => context.admin.id}) |> render_change()
+    live |> form("#filter", filter: %{"about" => context.admin.id}) |> render_change()
+    assert_patch(live, ~p"/settings/audit?#{%{about: context.admin.id}}")
+    assert render(live) =~ "Nothing has been recorded."
 
-    assert html =~ "Nothing has been recorded yet."
+    live
+    |> form("#filter", filter: %{"about" => "", "through" => "2000-01-01"})
+    |> render_change()
 
-    assert render_change(live, "filter", %{"filter" => %{"person_id" => "banana"}}) =~
-             "leave type created"
+    assert_patch(live, ~p"/settings/audit?through=2000-01-01")
+
+    assert render(live) =~ "Nothing has been recorded."
+
+    {:ok, _live, html} = live(context.conn, ~p"/settings/audit?about=banana&through=soon&page=-1")
+    assert html =~ "leave type created"
+
+    {:ok, _live, html} = live(context.conn, ~p"/settings/audit?about=#{Ecto.UUID.generate()}")
+    assert html =~ "leave type created"
+  end
+
+  test "the audit log pages through its entries a hundred at a time", context do
+    Repo.insert_all(
+      Entry,
+      for _ <- 1..101 do
+        %{
+          id: Ecto.UUID.generate(),
+          action: "person.updated",
+          entity_type: "people",
+          entity_id: context.admin.id,
+          subject_person_id: context.admin.id,
+          changes: %{},
+          inserted_at: DateTime.utc_now()
+        }
+      end
+    )
+
+    {:ok, live, _html} = live(context.conn, ~p"/settings/audit")
+    assert has_element?(live, "form nav", "Page 1 of 2")
+    refute has_element?(live, "nav a[href]", "Newer")
+    assert has_element?(live, ~s(nav a[href="/settings/audit?page=2"]), "Older")
+
+    {:ok, live, _html} =
+      live(
+        context.conn,
+        ~p"/settings/audit?about=#{context.admin.id}&through=2099-12-31&page=9&x=1"
+      )
+
+    assert has_element?(live, "main > nav", "Page 2 of 2")
+    assert has_element?(live, "tbody tr")
+    refute has_element?(live, "tbody tr + tr")
+
+    newer = ~p"/settings/audit?#{[about: context.admin.id, page: 1, through: "2099-12-31"]}"
+    assert has_element?(live, ~s(nav a[href="#{newer}"]), "Newer")
   end
 end

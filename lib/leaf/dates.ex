@@ -25,6 +25,17 @@ defmodule Leaf.Dates do
     bounded(Enum.max([range.first, from], Date), earliest(range.last, to))
   end
 
+  @doc "The instant `date` begins in `zone`."
+  @spec midnight(Date.t(), String.t()) :: DateTime.t()
+  def midnight(date, zone) do
+    # A zone that moves its clocks at midnight has a day with no midnight, or with two.
+    case DateTime.new(date, ~T[00:00:00], zone) do
+      {:ok, at} -> at
+      {:gap, _before, starts} -> starts
+      {:ambiguous, first, _second} -> first
+    end
+  end
+
   @doc "The range from `first` to `last`, or `:error` where `last` is before `first`."
   @spec bounded(Date.t(), Date.t()) :: {:ok, Date.Range.t()} | :error
   def bounded(first, last) do

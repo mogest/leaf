@@ -20,6 +20,7 @@ defmodule Leaf.Audit do
   alias Ecto.Changeset
   alias Ecto.Multi
   alias Leaf.Audit.Entry
+  alias Leaf.Dates
   alias Leaf.People.Person
   alias Leaf.Repo
 
@@ -60,14 +61,33 @@ defmodule Leaf.Audit do
     |> outcome()
   end
 
-  @doc "The most recently recorded entries, newest first, with who acted and who it was about."
-  @spec entries(pos_integer()) :: [Entry.t()]
-  def entries(limit), do: Repo.all(newest_first(limit))
+  @typedoc """
+  Which entries to look at.
 
-  @doc "The same, narrowed to the changes recorded about one person."
-  @spec entries(Person.t(), pos_integer()) :: [Entry.t()]
-  def entries(person, limit) do
-    Repo.all(from entry in newest_first(limit), where: entry.subject_person_id == ^person.id)
+  `about` narrows to the changes recorded about one person, and `through` to those recorded by the
+  end of that day in `zone`.
+  """
+  @type filter :: [about: Ecto.UUID.t() | nil, through: Date.t() | nil, zone: String.t()]
+
+  @typedoc "One page of entries, newest first, with which page it is of how many."
+  @type page :: %{entries: [Entry.t()], page: pos_integer(), pages: pos_integer()}
+
+  @doc "One page of the entries `filter` names, `per` to a page, clamped to the pages there are."
+  @spec page(filter(), integer(), pos_integer()) :: page()
+  def page(filter, page, per) do
+    query = narrowed(filter)
+    pages = max(div(Repo.aggregate(query, :count) + per - 1, per), 1)
+    page = page |> max(1) |> min(pages)
+
+    entries =
+      query
+      |> order_by(desc: :inserted_at, desc: :id)
+      |> offset(^((page - 1) * per))
+      |> limit(^per)
+      |> preload([:actor, :subject_person])
+      |> Repo.all()
+
+    %{entries: entries, page: page, pages: pages}
   end
 
   @doc "Every entry about the organisation's people against a row of `schema` after `since`, oldest first."
@@ -82,11 +102,21 @@ defmodule Leaf.Audit do
     )
   end
 
-  defp newest_first(limit) do
-    from entry in Entry,
-      order_by: [desc: entry.inserted_at],
-      limit: ^limit,
-      preload: [:actor, :subject_person]
+  defp narrowed(filter) do
+    Entry
+    |> about(filter[:about])
+    |> through(filter[:through], filter[:zone])
+  end
+
+  defp about(query, nil), do: query
+  defp about(query, person_id), do: where(query, subject_person_id: ^person_id)
+
+  defp through(query, nil, _zone), do: query
+
+  defp through(query, date, zone) do
+    ends = date |> Date.add(1) |> Dates.midnight(zone) |> DateTime.shift_zone!("Etc/UTC")
+
+    where(query, [entry], entry.inserted_at < ^ends)
   end
 
   defp outcome({:ok, %{record: record}}), do: {:ok, record}

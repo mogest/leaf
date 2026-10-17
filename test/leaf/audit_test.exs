@@ -111,6 +111,35 @@ defmodule Leaf.AuditTest do
     assert changes[entitlement.id]["leave_type_id"] == %{"from" => nil, "to" => leave_type.id}
   end
 
+  test "entries come a page at a time, newest first, narrowed to a person and to a day's end",
+       context do
+    stamp = fn at, about ->
+      Repo.insert!(%Entry{
+        action: "person.updated",
+        entity_type: "people",
+        entity_id: about,
+        subject_person_id: about,
+        changes: %{},
+        inserted_at: at
+      })
+    end
+
+    # 23:30 and 00:30 either side of midnight in Auckland, which is 13 hours ahead in October.
+    late = stamp.(~U[2026-10-01 10:30:00.000000Z], context.person.id)
+    next_day = stamp.(~U[2026-10-01 11:30:00.000000Z], context.person.id)
+    earlier = stamp.(~U[2026-09-30 00:00:00.000000Z], context.actor.id)
+
+    ids = fn filter -> Enum.map(Audit.page(filter, 1, 10).entries, & &1.id) end
+
+    assert ids.([]) == [next_day.id, late.id, earlier.id]
+    assert %{entries: [%{id: id}], page: 2, pages: 3} = Audit.page([], 2, 1)
+    assert id == late.id
+    assert %{page: 3} = Audit.page([], 9, 1)
+    assert %{page: 1, pages: 1} = Audit.page([about: context.actor.id], -1, 1)
+    assert ids.(about: context.person.id) == [next_day.id, late.id]
+    assert ids.(through: ~D[2026-10-01], zone: "Pacific/Auckland") == [late.id, earlier.id]
+  end
+
   test "a save that changed nothing is not recorded", context do
     %{actor: actor, person: person} = context
 

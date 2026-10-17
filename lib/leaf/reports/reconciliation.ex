@@ -8,6 +8,7 @@ defmodule Leaf.Reports.Reconciliation do
   in the reader's zone.
   """
 
+  alias Leaf.Dates
   alias Leaf.Leave
   alias Leaf.Reports.Table
 
@@ -28,7 +29,7 @@ defmodule Leaf.Reports.Reconciliation do
   @doc "The changes to leave in `period` made after `cut_off` was over in `zone`."
   @spec table(Ecto.UUID.t(), Date.Range.t(), Date.t(), String.t()) :: Table.t()
   def table(organisation_id, period, cut_off, zone) do
-    since = cut_off |> Date.add(1) |> midnight(zone) |> DateTime.shift_zone!("Etc/UTC")
+    since = cut_off |> Date.add(1) |> Dates.midnight(zone) |> DateTime.shift_zone!("Etc/UTC")
 
     changes =
       for {request, change, at} <- Leave.revisions(organisation_id, period, since),
@@ -56,14 +57,5 @@ defmodule Leaf.Reports.Reconciliation do
       rows: rows,
       notes: Table.unmeasured(for {request, _change, _at, :error} <- changes, do: request.person)
     }
-  end
-
-  # A zone that moves its clocks at midnight has a day with no midnight, or with two.
-  defp midnight(date, zone) do
-    case DateTime.new(date, ~T[00:00:00], zone) do
-      {:ok, at} -> at
-      {:gap, _before, starts} -> starts
-      {:ambiguous, first, _second} -> first
-    end
   end
 end
