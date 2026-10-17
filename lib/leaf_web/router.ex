@@ -82,15 +82,18 @@ defmodule LeafWeb.Router do
 
       live "/settings", OrganisationLive
       live "/settings/leave-types", LeaveTypesLive
-      live "/settings/leave-types/:id", LeaveTypeLive
+      live "/settings/leave-types/new", LeaveTypeLive, :new
+      live "/settings/leave-types/:id", LeaveTypeLive, :edit
       live "/settings/policies", PoliciesLive
+      live "/settings/policies/new", PolicyFormLive, :new
       live "/settings/policies/:id", PolicyLive
-      live "/settings/policies/:id/edit", PolicyFormLive
+      live "/settings/policies/:id/edit", PolicyFormLive, :edit
       live "/settings/policies/:policy_id/entitlements/new", EntitlementLive, :new
       live "/settings/policies/:policy_id/entitlements/:id", EntitlementLive, :edit
       live "/settings/calendars", CalendarsLive
+      live "/settings/calendars/new", CalendarFormLive, :new
       live "/settings/calendars/:id", CalendarLive
-      live "/settings/calendars/:id/edit", CalendarFormLive
+      live "/settings/calendars/:id/edit", CalendarFormLive, :edit
       live "/settings/calendars/:calendar_id/regions/new", RegionLive
       live "/settings/audit", AuditLive
       live "/reports", ReportsLive

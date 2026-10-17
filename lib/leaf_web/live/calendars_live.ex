@@ -2,8 +2,8 @@ defmodule LeafWeb.CalendarsLive do
   @moduledoc """
   The calendars the organisation holds, each country followed by the regions inside it.
 
-  A country is added here; a region is added on its country's own page, which is where the country
-  and the zone it starts from are.
+  A country is added from here, a region on its country's own page, which is where the country and
+  the zone it starts from are.
   """
 
   use LeafWeb, :live_view
@@ -14,34 +14,7 @@ defmodule LeafWeb.CalendarsLive do
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
-    {:ok, organisation} = Org.fetch_organisation(socket.assigns.current_person.organisation_id)
-
-    {:ok,
-     socket
-     |> assign(:page_title, "Calendars")
-     |> assign(:organisation, organisation)
-     |> assign(:form, to_form(Org.change_calendar(organisation, %{})))
-     |> assign(:time_zones, Org.time_zones(nil))
-     |> listed()}
-  end
-
-  @impl Phoenix.LiveView
-  @role :admin
-  def handle_event("validate", %{"calendar" => params}, socket) do
-    changeset = Org.change_calendar(socket.assigns.organisation, params)
-
-    {:noreply,
-     socket
-     |> assign(:form, to_form(changeset, action: :validate))
-     |> assign(:time_zones, Org.time_zones(params["country_code"]))}
-  end
-
-  @role :admin
-  def handle_event("save", %{"calendar" => params}, socket) do
-    created =
-      Org.create_calendar(socket.assigns.organisation, socket.assigns.current_person, params)
-
-    {:noreply, saved(socket, created)}
+    {:ok, socket |> assign(:page_title, "Calendars") |> listed()}
   end
 
   @impl Phoenix.LiveView
@@ -50,6 +23,7 @@ defmodule LeafWeb.CalendarsLive do
     <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
         <h1>Calendars</h1>
+        <.link class="button" navigate={~p"/settings/calendars/new"}>Add</.link>
       </header>
 
       <Parts.settings_nav here="calendars" />
@@ -76,33 +50,12 @@ defmodule LeafWeb.CalendarsLive do
         </table>
         <p :if={@calendars == []}>No calendars yet, so nobody observes any public holidays.</p>
       </section>
-
-      <.form id="new-calendar" for={@form} phx-change="validate" phx-submit="save">
-        <section>
-          <header>
-            <h2>Add a country</h2>
-          </header>
-          <.input field={@form[:name]} type="text" label="Name" />
-          <.input field={@form[:country_code]} type="text" label="Country code, two letters" />
-          <.input
-            field={@form[:time_zone]}
-            type="select"
-            label="Time zone"
-            prompt="Choose one"
-            options={@time_zones}
-          />
-        </section>
-
-        <footer>
-          <button class="button" type="submit">Add it</button>
-        </footer>
-      </.form>
     </Layouts.app>
     """
   end
 
   defp listed(socket) do
-    calendars = Org.calendars(socket.assigns.organisation.id)
+    calendars = Org.calendars(socket.assigns.current_person.organisation_id)
 
     assign(socket, :calendars, Enum.map(calendars, &row/1))
   end
@@ -118,12 +71,4 @@ defmodule LeafWeb.CalendarsLive do
 
   defp country_code(nil), do: nil
   defp country_code(code), do: String.upcase(code)
-
-  defp saved(socket, {:ok, calendar}) do
-    push_navigate(socket, to: ~p"/settings/calendars/#{calendar}")
-  end
-
-  defp saved(socket, {:error, changeset}) do
-    assign(socket, :form, to_form(changeset, action: :validate))
-  end
 end

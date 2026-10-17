@@ -37,10 +37,14 @@ defmodule LeafWeb.SettingsLiveTest do
   end
 
   test "a leave type can be added, amended and stopped from being offered", context do
-    {:ok, live, _html} = live(context.conn, ~p"/settings/leave-types")
+    {:ok, live, _html} = live(context.conn, ~p"/settings/leave-types/new")
+    assert has_element?(live, ~s(#leave_type_position[value="1"]))
+
+    assert live |> form("#leave-type", leave_type: %{"name" => ""}) |> render_submit() =~
+             "can&#39;t be blank"
 
     live
-    |> form("#new-leave-type",
+    |> form("#leave-type",
       leave_type: %{"name" => "Study leave", "unit" => "days", "position" => "1"}
     )
     |> render_submit()
@@ -73,9 +77,12 @@ defmodule LeafWeb.SettingsLiveTest do
 
   test "a policy grants what its entitlements say, in words", context do
     leave_type = Fixtures.leave_type(%{organisation_id: context.organisation.id})
-    {:ok, live, _html} = live(context.conn, ~p"/settings/policies")
+    {:ok, live, _html} = live(context.conn, ~p"/settings/policies/new")
 
-    live |> form("#new-policy", leave_policy: %{"name" => "NZ employee"}) |> render_submit()
+    assert live |> form("#policy", leave_policy: %{"name" => ""}) |> render_submit() =~
+             "can&#39;t be blank"
+
+    live |> form("#policy", leave_policy: %{"name" => "NZ employee"}) |> render_submit()
 
     assert [policy] = Policies.leave_policies(context.organisation.id)
 
@@ -174,10 +181,13 @@ defmodule LeafWeb.SettingsLiveTest do
   end
 
   test "a calendar holds the holidays put on it, and lets one off again", context do
-    {:ok, live, _html} = live(context.conn, ~p"/settings/calendars")
+    {:ok, live, _html} = live(context.conn, ~p"/settings/calendars/new")
+
+    assert live |> form("#calendar", calendar: %{"name" => ""}) |> render_submit() =~
+             "can&#39;t be blank"
 
     live
-    |> form("#new-calendar",
+    |> form("#calendar",
       calendar: %{
         "name" => "New Zealand",
         "country_code" => "NZ",

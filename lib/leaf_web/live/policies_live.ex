@@ -1,6 +1,6 @@
 defmodule LeafWeb.PoliciesLive do
   @moduledoc """
-  The named sets of entitlements people are put on, and adding another.
+  The named sets of entitlements people are put on.
 
   A policy is what makes somebody an employee or a contractor here — there is no other distinction
   — so this list is the shape of the organisation's arrangements.
@@ -10,41 +10,14 @@ defmodule LeafWeb.PoliciesLive do
 
   on_mount {LeafWeb.SignIn, :admin}
 
-  alias Leaf.Org
   alias Leaf.Policies
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
-    {:ok, organisation} = Org.fetch_organisation(socket.assigns.current_person.organisation_id)
-
-    {:ok,
-     socket
-     |> assign(:page_title, "Leave policies")
-     |> assign(:organisation, organisation)
-     |> assign(:form, to_form(Policies.change_leave_policy(organisation, %{})))
-     |> listed()}
+    {:ok, socket |> assign(:page_title, "Leave policies") |> listed()}
   end
 
   @impl Phoenix.LiveView
-  @role :admin
-  def handle_event("validate", %{"leave_policy" => params}, socket) do
-    changeset = Policies.change_leave_policy(socket.assigns.organisation, params)
-
-    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
-  end
-
-  @role :admin
-  def handle_event("save", %{"leave_policy" => params}, socket) do
-    created =
-      Policies.create_leave_policy(
-        socket.assigns.organisation,
-        socket.assigns.current_person,
-        params
-      )
-
-    {:noreply, saved(socket, created)}
-  end
-
   @role :admin
   def handle_event("offer", %{"id" => id}, socket) do
     {:noreply, offer(socket, Policies.fetch_leave_policy(id))}
@@ -56,6 +29,7 @@ defmodule LeafWeb.PoliciesLive do
     <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
       <header>
         <h1>Leave policies</h1>
+        <.link class="button" navigate={~p"/settings/policies/new"}>Add</.link>
       </header>
 
       <Parts.settings_nav here="policies" />
@@ -92,25 +66,12 @@ defmodule LeafWeb.PoliciesLive do
         </div>
         <p :if={@policies == []}>No policies yet.</p>
       </section>
-
-      <.form id="new-policy" for={@form} phx-change="validate" phx-submit="save">
-        <section>
-          <header>
-            <h2>Add a policy</h2>
-          </header>
-          <.input field={@form[:name]} type="text" label="Name" />
-        </section>
-
-        <footer>
-          <button class="button" type="submit">Add it</button>
-        </footer>
-      </.form>
     </Layouts.app>
     """
   end
 
   defp listed(socket) do
-    policies = Policies.leave_policies(socket.assigns.organisation.id)
+    policies = Policies.leave_policies(socket.assigns.current_person.organisation_id)
 
     assign(socket, :policies, Enum.map(policies, &row(&1, socket.assigns.zone)))
   end
@@ -159,12 +120,4 @@ defmodule LeafWeb.PoliciesLive do
   defp named(0), do: "nothing yet"
   defp named(1), do: "one leave type"
   defp named(count), do: "#{count} leave types"
-
-  defp saved(socket, {:ok, policy}) do
-    push_navigate(socket, to: ~p"/settings/policies/#{policy}")
-  end
-
-  defp saved(socket, {:error, changeset}) do
-    assign(socket, :form, to_form(changeset, action: :validate))
-  end
 end
