@@ -84,7 +84,7 @@ defmodule Leaf.Ledger.Rehearsal do
         do: %Day{leave_type_id: leave_type.id, date: date, amount: Decimal.new(1), unit: :days}
   end
 
-  # Born so that a birthday, for an entitlement reckoned from one, falls half way through the first year.
+  # Born so that a birthday, for an entitlement aligned to one, falls half way through the first year.
   defp sample(organisation, policy, joined, worked) do
     attrs = %{
       name: "Sample",

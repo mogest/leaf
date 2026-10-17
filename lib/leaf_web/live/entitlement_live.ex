@@ -180,7 +180,7 @@ defmodule LeafWeb.EntitlementLive do
             <.input
               field={@form[:grant_basis]}
               type="select"
-              label="Reckoned from"
+              label="Aligned to"
               prompt="not granted"
               options={@choices.bases}
             />
@@ -215,7 +215,7 @@ defmodule LeafWeb.EntitlementLive do
               phx-debounce="500"
               label="First granted after"
               unit="months' service"
-              help="Optional. For a fixed amount reckoned from their start date. Grant periods then run from
+              help="Optional. For a fixed amount aligned to their start date. Grant periods then run from
                 that many months after it, for people already employed too, so a successor that adds one grants no
                 block for the period it starts part-way through."
             />

@@ -10,7 +10,7 @@ defmodule Leaf.Policies.PolicyEntitlement do
 
   `grant_amount` is per `grant_period`, at 1.0 FTE, in the leave type's unit.
 
-  `qualifying_months` is service before a fixed amount reckoned from the start date grants anything,
+  `qualifying_months` is service before a fixed amount aligned to the start date grants anything,
   and its cycle runs from the date that service is reached: NZ sick leave is 10 days after six
   months, then every 12 months from there. `takeable_after_months` is service before leave of the
   type may be taken at all, so NZ bereavement leave waits six months, and sick leave may or may not
@@ -197,7 +197,7 @@ defmodule Leaf.Policies.PolicyEntitlement do
     add_error(
       changeset,
       :qualifying_months,
-      "applies only to a fixed amount reckoned from their start date"
+      "applies only to a fixed amount aligned to their start date"
     )
   end
 end

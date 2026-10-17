@@ -103,9 +103,9 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
     assert errors_on(changeset(attrs)).grant_period == ["is invalid"]
   end
 
-  test "a fixed amount may qualify only where reckoned from the start date, within a year" do
+  test "a fixed amount may qualify only where aligned to the start date, within a year" do
     qualifying = Map.merge(@quarterly, %{grant_basis: :employment_date, qualifying_months: 6})
-    refused = ["applies only to a fixed amount reckoned from their start date"]
+    refused = ["applies only to a fixed amount aligned to their start date"]
 
     assert changeset(qualifying).valid?
 

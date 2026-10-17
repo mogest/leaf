@@ -116,7 +116,7 @@ defmodule LeafWeb.SettingsLiveTest do
 
     {:ok, live, html} = live(context.conn, ~p"/settings/policies/#{policy}")
 
-    assert html =~ "160 hours each year, reckoned from 6 months after their start date"
+    assert html =~ "160 hours each year, aligned to the day 6 months after their start date"
     assert html =~ "granting nothing before then, accruing day by day"
     assert html =~ "taken from 3 months after their start date"
 
