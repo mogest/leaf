@@ -110,7 +110,7 @@ defmodule LeafWeb.CoreComponents do
 
   attr :help, :string,
     default: nil,
-    doc: "shown while the icon by the label is hovered or clicked"
+    doc: "shown while the icon by the label is hovered or pressed"
 
   attr :unit, :string, default: nil, doc: "what the value counts, shown after the box"
   attr :checked, :boolean, doc: "the checked flag for checkbox inputs"
@@ -242,7 +242,7 @@ defmodule LeafWeb.CoreComponents do
 
   attr :help, :string,
     default: nil,
-    doc: "shown while the icon by the label is hovered or clicked"
+    doc: "shown while the icon by the label is hovered or pressed"
 
   slot :option, required: true do
     attr :value, :string, required: true
@@ -283,13 +283,11 @@ defmodule LeafWeb.CoreComponents do
     """
   end
 
-  # Hidden from a screen reader, which is given the help as the field's description instead.
   defp info(assigns) do
     ~H"""
     <button
       type="button"
-      tabindex="-1"
-      aria-hidden="true"
+      aria-label="Help"
       aria-expanded="false"
       phx-click={JS.toggle_attribute({"aria-expanded", "true", "false"})}
       phx-click-away={JS.set_attribute({"aria-expanded", "false"})}
@@ -302,6 +300,7 @@ defmodule LeafWeb.CoreComponents do
         stroke="currentColor"
         stroke-width="1.5"
         stroke-linecap="round"
+        aria-hidden="true"
       >
         <circle cx="8" cy="8" r="6.5" /><path d="M8 7.25v4M8 4.75v.01" />
       </svg>
