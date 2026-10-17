@@ -25,7 +25,7 @@ defmodule LeafWeb.EntitlementLive do
 
   @periods [{"Month", "month"}, {"Quarter", "quarter"}, {"Year", "year"}]
 
-  @checkpoints [{"After a year", 12}, {"After two years", 24}, {"After three years", 36}]
+  @figures ["Granted in the first year", "Most held at once", "Lost over three years"]
 
   @lost_to %{expiry: "to expiry", rollover_cap: "above the cap"}
 
@@ -92,7 +92,7 @@ defmodule LeafWeb.EntitlementLive do
       <.form id="entitlement" for={@form} phx-change="validate" phx-submit="save">
         <section>
           <header>
-            <h2>Which leave type, and when it is offered</h2>
+            <h2>When it applies</h2>
           </header>
           <.input
             :if={!@entitlement}
@@ -140,8 +140,8 @@ defmodule LeafWeb.EntitlementLive do
             label="Where the amount comes from"
             help="A fixed amount: a set number of hours or days each period. Their share of the public holiday
               calendar: holidays become ordinary working days, and each person gets leave to cover the ones on
-              their calendar, so a part-timer who never works Mondays still gets their share. Nothing: no
-              balance, the leave is only recorded, as for unpaid leave."
+              their calendar, so a part-timer who never works Mondays still gets their share. No balance: for
+              leave like unpaid leave, which is taken but not earned."
           >
             <:option value="fixed" label="A fixed amount of">
               <.input
@@ -152,7 +152,7 @@ defmodule LeafWeb.EntitlementLive do
               />
             </:option>
             <:option value="public_holidays" label="Their share of the public holiday calendar" />
-            <:option value="none" label="Nothing — recorded only" />
+            <:option value="none" label="No balance; time off is just recorded" />
           </.radios>
           <%= if @terms.amount_source != :none do %>
             <.input
@@ -338,23 +338,34 @@ defmodule LeafWeb.EntitlementLive do
   defp played_out(assigns) do
     ~H"""
     <figure>
-      <svg viewBox="0 0 600 200" role="img" aria-label={"Balance over three years, #{@name}"}>
+      <svg viewBox="0 0 600 200" role="group" aria-label={"Balance over three years, #{@name}"}>
         <line x1="0" y1={@rehearsal.line.zero} x2="600" y2={@rehearsal.line.zero} />
         <line :for={x <- [200, 400]} x1={x} y1="0" x2={x} y2="200" />
         <polyline points={@rehearsal.line.points} />
+        <g :for={loss <- @rehearsal.line.losses}>
+          <circle cx={loss.x} cy={loss.y} r="7" tabindex="0" role="img" aria-label={loss.label} />
+          <foreignObject x={loss.label_x} y={loss.y + 14} width="360" height="200" aria-hidden="true">
+            <p>{loss.label}</p>
+          </foreignObject>
+        </g>
       </svg>
       <figcaption>
         <span>{@rehearsal.from}</span><span>{@rehearsal.to}</span>
       </figcaption>
+      <ul>
+        <li>
+          <svg width="16" height="16" aria-hidden="true"><polyline points="0,8 16,8" /></svg>Balance
+        </li>
+        <li>
+          <svg width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="5" /></svg>Leave lost
+        </li>
+      </ul>
       <dl>
         <div :for={{label, figure} <- @rehearsal.figures}>
           <dt>{label}</dt>
           <dd>{figure}</dd>
         </div>
       </dl>
-      <ul :if={@rehearsal.losses != []}>
-        <li :for={loss <- @rehearsal.losses}>{loss}</li>
-      </ul>
     </figure>
     """
   end
@@ -479,17 +490,17 @@ defmodule LeafWeb.EntitlementLive do
   defp described(rehearsal, unit) do
     {from, _opening} = List.first(rehearsal.balances)
     {to, _closing} = List.last(rehearsal.balances)
+    losses = Enum.map(rehearsal.losses, &{&1.date, lost(&1, unit)})
 
     %{
       from: Wording.brief_date(from),
       to: Wording.brief_date(to),
-      line: line(rehearsal.balances),
+      line: line(rehearsal.balances, losses, from, to),
       figures:
-        for(
-          {label, month} <- @checkpoints,
-          do: {label, figure(Enum.at(rehearsal.balances, month), unit)}
-        ),
-      losses: Enum.map(rehearsal.losses, &lost(&1, unit))
+        Enum.zip(
+          @figures,
+          Enum.map([rehearsal.granted, rehearsal.held, rehearsal.lost], &Wording.figure(&1, unit))
+        )
     }
   end
 
@@ -497,29 +508,35 @@ defmodule LeafWeb.EntitlementLive do
     %{
       from: Wording.brief_date(from),
       to: Wording.brief_date(to),
-      line: %{zero: 195, points: ""},
-      figures: for({label, _month} <- @checkpoints, do: {label, ""}),
-      losses: []
+      line: %{zero: 195, points: "", losses: []},
+      figures: for(label <- @figures, do: {label, ""})
     }
   end
 
   # Drawn in a 600 by 200 box, from the lower of zero and the least balance up to the greatest.
-  defp line(balances) do
-    figures = Enum.map(balances, fn {_date, balance} -> Decimal.to_float(balance) end)
-    bottom = Enum.min([0 | figures])
-    height = Enum.max([bottom + 1 | figures]) - bottom
+  defp line(balances, losses, from, to) do
+    figures = Enum.map(balances, fn {date, balance} -> {date, Decimal.to_float(balance)} end)
+    values = Enum.map(figures, &elem(&1, 1))
+    bottom = Enum.min([0 | values])
+    height = Enum.max([bottom + 1 | values]) - bottom
+    x = &round(Date.diff(&1, from) * 600 / Date.diff(to, from))
     y = &round(195 - (&1 - bottom) * 190 / height)
-    step = 600 / (length(figures) - 1)
 
-    points =
-      figures
-      |> Enum.with_index()
-      |> Enum.map_join(" ", fn {figure, month} -> "#{round(month * step)},#{y.(figure)}" end)
-
-    %{zero: y.(0), points: points}
+    %{
+      zero: y.(0),
+      points: Enum.map_join(figures, " ", fn {date, figure} -> "#{x.(date)},#{y.(figure)}" end),
+      losses:
+        for(
+          {date, label} <- losses,
+          do: %{
+            x: x.(date),
+            y: y.(figures |> List.keyfind!(date, 0) |> elem(1)),
+            label: label,
+            label_x: (x.(date) - 180) |> max(0) |> min(240)
+          }
+        )
+    }
   end
-
-  defp figure({_date, balance}, unit), do: Wording.figure(balance, unit)
 
   defp lost(movement, unit) do
     "Loses #{Wording.figure(Decimal.abs(movement.amount), unit)} #{@lost_to[movement.kind]} on " <>

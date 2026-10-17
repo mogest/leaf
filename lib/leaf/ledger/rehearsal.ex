@@ -1,6 +1,6 @@
 defmodule Leaf.Ledger.Rehearsal do
   @moduledoc """
-  One sample person's balance under an entitlement, month by month for three years.
+  One sample person's balance under an entitlement over three years, and what it comes to.
 
   The sample people are written onto the entitlement's policy and the balance is worked out by the
   ledger as it would be for anybody, so what a rehearsal shows is what the entitlement will do
@@ -10,6 +10,7 @@ defmodule Leaf.Ledger.Rehearsal do
   the one that shows where a cap or a lapse bites.
   """
 
+  alias Leaf.Decimals
   alias Leaf.Leave.Day
   alias Leaf.Ledger
   alias Leaf.Ledger.Movement
@@ -23,11 +24,14 @@ defmodule Leaf.Ledger.Rehearsal do
   @type t :: %__MODULE__{
           name: String.t(),
           balances: [{Date.t(), Decimal.t()}],
-          losses: [Movement.t()]
+          losses: [Movement.t()],
+          granted: Decimal.t(),
+          held: Decimal.t(),
+          lost: Decimal.t()
         }
 
-  @enforce_keys [:name, :balances, :losses]
-  defstruct [:name, :balances, :losses]
+  @enforce_keys [:name, :balances, :losses, :granted, :held, :lost]
+  defstruct [:name, :balances, :losses, :granted, :held, :lost]
 
   @months 36
   @away_after_months 6
@@ -121,28 +125,51 @@ defmodule Leaf.Ledger.Rehearsal do
     person
   end
 
+  # Read monthly, and on the day of each loss and the day after, so that the balance drops when it
+  # does: a lapse or a cap falls at the end of its day. Losses are read from the day after the last,
+  # so that one falling on the last day is counted. `granted` is read on the day before the first
+  # anniversary, so that a grant landing on the anniversary is not counted.
   defp rehearsed(name, person, joined, away, type) do
-    statements =
-      for month <- 0..@months do
-        as_at = Date.shift(joined, month: month)
-        {as_at, statement(person, as_at, Enum.reject(away, &Date.after?(&1.date, as_at)), type)}
-      end
+    read = &statement(person, &1, away, type)
+    last = Date.shift(joined, month: @months)
+    monthly = for month <- 0..@months, do: Date.shift(joined, month: month)
+    losses = last |> Date.add(1) |> read.() |> losses()
+    either_side = Enum.flat_map(losses, &[&1.date, Date.add(&1.date, 1)])
 
-    {_as_at, last} = List.last(statements)
+    dates =
+      (monthly ++ either_side)
+      |> Enum.reject(&Date.after?(&1, last))
+      |> Enum.uniq()
+      |> Enum.sort(Date)
+
+    balances = for as_at <- dates, do: {as_at, balance(read.(as_at))}
 
     %__MODULE__{
       name: name,
-      balances: for({as_at, statement} <- statements, do: {as_at, balance(statement)}),
-      losses: losses(last)
+      balances: balances,
+      losses: losses,
+      granted: joined |> Date.shift(year: 1) |> Date.add(-1) |> read.() |> granted(),
+      held: balances |> Enum.map(&elem(&1, 1)) |> Enum.max(Decimal),
+      lost: losses |> Decimals.total(& &1.amount) |> Decimal.abs()
     }
   end
 
   defp statement(person, as_at, away, type) do
-    person |> Ledger.statements(as_at, away) |> Enum.find(&(&1.leave_type.id == type))
+    person
+    |> Ledger.statements(as_at, Enum.reject(away, &Date.after?(&1.date, as_at)))
+    |> Enum.find(&(&1.leave_type.id == type))
   end
 
   defp balance(nil), do: Decimal.new(0)
   defp balance(statement), do: statement.balance
+
+  defp granted(nil), do: Decimal.new(0)
+
+  defp granted(statement) do
+    statement.movements
+    |> Enum.filter(&(&1.kind in [:grant, :accrual]))
+    |> Decimals.total(& &1.amount)
+  end
 
   defp losses(nil), do: []
 

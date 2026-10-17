@@ -971,23 +971,29 @@ defmodule Leaf.LedgerTest do
       {:ok, rehearsals} = Ledger.rehearse(changeset)
 
       for rehearsal <- rehearsals do
-        {_date, a_year_in} = Enum.at(rehearsal.balances, 12)
-        [first_lost | _later] = rehearsal.losses
+        [{joined, _opening} | _later] = rehearsal.balances
+        {_date, a_year_in} = List.keyfind!(rehearsal.balances, Date.shift(joined, year: 1), 0)
+        [first_lost | _others] = rehearsal.losses
+        {_date, held} = List.keyfind!(rehearsal.balances, first_lost.date, 0)
+        {_date, left} = List.keyfind!(rehearsal.balances, Date.add(first_lost.date, 1), 0)
 
-        {rehearsal.name, Decimal.to_string(a_year_in), first_lost.date,
-         Decimal.round(first_lost.amount, 2)}
+        {rehearsal.name, Decimal.to_string(a_year_in), Decimal.round(rehearsal.granted, 2),
+         first_lost.date, Decimal.round(first_lost.amount, 2), held, left}
       end
     end
 
     amended = rehearsed.(Changeset.change(standing, capped))
 
-    # A year of 365 hours trimmed to 40 the day before the anniversary, and the anniversary's hour
-    # on top. Twelve weeks away from the sixth month takes their share of the year off accrual.
+    # A year of 365 hours trimmed to 40 at the end of the day before the anniversary, and the
+    # anniversary's hour on top. Twelve weeks away from the sixth month takes their share of the year
+    # off accrual.
     assert amended == [
-             {"Full time", "41.00", ~D[2025-03-03], Decimal.new("-325.00")},
-             {"Three days a week", "40.60", ~D[2025-03-03], Decimal.new("-179.00")},
-             {"Full time, 12 weeks' parental leave", "41.00", ~D[2025-03-03],
-              Decimal.new("-241.09")}
+             {"Full time", "41.00", Decimal.new("365.00"), ~D[2025-03-03], Decimal.new("-325.00"),
+              Decimal.new("365.00"), Decimal.new("41.00")},
+             {"Three days a week", "40.60", Decimal.new("219.00"), ~D[2025-03-03],
+              Decimal.new("-179.00"), Decimal.new("219.00"), Decimal.new("40.60")},
+             {"Full time, 12 weeks' parental leave", "41.00", Decimal.new("281.09"),
+              ~D[2025-03-03], Decimal.new("-241.09"), Decimal.new("281.09"), Decimal.new("41.00")}
            ]
 
     assert Policies.drawn_on?(standing)
@@ -1000,6 +1006,16 @@ defmodule Leaf.LedgerTest do
       )
 
     assert rehearsed.(new) == amended
+
+    # Joining on 31 December, a calendar year's cap falls at the end of the last day rehearsed.
+    year_end =
+      Map.merge(capped, %{"effective_from" => "2024-12-31", "grant_basis" => "calendar_year"})
+
+    {:ok, [full_time | _others]} = Ledger.rehearse(Changeset.change(standing, year_end))
+
+    assert {List.last(full_time.balances), List.last(full_time.losses).date,
+            Decimal.round(full_time.lost, 2)} ==
+             {{~D[2027-12-31], Decimal.new("405.00")}, ~D[2027-12-31], Decimal.new("1056.00")}
 
     assert {:error, %{errors: [grant_amount: _error]}} =
              Ledger.rehearse(Changeset.change(standing, %{"grant_amount" => "-1"}))

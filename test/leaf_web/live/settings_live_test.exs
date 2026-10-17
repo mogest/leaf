@@ -356,13 +356,24 @@ defmodule LeafWeb.SettingsLiveTest do
 
     html = render_async(live, 2000)
     assert html =~ "How it plays out"
-    assert html =~ "After a year"
+    assert html =~ "Granted in the first year"
     refute html =~ "above the cap"
 
     live |> form("#entitlement", policy_entitlement: %{"expiry_rule" => "cap"}) |> render_change()
     live |> form("#entitlement", policy_entitlement: %{"rollover_cap" => "40"}) |> render_change()
 
-    assert render_async(live, 2000) =~ "Loses 325 hours above the cap on 3 March 2025"
+    render_async(live, 2000)
+
+    assert has_element?(
+             live,
+             ~s(circle[aria-label="Loses 325 hours above the cap on 3 March 2025"])
+           )
+
+    # A year's 365 trimmed to 40, then 40 and the next year's 365 trimmed to 40, twice.
+    assert live |> element("dl") |> render() ==
+             "<dl><div><dt>Granted in the first year</dt><dd>365 hours</dd></div>" <>
+               "<div><dt>Most held at once</dt><dd>405 hours</dd></div>" <>
+               "<div><dt>Lost over three years</dt><dd>1055 hours</dd></div></dl>"
 
     assert live |> element("button", "Three days a week") |> render_click() =~
              "Loses 179 hours above the cap on 3 March 2025"
