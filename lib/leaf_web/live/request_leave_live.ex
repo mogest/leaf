@@ -371,7 +371,10 @@ defmodule LeafWeb.RequestLeaveLive do
   defp filing(socket, order, entries) do
     worked = Map.new(Leave.working_days(socket.assigns.person, order.span))
 
-    %{days: Enum.map(order.span, &day(&1, worked[&1])), total: total(entries)}
+    %{
+      days: Enum.map(order.span, &day(&1, worked[&1])),
+      total: total(socket.assigns.person, entries, order.counted_in)
+    }
   end
 
   # A day off is the hours in it, which is what a whole day of somebody's own is worth and not what
@@ -383,11 +386,11 @@ defmodule LeafWeb.RequestLeaveLive do
     %{date: Wording.brief(date), off: Wording.figure(hours, :hours), working: nil}
   end
 
-  defp total(entries) do
-    entries
-    |> Enum.map(& &1.amount)
-    |> Enum.reduce(&Decimal.add/2)
-    |> Wording.figure(hd(entries).unit)
+  # In the unit the balance is kept in, so that it reads against what the balance says it leaves.
+  defp total(person, entries, unit) do
+    {:ok, worth} = Leave.worth(person, Leave.proposed(entries))
+
+    Wording.figure(Map.fetch!(worth, unit), unit)
   end
 
   # Whatever about the instruction stops it being answerable, one thing at a time. What the order

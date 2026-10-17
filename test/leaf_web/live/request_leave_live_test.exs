@@ -189,7 +189,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert html =~ "Mon 2 Mar"
     assert html =~ "Fri 6 Mar"
     assert html =~ "Sun 8 Mar"
-    assert html =~ "<td>5 days</td>"
+    assert html =~ "<td>40 hours</td>"
   end
 
   test "a stretch is shown even where only one day in it is worked", context do
@@ -205,7 +205,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     assert html =~ "Sat 7 Mar"
     assert html =~ "Mon 9 Mar"
-    assert html =~ "<td>1 day</td>"
+    assert html =~ "<td>8 hours</td>"
   end
 
   test "the days a stretch steps over are rows of their own", context do
@@ -221,7 +221,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert html =~ ~s(<tr data-working="no">)
     assert html =~ "Sat 7 Mar"
     assert html =~ "not worked"
-    assert html =~ "<td>2 days</td>"
+    assert html =~ "<td>16 hours</td>"
   end
 
   test "one day has no rows worth reading, and still says what it would leave", context do
@@ -409,6 +409,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     assert html =~ "Sick leave on"
     assert html =~ "25 days"
+    assert has_element?(live, "tfoot td", "5 days")
     refute html =~ "Annual leave on"
   end
 
@@ -540,7 +541,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     assert html =~ "Mon 2 Mar"
     assert html =~ "Tue 3 Mar"
-    assert html =~ "<td>2 days</td>"
+    assert html =~ "<td>16 hours</td>"
     assert html =~ "Those days do not all ask for the whole day."
     assert html =~ "Saving this replaces what they ask for."
   end
