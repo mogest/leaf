@@ -239,6 +239,12 @@ Two treatments, set by the policy:
    a normal leave request for it, or shift their hours to another day. This is how the
    contractor/employee hybrid arrangement works.
 
+**UK part-timers need treatment 2.** Their 5.6 weeks' statutory leave includes the bank
+holidays, and most bank holidays are Mondays. Under treatment 1, a Tue–Thu worker on a 20-day
+allowance pro-rated to 12 is given only the one or two bank holidays that fall on their days.
+That makes about 14 days against a statutory 16.8. Treatment 2 grants their share of every
+bank holiday whichever days they work.
+
 **The system calculates the top-up itself.** It counts the public holidays in the person's
 calendar for their leave year, applies their FTE and standard day length, and credits the
 result as its own public holiday allowance line — visible and reportable separately from
