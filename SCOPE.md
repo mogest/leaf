@@ -182,9 +182,16 @@ Two waits on months of service are set on the entitlement, independently:
 - **Before it is first granted** — a qualifying period, for a fixed amount anchored to the
   employment date. Nothing is granted before it, block or accrual, and grant periods run from the
   date that service is reached: NZ sick leave, 10 days after six months' service and every twelve
-  months from there, is a year with a six-month qualifying period.
+  months from there, is a year with a six-month qualifying period. The grant date moves for people
+  already employed too, so adding one on an entitlement that succeeds another skips a block grant:
+  the period the successor starts part-way through grants no block (§8). Accrual is not lost.
 - **Before it can be taken** — for any leave type. NZ bereavement leave, which grants nothing, can
-  be taken after six months' service.
+  be taken after six months' service. Where one entitlement succeeds another and both are still
+  spendable, the successor's wait applies, as the terms in force — even to someone holding a balance
+  the predecessor granted, who cannot spend it until they have served the successor's wait. Where
+  the successor closes first, the predecessor's wait applies again for the rest of its life. Raising
+  it may be done after leave has been taken, since it decides only what may be filed; leave already
+  filed inside it can still be approved, declined or cancelled, but not amended.
 
 Together they say what the organisation offers beyond the law. Sick leave with only the first may be
 taken in advance of its first grant, as a negative balance; with both at six months it may not.

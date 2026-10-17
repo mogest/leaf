@@ -545,7 +545,7 @@ defmodule Leaf.LedgerTest do
     entitlement(
       context,
       quarterly,
-      Map.merge(qualifying, %{grant_amount: "1", grant_period: :quarter})
+      Map.merge(qualifying, %{grant_amount: "1", grant_period: :quarter, qualifying_months: 4})
     )
 
     assert movements(statement(person, violence, ~D[2025-09-04])) == [
@@ -554,10 +554,10 @@ defmodule Leaf.LedgerTest do
              {:grant, ~D[2025-09-04], Decimal.new("10.00"), ~D[2026-09-03]}
            ]
 
-    assert movements(statement(person, quarterly, ~D[2024-12-04])) == [
-             {:grant, ~D[2024-09-04], Decimal.new("1.00"), ~D[2024-12-03]},
-             {:expiry, ~D[2024-12-03], Decimal.new("-1.00"), nil},
-             {:grant, ~D[2024-12-04], Decimal.new("1.00"), ~D[2025-03-03]}
+    assert movements(statement(person, quarterly, ~D[2024-10-04])) == [
+             {:grant, ~D[2024-07-04], Decimal.new("1.00"), ~D[2024-10-03]},
+             {:expiry, ~D[2024-10-03], Decimal.new("-1.00"), nil},
+             {:grant, ~D[2024-10-04], Decimal.new("1.00"), ~D[2025-01-03]}
            ]
 
     annual = leave_type(context, %{position: 4})
@@ -566,6 +566,37 @@ defmodule Leaf.LedgerTest do
     # 181 of the 365 days from 4 September.
     assert movements(statement(person, annual, ~D[2025-03-03])) ==
              [{:accrual, ~D[2025-03-03], Decimal.new("99.18"), nil}]
+  end
+
+  test "a qualifying period reached on a short month's end keeps later periods on the 31st",
+       context do
+    person =
+      Fixtures.person(%{
+        organisation_id: context.organisation.id,
+        employment_start_date: ~D[2024-08-31]
+      })
+
+    weekdays(person, ~D[2024-08-31], "8")
+
+    Fixtures.policy_assignment(%{
+      person_id: person.id,
+      leave_policy_id: context.policy.id,
+      effective_from: ~D[2024-08-31]
+    })
+
+    monthly = leave_type(context, %{name: "Monthly leave", unit: :days, position: 2})
+
+    entitlement(context, monthly, %{
+      effective_from: ~D[2024-08-31],
+      grant_amount: "1",
+      grant_period: :month,
+      grant_timing: :period_start,
+      qualifying_months: 6,
+      pro_rated_by_fte: false
+    })
+
+    assert Enum.map(statement(person, monthly, ~D[2025-04-30]).movements, & &1.date) ==
+             [~D[2025-02-28], ~D[2025-03-31], ~D[2025-04-30]]
   end
 
   test "birthday leave lapses a window after the birthday, and needs a birth date", context do

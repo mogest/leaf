@@ -112,11 +112,9 @@ defmodule Leaf.Policies.PolicyEntitlement do
   end
 
   defp validate_amount_source(changeset, :fixed) do
-    basis = get_field(changeset, :grant_basis)
-
     changeset
     |> validate_required(@grant_fields)
-    |> validate_grant_period(basis)
+    |> validate_grant_period(get_field(changeset, :grant_basis))
   end
 
   defp validate_amount_source(changeset, :public_holidays) do
@@ -130,7 +128,6 @@ defmodule Leaf.Policies.PolicyEntitlement do
   end
 
   defp validate_amount_source(changeset, :none), do: validate_absent(changeset, @grant_fields)
-
   defp validate_amount_source(changeset, nil), do: changeset
 
   defp validate_grant_period(changeset, :birthday),
@@ -187,18 +184,14 @@ defmodule Leaf.Policies.PolicyEntitlement do
   end
 
   defp validate_qualifying(changeset) do
-    months = get_field(changeset, :qualifying_months)
     terms = {get_field(changeset, :amount_source), get_field(changeset, :grant_basis)}
 
-    validate_qualifying(changeset, months, terms)
+    validate_qualifying(changeset, get_field(changeset, :qualifying_months), terms)
   end
 
-  defp validate_qualifying(changeset, nil, _terms), do: changeset
-
-  defp validate_qualifying(changeset, _months, {:fixed, basis})
-       when basis in [:employment_date, nil], do: changeset
-
-  defp validate_qualifying(changeset, _months, {nil, _basis}), do: changeset
+  defp validate_qualifying(changeset, months, {source, basis})
+       when is_nil(months) or (source in [:fixed, nil] and basis in [:employment_date, nil]),
+       do: changeset
 
   defp validate_qualifying(changeset, _months, _terms) do
     add_error(

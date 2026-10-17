@@ -930,6 +930,51 @@ defmodule Leaf.LeaveTest do
                ["Annual leave", "Sick leave", "Bereavement leave", "Family violence leave"]
     end
 
+    test "a successor's wait holds while its predecessor is still spendable", context do
+      bereavement =
+        Fixtures.leave_type(%{
+          organisation_id: context.organisation.id,
+          name: "Bereavement leave",
+          unit: :days,
+          position: 3
+        })
+
+      for attrs <- [
+            %{granted_to: ~D[2025-12-31], effective_to: ~D[2026-12-31]},
+            %{effective_from: ~D[2026-01-01], takeable_after_months: 6}
+          ] do
+        Fixtures.offering(
+          Map.merge(%{leave_policy_id: context.policy_id, leave_type_id: bereavement.id}, attrs)
+        )
+      end
+
+      newcomer =
+        Fixtures.person(%{
+          organisation_id: context.organisation.id,
+          employment_start_date: ~D[2026-01-10]
+        })
+
+      Fixtures.work_pattern(%{person_id: newcomer.id, effective_from: ~D[2026-01-10]})
+
+      Fixtures.policy_assignment(%{
+        person_id: newcomer.id,
+        leave_policy_id: context.policy_id,
+        effective_from: ~D[2026-01-10]
+      })
+
+      assert offered(newcomer, ~D[2026-02-02], ~D[2026-02-02]) == ["Annual leave", "Sick leave"]
+
+      assert offered(newcomer, ~D[2026-07-10], ~D[2026-07-10]) ==
+               ["Sick leave", "Bereavement leave"]
+
+      day = %{leave_type_id: bereavement.id, date: ~D[2026-02-02], amount: "1", unit: :days}
+      assert {:error, refused} = Leave.request(newcomer, newcomer, %{days: [day], note: "Away"})
+      assert errors_on(refused).days == ["hold a leave type that was not on offer on its date"]
+
+      filed = Fixtures.leave_request(%{person_id: newcomer.id, days: [day]})
+      assert {:ok, %{status: :cancelled}} = Leave.cancel(reload(filed), context.admin)
+    end
+
     test "a range the person was on no policy over offers nothing", context do
       assert offered(context.person, ~D[2024-03-01], ~D[2024-03-06]) == []
     end

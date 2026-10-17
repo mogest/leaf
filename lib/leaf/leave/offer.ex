@@ -38,7 +38,7 @@ defmodule Leaf.Leave.Offer do
     person
     |> offerings(range)
     |> Enum.group_by(fn {_span, entitlement} -> entitlement.leave_type_id end)
-    |> Enum.filter(fn {_id, offerings} -> throughout?(offerings, range) end)
+    |> Enum.filter(fn {_id, offerings} -> Enum.all?(range, &takeable?(offerings, &1, person)) end)
     |> Enum.map(fn {_id, [{_span, entitlement} | _rest]} -> entitlement.leave_type end)
     |> Enum.sort_by(&{&1.position, &1.name})
   end
@@ -95,44 +95,55 @@ defmodule Leaf.Leave.Offer do
   defp unoffered(days, person) do
     offerings = offerings(person, Dates.spanning(Enum.map(days, & &1.date)))
 
-    Enum.reject(days, fn day -> Enum.any?(offerings, &offers?(&1, day)) end)
+    Enum.reject(days, &takeable?(of_type(offerings, &1), &1.date, person))
   end
 
   # Every entitlement the person's policies hold over the part of `range` they are employed for, each
-  # with the stretch of it they were on that policy for and had served long enough to take it. A
-  # stretch they were not employed for, or on no policy for, is in none of them, so it is a date
-  # nothing is offered on and no type covers the range.
+  # with the stretch of it they were on that policy for. A stretch they were not employed for, or on
+  # no policy for, is in none of them, so it is a date nothing is offered on and no type covers the
+  # range.
   defp offerings(person, range) do
     case Dates.intersect(range, person.employment_start_date, person.employment_end_date) do
       {:ok, employed} ->
         person
         |> People.leave_policy_segments(employed)
-        |> Enum.flat_map(fn {span, policy} -> of_policy(person, policy.id, span) end)
+        |> Enum.flat_map(fn {span, policy} -> of_policy(policy.id, span) end)
 
       :error ->
         []
     end
   end
 
-  defp of_policy(person, policy_id, span) do
-    for entitlement <- Policies.entitlements(policy_id, span),
-        entitlement.leave_type.archived_at == nil,
-        {:ok, takeable} <- [Dates.intersect(span, takeable_from(entitlement, person), nil)],
-        do: {takeable, entitlement}
+  defp of_policy(policy_id, span) do
+    policy_id
+    |> Policies.entitlements(span)
+    |> Enum.reject(&(&1.leave_type.archived_at != nil))
+    |> Enum.map(&{span, &1})
+  end
+
+  defp of_type(offerings, %Day{} = day) do
+    Enum.filter(offerings, fn {_span, entitlement} ->
+      entitlement.leave_type_id == day.leave_type_id
+    end)
+  end
+
+  # Where one entitlement succeeds another and their lives overlap, the wait is the successor's, as
+  # the terms in force, even over a balance the predecessor granted (§4.7).
+  defp takeable?(offerings, date, person) do
+    case Enum.filter(offerings, &on?(&1, date)) do
+      [] ->
+        false
+
+      covering ->
+        {_span, newest} =
+          Enum.max_by(covering, fn {_span, entitlement} -> entitlement.effective_from end, Date)
+
+        not Date.before?(date, takeable_from(newest, person))
+    end
   end
 
   defp takeable_from(entitlement, person),
     do: Date.shift(person.employment_start_date, month: entitlement.takeable_after_months || 0)
-
-  defp throughout?(offerings, range) do
-    Enum.all?(range, fn date -> Enum.any?(offerings, &on?(&1, date)) end)
-  end
-
-  defp offers?(offering, %Day{} = day) do
-    {_span, entitlement} = offering
-
-    entitlement.leave_type_id == day.leave_type_id and on?(offering, day.date)
-  end
 
   defp on?({span, entitlement}, date) do
     date in span and not Date.before?(date, entitlement.effective_from) and

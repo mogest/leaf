@@ -179,8 +179,9 @@ defmodule LeafWeb.EntitlementLive do
             label="Months' service before it is first granted (optional)"
           />
           <p>
-            For a fixed amount reckoned from their start date. Its periods then run from that many
-            months after the start date.
+            For a fixed amount reckoned from their start date. Grant periods then run from that many
+            months after it, for people already employed too, so a successor that adds one grants no
+            block for the period it starts part-way through.
           </p>
           <.input
             field={@form[:takeable_after_months]}
@@ -189,7 +190,7 @@ defmodule LeafWeb.EntitlementLive do
           />
           <p>
             Left empty, it can be taken from their start date, going negative before anything is
-            granted.
+            granted. Leave already filed inside the wait can be approved or cancelled but not amended.
           </p>
         </section>
 
