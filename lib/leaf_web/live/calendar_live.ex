@@ -130,7 +130,7 @@ defmodule LeafWeb.CalendarLive do
               A holiday goes on the day it falls. If it falls on a weekend, Moves to is the weekday
               taken instead by anybody who doesn't work that day.
             </p>
-            <button class="button" type="submit">Add it</button>
+            <button class="button" type="submit">Create</button>
           </footer>
         </.form>
       </aside>

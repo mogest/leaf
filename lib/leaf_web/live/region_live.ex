@@ -62,7 +62,7 @@ defmodule LeafWeb.RegionLive do
         </section>
 
         <footer>
-          <button class="button" type="submit">Add it</button>
+          <button class="button" type="submit">Create</button>
           <.link navigate={~p"/settings/calendars/#{@country}"}>Cancel</.link>
         </footer>
       </.form>
