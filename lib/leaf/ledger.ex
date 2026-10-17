@@ -365,7 +365,8 @@ defmodule Leaf.Ledger do
       date: entry.date,
       kind: entry.kind,
       amount: entry.amount,
-      expires_on: lapses_on
+      expires_on: lapses_on,
+      capped: is_nil(entry.expires_on)
     }
   end
 

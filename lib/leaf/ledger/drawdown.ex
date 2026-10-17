@@ -4,13 +4,14 @@ defmodule Leaf.Ledger.Drawdown do
 
   Anything that adds to a balance becomes a lot with the date it lapses on. Anything that takes
   from one — leave filed, or an adjustment correcting a balance downwards — comes off the soonest
-  to lapse of the lots still live on its date, so nothing lapses that could have been used and
-  nothing is paid for out of what had already gone.
+  to lapse of the lots still live on its date, so a lot with a deadline is spent before one without
+  and nothing is paid for out of what had already gone.
 
   Every loss shows as a movement of its own, because a balance should never quietly disappear: a
   lot unspent on the day it lapses expires, and where a leave type rolls over only up to a cap,
   the excess at the end of a grant period is trimmed from the lots with the longest left to run —
-  the ones that would otherwise survive it.
+  the ones that would otherwise survive it. A lot that is not `capped` neither counts towards the
+  cap nor is trimmed by it.
 
   Taking more than is held is allowed. The shortfall is carried and paid off by whatever arrives
   next, which is what accruing back from a negative balance amounts to.
@@ -73,14 +74,15 @@ defmodule Leaf.Ledger.Drawdown do
   defp move(state, movement) do
     case Decimal.negative?(movement.amount) do
       true -> draw(state, Decimal.abs(movement.amount), movement.date)
-      false -> hold(state, movement.amount, movement.expires_on)
+      false -> hold(state, movement)
     end
   end
 
-  defp hold(state, amount, expires_on) do
-    {held, deficit} = settle(amount, state.deficit)
+  defp hold(state, movement) do
+    {held, deficit} = settle(movement.amount, state.deficit)
+    lot = %Lot{amount: held, expires_on: movement.expires_on, capped: movement.capped}
 
-    %{state | deficit: deficit, lots: add(state.lots, held, expires_on)}
+    %{state | deficit: deficit, lots: add(state.lots, lot)}
   end
 
   defp settle(amount, deficit) do
@@ -89,9 +91,9 @@ defmodule Leaf.Ledger.Drawdown do
     {Decimal.sub(amount, paid), Decimal.sub(deficit, paid)}
   end
 
-  defp add(lots, amount, expires_on) do
-    case Decimal.positive?(amount) do
-      true -> [%Lot{amount: amount, expires_on: expires_on} | lots]
+  defp add(lots, lot) do
+    case Decimal.positive?(lot.amount) do
+      true -> [lot | lots]
       false -> lots
     end
   end
@@ -127,18 +129,19 @@ defmodule Leaf.Ledger.Drawdown do
   end
 
   defp trim_to(state, date, cap) do
-    excess = Decimal.sub(Decimals.total(state.lots, & &1.amount), cap)
+    {capped, exempt} = Enum.split_with(state.lots, & &1.capped)
+    excess = Decimal.sub(Decimals.total(capped, & &1.amount), cap)
 
     case Decimal.positive?(excess) do
       false ->
         state
 
       true ->
-        {lots, _shortfall} = consume(Lot.latest_first(state.lots), excess)
+        {lots, _shortfall} = consume(Lot.latest_first(capped), excess)
 
         state
         |> record(%Movement{date: date, kind: :rollover_cap, amount: Decimal.negate(excess)})
-        |> Map.put(:lots, lots)
+        |> Map.put(:lots, lots ++ exempt)
     end
   end
 

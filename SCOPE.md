@@ -187,6 +187,18 @@ Configured per leave type:
 Expiry is applied automatically and shows in the person's leave history, so a balance never
 silently disappears.
 
+**Leave the law carries past a cap.** A cap limits how much of a person's ordinary leave rolls
+over. A balance entered by hand — an opening balance or an adjustment — with a lapse date of its
+own is outside it: the cap neither counts it nor trims it, and it lapses like any other lot, on
+its date or when its entitlement ends. That is how leave carried over by law is recorded — in the
+UK, leave that could not be taken for sickness or family leave, or because the employer did not
+give the chance to take it. Leaf cannot tell when that applies; an admin enters it.
+
+Having a deadline, such leave is drawn before ordinary leave. So someone holding ordinary leave
+above the cap, who takes leave before the cap falls, uses up the protected leave and still has the
+ordinary excess trimmed. They lose only what the cap was there to remove, and keeping both would
+need draws that look ahead to the next cap.
+
 **Which lot gets used first.** A person can hold more than one lot of the same leave type at once,
 lapsing at different times — a one-off top-up that must be used by June sitting alongside annual
 leave that never lapses. Leave always draws on the lot that lapses soonest, so a lot with a
@@ -455,6 +467,11 @@ assertions, mobile app.
   credited — a pure contractor who simply does not bill them — cannot be configured.
 - **No payroll integration.** Admins re-key from exports.
 - **No statutory validation.** The system will happily be configured below a legal minimum.
+- **UK first-year accrual (WTR reg 15A).** In a UK worker's first year, leave becomes available at
+  a twelfth of the year on the first of each month, rounded up to the half day. Leaf does not round
+  to the half day: a monthly grant in advance gives 2.33 of a 28-day year where the law gives 2.5,
+  and daily accrual gives nothing on day one. Granting the year's leave up front is the exact way to
+  meet it.
 - **Notification delivery** is Slack direct messages only, outgoing only. A person is found in
   Slack by their email; one whose Slack email differs is not messaged, and nothing tells them so.
   A message Slack fails to take is logged and lost, never retried.

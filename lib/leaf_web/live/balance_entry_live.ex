@@ -72,6 +72,9 @@ defmodule LeafWeb.BalanceEntryLive do
           <.input field={@form[:date]} type="date" label="Dated" />
           <.input field={@form[:amount]} type="text" label="Amount, negative to take away" />
           <.input field={@form[:expires_on]} type="date" label="Lapses on, if it lapses" />
+          <p>
+            A rollover cap does not trim a figure with a lapse date of its own.
+          </p>
           <.input field={@form[:reason]} type="textarea" label="Reason" />
         </section>
 

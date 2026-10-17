@@ -5,15 +5,16 @@ defmodule Leaf.Ledger.Lot do
   A balance is a list of these rather than one figure, because which lot a day off came out of
   decides what is left: 40 hours that never lapse plus a 10 hour top-up that must be used by June
   is 42 hours either way once 8 hours are taken, but the June top-up either survives or does not.
-  Leave always draws on the lot that lapses soonest, so nothing lapses that could have been used.
+  Leave always draws on the lot that lapses soonest.
 
-  `expires_on` is inclusive, and nil where the lot does not lapse at all.
+  `expires_on` is inclusive, and nil where the lot does not lapse at all. `capped` is false where a
+  rollover cap leaves the lot alone, as `Leaf.Ledger.Movement` describes.
   """
 
-  @type t :: %__MODULE__{amount: Decimal.t(), expires_on: Date.t() | nil}
+  @type t :: %__MODULE__{amount: Decimal.t(), expires_on: Date.t() | nil, capped: boolean()}
 
   @enforce_keys [:amount, :expires_on]
-  defstruct [:amount, :expires_on]
+  defstruct [:amount, :expires_on, capped: true]
 
   @doc "The lots in the order leave draws on them: soonest to lapse first, never-lapsing last."
   @spec soonest_first([t()]) :: [t()]

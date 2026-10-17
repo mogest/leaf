@@ -8,6 +8,10 @@ defmodule Leaf.Ledger.Movement do
   A grant or an accrual arrives with the date it lapses on, if it lapses. Everything a person
   loses is a movement of its own: leave taken, a lot that lapsed unused, and the excess trimmed
   where a leave type rolls over only up to a cap.
+
+  A figure entered by hand with a lapse date of its own is not `capped`: a cap neither counts nor
+  trims it. That is how leave the law carries over past the cap is held — UK leave a person could
+  not take for sickness or family leave, which lapses on a deadline of its own.
   """
 
   @typedoc "What moved the balance. The first four add to it; the last three take from it."
@@ -24,9 +28,10 @@ defmodule Leaf.Ledger.Movement do
           date: Date.t(),
           kind: kind(),
           amount: Decimal.t(),
-          expires_on: Date.t() | nil
+          expires_on: Date.t() | nil,
+          capped: boolean()
         }
 
   @enforce_keys [:date, :kind, :amount]
-  defstruct [:date, :kind, :amount, :expires_on]
+  defstruct [:date, :kind, :amount, :expires_on, capped: true]
 end

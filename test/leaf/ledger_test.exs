@@ -426,7 +426,7 @@ defmodule Leaf.LedgerTest do
     assert Decimal.equal?(statement.balance, "8.00")
   end
 
-  test "a capped leave type is trimmed to the cap, taking from the lots with longest to run",
+  test "a capped leave type is trimmed to the cap, leaving alone a figure with a lapse date of its own",
        context do
     person = context.person
     full_time(person)
@@ -447,7 +447,7 @@ defmodule Leaf.LedgerTest do
       kind: :adjustment,
       amount: "5",
       expires_on: ~D[2026-06-30],
-      reason: "Alternative holiday worked"
+      reason: "Carried over: could not be taken while off sick"
     })
 
     take(person, sick, ~D[2024-05-01], "1", :days)
@@ -459,17 +459,71 @@ defmodule Leaf.LedgerTest do
              {:taken, ~D[2024-05-01], Decimal.new("-1.00"), nil},
              {:grant, ~D[2025-03-04], Decimal.new("20.00"), nil},
              {:adjustment, ~D[2025-06-01], Decimal.new("5.00"), ~D[2026-06-30]},
-             {:rollover_cap, ~D[2026-03-03], Decimal.new("-19.00"), nil},
+             {:rollover_cap, ~D[2026-03-03], Decimal.new("-14.00"), nil},
              {:grant, ~D[2026-03-04], Decimal.new("20.00"), nil}
            ]
 
     assert lots(statement) == [
              {Decimal.new("5.00"), ~D[2026-06-30]},
              {Decimal.new("20.00"), nil},
+             {Decimal.new("5.00"), nil},
              {Decimal.new("20.00"), nil}
            ]
 
-    assert Decimal.equal?(statement.balance, "45.00")
+    assert Decimal.equal?(statement.balance, "50.00")
+  end
+
+  test "a figure dated only by its entitlement's end is capped, and the cap trims what outlasts it first",
+       context do
+    person = context.person
+    full_time(person)
+    sick = leave_type(context, %{name: "Sick leave", unit: :days, position: 2})
+
+    capped = %{
+      grant_amount: "20",
+      grant_timing: :period_start,
+      pro_rated_by_fte: false,
+      expiry_rule: :cap,
+      rollover_cap: "5"
+    }
+
+    entitlement(
+      context,
+      sick,
+      Map.merge(capped, %{granted_to: ~D[2025-06-30], effective_to: ~D[2026-06-30]})
+    )
+
+    entitlement(context, sick, Map.merge(capped, %{effective_from: ~D[2025-07-01]}))
+
+    for {date, amount} <- [{~D[2025-05-01], "3"}, {~D[2025-08-01], "10"}] do
+      Fixtures.balance_entry(%{
+        person_id: person.id,
+        leave_type_id: sick.id,
+        date: date,
+        kind: :adjustment,
+        amount: amount,
+        reason: "Corrected by hand"
+      })
+    end
+
+    statement = statement(person, sick, ~D[2026-03-04])
+
+    assert movements(statement) == [
+             {:grant, @started, Decimal.new("20.00"), ~D[2026-06-30]},
+             {:rollover_cap, ~D[2025-03-03], Decimal.new("-15.00"), nil},
+             {:grant, ~D[2025-03-04], Decimal.new("20.00"), ~D[2026-06-30]},
+             {:adjustment, ~D[2025-05-01], Decimal.new("3.00"), ~D[2026-06-30]},
+             {:adjustment, ~D[2025-08-01], Decimal.new("10.00"), nil},
+             {:rollover_cap, ~D[2026-03-03], Decimal.new("-33.00"), nil},
+             {:grant, ~D[2026-03-04], Decimal.new("20.00"), nil}
+           ]
+
+    held = Enum.group_by(statement.lots, & &1.expires_on, & &1.amount)
+
+    assert Map.new(held, fn {date, amounts} ->
+             {date, Decimal.round(Enum.reduce(amounts, &Decimal.add/2), 2)}
+           end) ==
+             %{~D[2026-06-30] => Decimal.new("5.00"), nil => Decimal.new("20.00")}
   end
 
   test "birthday leave lapses a window after the birthday, and needs a birth date", context do
