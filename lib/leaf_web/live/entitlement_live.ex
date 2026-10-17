@@ -125,8 +125,8 @@ defmodule LeafWeb.EntitlementLive do
           />
           <p>
             A share of the public holiday calendar makes holidays ordinary working days, taken as
-            leave. UK part-timers need it: otherwise those who don't work Mondays miss most bank
-            holidays and fall short of the statutory 5.6 weeks.
+            leave. It suits part-timers who don't work the days most holidays fall on, who would
+            otherwise get fewer of them off than everyone else.
           </p>
           <.input
             field={@form[:pro_rated_by_fte]}
