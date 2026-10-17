@@ -900,6 +900,36 @@ defmodule Leaf.LeaveTest do
                ["Annual leave", "Sick leave"]
     end
 
+    test "a type is offered once its months of service before taking are served", context do
+      [bereavement, family_violence] =
+        for {name, position} <- [{"Bereavement leave", 3}, {"Family violence leave", 4}] do
+          Fixtures.leave_type(%{
+            organisation_id: context.organisation.id,
+            name: name,
+            unit: :days,
+            position: position
+          })
+        end
+
+      Fixtures.offering(%{
+        leave_policy_id: context.policy_id,
+        leave_type_id: bereavement.id,
+        takeable_after_months: 6
+      })
+
+      Fixtures.policy_entitlement(%{
+        leave_policy_id: context.policy_id,
+        leave_type_id: family_violence.id,
+        qualifying_months: 6
+      })
+
+      assert offered(context.person, ~D[2024-09-03], ~D[2024-09-03]) ==
+               ["Annual leave", "Sick leave", "Family violence leave"]
+
+      assert offered(context.person, ~D[2024-09-04], ~D[2024-09-04]) ==
+               ["Annual leave", "Sick leave", "Bereavement leave", "Family violence leave"]
+    end
+
     test "a range the person was on no policy over offers nothing", context do
       assert offered(context.person, ~D[2024-03-01], ~D[2024-03-06]) == []
     end

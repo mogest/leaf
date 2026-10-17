@@ -153,15 +153,6 @@ defmodule LeafWeb.EntitlementLive do
             options={@choices.bases}
           />
           <.input
-            field={@form[:qualifying_months]}
-            type="number"
-            label="Months' service before it grants anything (optional)"
-          />
-          <p>
-            Only where it is reckoned from their start date. NZ sick leave is first granted after six
-            months' service, then every twelve months from there.
-          </p>
-          <.input
             field={@form[:grant_timing]}
             type="select"
             label="How it arrives"
@@ -175,6 +166,30 @@ defmodule LeafWeb.EntitlementLive do
           />
           <p>
             Leave that suspends accrual still accrues for this many of the person's weeks each period.
+          </p>
+        </section>
+
+        <section>
+          <header>
+            <h2>How long a new starter waits</h2>
+          </header>
+          <.input
+            field={@form[:qualifying_months]}
+            type="number"
+            label="Months' service before it is first granted (optional)"
+          />
+          <p>
+            For a fixed amount reckoned from their start date. Its periods then run from that many
+            months after the start date.
+          </p>
+          <.input
+            field={@form[:takeable_after_months]}
+            type="number"
+            label="Months' service before it can be taken (optional)"
+          />
+          <p>
+            Left empty, it can be taken from their start date, going negative before anything is
+            granted.
           </p>
         </section>
 

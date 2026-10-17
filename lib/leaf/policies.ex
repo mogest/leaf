@@ -120,9 +120,10 @@ defmodule Leaf.Policies do
   under one policy may not overlap, but their lives may.
 
   Once leave has been taken against one, those two dates are all that may change, along with a
-  raised unpaid leave allowance. That applies to every period the entitlement has covered, not
-  just from now, and so only adds to what that leave drew on. Anything else is refused with
-  `{:error, :drawn_on}`, since it would rewrite what the leave already taken drew on.
+  raised unpaid leave allowance and the service before it may be taken. The allowance applies to
+  every period the entitlement has covered, not just from now, and so only adds to what that leave
+  drew on; the service decides only what may be filed, not what anything drew on. Anything else is
+  refused with `{:error, :drawn_on}`, since it would rewrite what the leave already taken drew on.
   """
   @spec update_entitlement(PolicyEntitlement.t(), Person.t() | nil, map()) ::
           Audit.written(PolicyEntitlement.t()) | {:error, :drawn_on}
@@ -146,7 +147,7 @@ defmodule Leaf.Policies do
   end
 
   defp allowed_once_drawn?(changeset) do
-    case Map.keys(changeset.changes) -- [:granted_to, :effective_to] do
+    case Map.keys(changeset.changes) -- [:granted_to, :effective_to, :takeable_after_months] do
       [] -> true
       [:suspension_allowance_weeks] -> raised?(changeset)
       _terms -> false

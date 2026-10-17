@@ -177,10 +177,17 @@ their first one lands at the start of the next period (§8). Accrual is not affe
 proportional by nature, so it starts on their first day and their first period is simply a part
 period.
 
-An entitlement anchored to the employment date may have a **qualifying period**: a number of
-months' service before it grants anything, block or accrual, with its grant periods running from
-the date that service is reached. NZ sick leave, 10 days after six months' service and every twelve
-months from there, is a year with a six-month qualifying period.
+Two waits on months of service are set on the entitlement, independently:
+
+- **Before it is first granted** — a qualifying period, for a fixed amount anchored to the
+  employment date. Nothing is granted before it, block or accrual, and grant periods run from the
+  date that service is reached: NZ sick leave, 10 days after six months' service and every twelve
+  months from there, is a year with a six-month qualifying period.
+- **Before it can be taken** — for any leave type. NZ bereavement leave, which grants nothing, can
+  be taken after six months' service.
+
+Together they say what the organisation offers beyond the law. Sick leave with only the first may be
+taken in advance of its first grant, as a negative balance; with both at six months it may not.
 
 Balances may go **negative** where the policy allows it (advance leave). The person then
 accrues back to positive; the system doesn't block this, it just shows a negative balance.

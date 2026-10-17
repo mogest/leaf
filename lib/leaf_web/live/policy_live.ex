@@ -104,12 +104,19 @@ defmodule LeafWeb.PolicyLive do
   defp window(entitlement) do
     [
       "offered from #{Wording.date(entitlement.effective_from)}",
+      taken_from(entitlement.takeable_after_months),
       granting_to(entitlement.granted_to),
       until(entitlement.effective_to)
     ]
     |> Enum.reject(&is_nil/1)
     |> Enum.join(", ")
   end
+
+  defp taken_from(nil), do: nil
+  defp taken_from(months), do: "taken from #{after_starting(months)}"
+
+  defp after_starting(months),
+    do: "#{Wording.figure(Decimal.new(months), :months)} after their start date"
 
   defp granting_to(nil), do: nil
   defp granting_to(date), do: "granting until #{Wording.date(date)}"
@@ -145,9 +152,8 @@ defmodule LeafWeb.PolicyLive do
   defp anchored(%{grant_basis: :employment_date, qualifying_months: nil}),
     do: "reckoned from their start date"
 
-  defp anchored(%{grant_basis: :employment_date, qualifying_months: months}) do
-    "reckoned from #{Wording.figure(Decimal.new(months), :months)} after their start date, with nothing before then"
-  end
+  defp anchored(%{grant_basis: :employment_date, qualifying_months: months}),
+    do: "reckoned from #{after_starting(months)}, granting nothing before then"
 
   defp anchored(%{grant_basis: :birthday}), do: "reckoned from their birthday"
   defp anchored(%{grant_basis: :calendar_year}), do: "reckoned from the calendar year"

@@ -4,8 +4,9 @@ defmodule Leaf.Policies.Granting do
 
   Five windows have to agree before an entitlement grants anything on a date: the stretch of the
   person's history being asked about, the policy they were on then, the entitlement's own grant
-  window, the service it asks for before it qualifies them, and the grant period the date falls in. Intersecting them is what makes a change
-  part-way through a year split the year rather than replace it.
+  window, the service it asks for before it qualifies them, and the grant period the date falls in.
+  Intersecting them is what makes a change part-way through a year split the year rather than
+  replace it.
 
   This is the only place that knows when a grant lands, so that the balance a public holiday
   allowance credits and the days it makes working days are the same days.
@@ -94,10 +95,8 @@ defmodule Leaf.Policies.Granting do
     end
   end
 
-  defp qualified_on(%{qualifying_months: nil}, person), do: person.employment_start_date
-
   defp qualified_on(entitlement, person),
-    do: Date.shift(person.employment_start_date, month: entitlement.qualifying_months)
+    do: Date.shift(person.employment_start_date, month: entitlement.qualifying_months || 0)
 
   defp anchors(qualified_on, person, organisation) do
     %{

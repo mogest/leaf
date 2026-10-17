@@ -103,27 +103,35 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
     assert errors_on(changeset(attrs)).grant_period == ["is invalid"]
   end
 
-  test "only a fixed amount reckoned from the start date may qualify, within a year" do
-    qualifying = %{@quarterly | grant_basis: :employment_date}
+  test "a fixed amount may qualify only where reckoned from the start date, within a year" do
+    qualifying = Map.merge(@quarterly, %{grant_basis: :employment_date, qualifying_months: 6})
+    refused = ["applies only to a fixed amount reckoned from their start date"]
 
-    assert changeset(Map.put(qualifying, :qualifying_months, 6)).valid?
+    assert changeset(qualifying).valid?
 
-    too_long = errors_on(changeset(Map.put(qualifying, :qualifying_months, 13)))
-
-    assert too_long.qualifying_months == ["must be less than or equal to 12"]
-
-    assert errors_on(changeset(Map.put(@quarterly, :qualifying_months, 6))).qualifying_months == [
-             "must be blank"
+    assert errors_on(changeset(%{qualifying | qualifying_months: 13})).qualifying_months == [
+             "must be less than or equal to 12"
            ]
 
-    allowance =
-      Map.merge(qualifying, %{
-        amount_source: :public_holidays,
-        grant_amount: nil,
-        qualifying_months: 6
-      })
+    assert errors_on(changeset(%{qualifying | grant_basis: :calendar_year})).qualifying_months ==
+             refused
 
-    assert errors_on(changeset(allowance)).qualifying_months == ["must be blank"]
+    assert errors_on(changeset(%{qualifying | amount_source: :none})).qualifying_months == refused
+
+    allowance = %{qualifying | amount_source: :public_holidays, grant_amount: nil}
+    assert errors_on(changeset(allowance)).qualifying_months == refused
+
+    refute Map.has_key?(
+             errors_on(changeset(%{qualifying | grant_basis: nil})),
+             :qualifying_months
+           )
+  end
+
+  test "any leave may wait on months of service before it is taken, within a year" do
+    assert changeset(%{amount_source: :none, takeable_after_months: 6}).valid?
+
+    assert errors_on(changeset(%{amount_source: :none, takeable_after_months: 13})) ==
+             %{takeable_after_months: ["must be less than or equal to 12"]}
   end
 
   test "a capped rollover needs a cap and no expiry window" do

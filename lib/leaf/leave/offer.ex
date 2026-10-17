@@ -7,6 +7,9 @@ defmodule Leaf.Leave.Offer do
   organisation has withdrawn is nobody's to file, whatever the date, since withdrawing it is saying
   it is not on offer rather than saying when it stopped being.
 
+  An entitlement may ask for months of service before its type may be taken. That is apart from any
+  wait before it grants, so leave may be taken in advance of a first grant or held back until it.
+
   The dates asked about are what decides, not today, so a type stops being offered for the dates its
   entitlement no longer covers rather than for all of them at once — which is what lets February's
   leave be filed against something that closed in March (§4.8).
@@ -96,27 +99,30 @@ defmodule Leaf.Leave.Offer do
   end
 
   # Every entitlement the person's policies hold over the part of `range` they are employed for, each
-  # with the stretch of it they were on that policy for. A stretch they were not employed for, or on
-  # no policy for, is in none of them, so it is a date nothing is offered on and no type covers the
-  # range.
+  # with the stretch of it they were on that policy for and had served long enough to take it. A
+  # stretch they were not employed for, or on no policy for, is in none of them, so it is a date
+  # nothing is offered on and no type covers the range.
   defp offerings(person, range) do
     case Dates.intersect(range, person.employment_start_date, person.employment_end_date) do
       {:ok, employed} ->
         person
         |> People.leave_policy_segments(employed)
-        |> Enum.flat_map(fn {span, policy} -> of_policy(policy.id, span) end)
+        |> Enum.flat_map(fn {span, policy} -> of_policy(person, policy.id, span) end)
 
       :error ->
         []
     end
   end
 
-  defp of_policy(policy_id, span) do
-    policy_id
-    |> Policies.entitlements(span)
-    |> Enum.reject(&(&1.leave_type.archived_at != nil))
-    |> Enum.map(&{span, &1})
+  defp of_policy(person, policy_id, span) do
+    for entitlement <- Policies.entitlements(policy_id, span),
+        entitlement.leave_type.archived_at == nil,
+        {:ok, takeable} <- [Dates.intersect(span, takeable_from(entitlement, person), nil)],
+        do: {takeable, entitlement}
   end
+
+  defp takeable_from(entitlement, person),
+    do: Date.shift(person.employment_start_date, month: entitlement.takeable_after_months || 0)
 
   defp throughout?(offerings, range) do
     Enum.all?(range, fn date -> Enum.any?(offerings, &on?(&1, date)) end)

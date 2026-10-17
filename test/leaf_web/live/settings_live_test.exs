@@ -103,6 +103,7 @@ defmodule LeafWeb.SettingsLiveTest do
         "grant_period" => "year",
         "grant_basis" => "employment_date",
         "qualifying_months" => "6",
+        "takeable_after_months" => "3",
         "grant_timing" => "daily",
         "pro_rated_by_fte" => "true",
         "expiry_rule" => "never"
@@ -115,8 +116,9 @@ defmodule LeafWeb.SettingsLiveTest do
 
     {:ok, live, html} = live(context.conn, ~p"/settings/policies/#{policy}")
 
-    assert html =~
-             "160 hours each year, reckoned from 6 months after their start date, with nothing before then, accruing day by day"
+    assert html =~ "160 hours each year, reckoned from 6 months after their start date"
+    assert html =~ "granting nothing before then, accruing day by day"
+    assert html =~ "taken from 3 months after their start date"
 
     assert html =~ "pro-rated by the hours they work"
     assert html =~ "Rolls over indefinitely"

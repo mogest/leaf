@@ -113,7 +113,8 @@ defmodule Leaf.PoliciesTest do
     assert changes["effective_to"] == %{"from" => nil, "to" => "2026-03-31"}
   end
 
-  test "an entitlement leave has been taken against can only be closed", context do
+  test "an entitlement leave has been taken against can only be closed, or wait to be taken",
+       context do
     %{organisation: organisation, policy: policy, quarterly: quarterly} = context
     admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
     person = Fixtures.person(%{organisation_id: organisation.id})
@@ -139,8 +140,11 @@ defmodule Leaf.PoliciesTest do
     assert Enum.map(Policies.entitlements(policy.id), & &1.id) == [offered.id]
     assert Repo.all(Entry) == []
 
+    assert {:ok, waiting} =
+             Policies.update_entitlement(offered, admin, %{takeable_after_months: 6})
+
     assert {:ok, _closed} =
-             Policies.update_entitlement(offered, admin, %{
+             Policies.update_entitlement(waiting, admin, %{
                granted_to: ~D[2026-12-31],
                effective_to: ~D[2027-03-31]
              })
