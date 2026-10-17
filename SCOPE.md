@@ -478,6 +478,12 @@ assertions, mobile app.
   to the half day: a monthly grant in advance gives 2.33 of a 28-day year where the law gives 2.5,
   and daily accrual gives nothing on day one. Granting the year's leave up front is the exact way to
   meet it.
+- **UK irregular-hours and part-year workers (WTR reg 15B).** Their leave accrues at 12.07% of the
+  hours they actually work, and Leaf has no record of hours worked. Payroll owns their accrual, often
+  as rolled-up holiday pay; in Leaf they are on a policy that grants nothing, so their leave is
+  recorded with no balance, adjusted by hand if one is wanted. Should NZ move annual leave to
+  accrual by hours worked, as its proposed Employment Leave Act would, an hours-worked amount
+  source becomes worth designing, and this is the gap to revisit with it.
 - **Notification delivery** is Slack direct messages only, outgoing only. A person is found in
   Slack by their email; one whose Slack email differs is not messaged, and nothing tells them so.
   A message Slack fails to take is logged and lost, never retried.
