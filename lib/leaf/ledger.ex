@@ -182,6 +182,26 @@ defmodule Leaf.Ledger do
   end
 
   @doc """
+  Each account `projected/2` gives, beside its balance on the same date without `days`.
+
+  The same date, so that accrual meanwhile does not separate them. An account that only `days`
+  open holds nothing without them.
+  """
+  @spec compared(Person.t(), [Day.t()]) :: [{Decimal.t(), Statement.t()}]
+  def compared(person, days) do
+    case projected(person, days) do
+      [] ->
+        []
+
+      [%{as_at: as_at} | _] = statements ->
+        without = Map.new(balances(person, as_at), &{&1.leave_type.id, &1.balance})
+
+        for statement <- statements,
+            do: {Map.get(without, statement.leave_type.id, Decimal.new(0)), statement}
+    end
+  end
+
+  @doc """
   The days of booked leave that amending `entitlement` with `attrs` would leave short, by person.
 
   Only where it closes the entitlement sooner, which lapses what that leave was to be paid out of, by

@@ -608,12 +608,12 @@ main.request-leave {
     padding-inline-start: var(--step-3);
   }
 
-  /* What is left over sits in the column the figures it follows from are in: the date column and
-     the step the figures are indented by. */
   & dl {
     display: grid;
-    grid-template-columns: 9.75rem auto;
+    grid-template-columns: max-content auto;
+    gap: var(--step-1) var(--step-4);
     font-size: var(--size-base);
+    font-variant-numeric: tabular-nums;
   }
 
   & dt {

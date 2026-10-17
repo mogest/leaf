@@ -230,7 +230,8 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     html = live |> form("#request", request: asking(context, %{})) |> render_change()
 
     refute html =~ "Day by day"
-    assert html =~ "Annual leave left on"
+    assert html =~ "Annual leave on"
+    assert html =~ "Without this request"
     assert html =~ "Send the request"
   end
 
@@ -263,7 +264,8 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     asked = asking(context, %{"leave_type_id" => bereavement.id})
     html = live |> form("#request", request: asked) |> render_change()
 
-    assert html =~ "-4 hours"
+    assert has_element?(live, "dd", ~r/^\s*4 hours\s*$/)
+    assert has_element?(live, ~s(dd[data-tone="wrong"]), "-4 hours")
     assert html =~ "That is more leave than the balance holds. It can still be approved."
 
     live |> form("#request", request: asked) |> render_submit()
@@ -405,9 +407,9 @@ defmodule LeafWeb.RequestLeaveLiveTest do
       )
       |> render_change()
 
-    assert html =~ "Sick leave left on"
+    assert html =~ "Sick leave on"
     assert html =~ "25 days"
-    refute html =~ "Annual leave left"
+    refute html =~ "Annual leave on"
   end
 
   test "a request with no days to file says so rather than coming back silent", context do

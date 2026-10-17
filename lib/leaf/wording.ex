@@ -82,6 +82,7 @@ defmodule Leaf.Wording do
   @type projected :: %{
           name: String.t(),
           date: String.t(),
+          without: String.t(),
           left: String.t(),
           overdrawn: boolean()
         }
@@ -89,15 +90,17 @@ defmodule Leaf.Wording do
   @doc """
   What one account would be left at were the leave against it approved.
 
-  `left` is the bare figure, for a page that labels it itself. `overdrawn` is a balance that would
-  come out under nothing, which is allowed and is the thing worth showing differently: leave may be
+  Given as `Leaf.Ledger.compared/2` gives it. `without` and `left` are the bare figures, without the
+  leave and with it, for a page that labels them itself. `overdrawn` is a balance that would come
+  out under nothing, which is allowed and is the thing worth showing differently: leave may be
   taken in advance.
   """
-  @spec projected(Statement.t()) :: projected()
-  def projected(statement) do
+  @spec projected({Decimal.t(), Statement.t()}) :: projected()
+  def projected({without, statement}) do
     %{
       name: statement.leave_type.name,
       date: date(statement.as_at),
+      without: figure(without, statement.leave_type.unit),
       left: figure(statement.balance, statement.leave_type.unit),
       overdrawn: Decimal.negative?(statement.balance)
     }

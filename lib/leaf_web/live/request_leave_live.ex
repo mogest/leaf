@@ -126,11 +126,12 @@ defmodule LeafWeb.RequestLeaveLive do
           <header>
             <h2>What it would leave</h2>
           </header>
+          <p>{@balance.name} on {@balance.date}</p>
           <dl>
-            <dt>{@balance.name} left on {@balance.date}</dt>
-            <dd data-tone={@balance.overdrawn && "wrong"}>
-              {@balance.left} <small>if approved</small>
-            </dd>
+            <dt>Without this request</dt>
+            <dd>{@balance.without}</dd>
+            <dt>If approved</dt>
+            <dd data-tone={@balance.overdrawn && "wrong"}>{@balance.left}</dd>
           </dl>
           <p :if={@balance.overdrawn}>
             That is more leave than the balance holds. It can still be approved.
@@ -317,7 +318,7 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:problems, problems)
     |> assign(:portion, portion(socket, order))
     |> assign(:filing, filing(socket, order, entries))
-    |> assign(:balance, moving(projection(socket, entries)))
+    |> assign(:balance, projection(socket, entries))
     |> assign(:replacing, replacing(socket.assigns.replaced, entries))
   end
 
@@ -437,15 +438,13 @@ defmodule LeafWeb.RequestLeaveLive do
   defp projection(%{assigns: %{request: %{status: status}}}, _entries) when status != :pending,
     do: nil
 
+  # One leave type is asked for, so one balance is left.
   defp projection(socket, entries) do
-    socket.assigns.person |> Ledger.projected(Leave.proposed(entries)) |> List.first()
+    case Ledger.compared(socket.assigns.person, Leave.proposed(entries)) do
+      [] -> nil
+      [pair | _] -> Wording.projected(pair)
+    end
   end
-
-  # One leave type is asked for, so one balance is left, and it is said whether the request is a
-  # stretch of days or a single one. What the leave draws is the table's own total, which is why
-  # the figure it came off is not shown beside it.
-  defp moving(nil), do: nil
-  defp moving(statement), do: Wording.projected(statement)
 
   defp file(%{assigns: %{request: nil}} = socket, attrs) do
     Leave.request(socket.assigns.person, socket.assigns.current_person, attrs)

@@ -606,7 +606,8 @@ defmodule Leaf.LedgerTest do
              [{:accrual, ~D[2024-04-30], Decimal.new("66.12"), nil}]
   end
 
-  test "a projection is only the leave types the days draw on that hold a balance", context do
+  test "a projection is only the leave types the days draw on that hold a balance, beside what it held",
+       context do
     person = context.person
     full_time(person)
     annual = leave_type(context, %{})
@@ -630,6 +631,16 @@ defmodule Leaf.LedgerTest do
 
     assert [statement] = Ledger.projected(person, days)
     assert statement.leave_type.id == annual.id
+
+    assert [{without, ^statement}] = Ledger.compared(person, days)
+    assert Decimal.equal?(Decimal.sub(without, statement.balance), 8)
+
+    later = leave_type(context, %{name: "Long service leave", position: 4})
+    entitlement(context, later, %{effective_from: ~D[2030-01-01]})
+
+    assert [{none, opened}] = Ledger.compared(person, [day(later, ~D[2024-05-02], "8", :hours)])
+    assert Decimal.equal?(none, 0)
+    assert Decimal.equal?(opened.balance, -8)
   end
 
   test "balances leave out a type never granted anything, whichever date they are read at",
