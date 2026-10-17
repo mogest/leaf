@@ -352,13 +352,17 @@ form {
   & :is(div, fieldset):has(> [role="tooltip"]) {
     position: relative;
 
-    & > :is(label, legend) svg {
+    & > :is(label, legend) button {
       margin-inline-start: var(--step-1);
       vertical-align: -0.1875rem;
       cursor: help;
 
-      &:hover {
+      &:is(:hover, [aria-expanded="true"]) {
         color: var(--green);
+      }
+
+      & svg {
+        display: block;
       }
     }
 
@@ -379,9 +383,7 @@ form {
       color: var(--ink-quiet);
     }
 
-    &:has(> :is(label, legend) svg:hover) > [role="tooltip"],
-    &:is(div):focus-within > [role="tooltip"],
-    &:has(> div > label > input:focus) > [role="tooltip"] {
+    &:has(> :is(label, legend) button:is(:hover, [aria-expanded="true"])) > [role="tooltip"] {
       display: block;
     }
   }
