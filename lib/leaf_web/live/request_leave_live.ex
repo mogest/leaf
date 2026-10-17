@@ -183,7 +183,7 @@ defmodule LeafWeb.RequestLeaveLive do
     socket
     |> assign(:page_title, "Edit a request")
     |> assign(:title, "Edit a request")
-    |> assign(:action, "Save the change")
+    |> assign(:action, "Save")
     |> assign(:done, "The request is changed.")
     |> assign(:request, request)
     |> assign(:replaced, replaced)
