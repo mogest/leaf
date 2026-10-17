@@ -141,7 +141,7 @@ defmodule LeafWeb.RequestLeaveLive do
                 </tr>
               </tfoot>
             </table>
-            <p :if={@replacing}>{@replacing}</p>
+            <p :if={@replacing} data-tone="caution">{@replacing}</p>
           </section>
         </div>
       </.form>
@@ -354,7 +354,8 @@ defmodule LeafWeb.RequestLeaveLive do
 
   # Amending days this cannot say replaces them, so what that costs is said where it will be read.
   defp replacing(true, [_first | _rest]) do
-    "Those days do not all ask for the whole day. Saving this replaces what they ask for."
+    "Some days in this request are not a whole day of this leave type. This form cannot show those, " <>
+      "so it has filled in whole days instead. Saving changes the request to match."
   end
 
   defp replacing(_replaced, _entries), do: nil

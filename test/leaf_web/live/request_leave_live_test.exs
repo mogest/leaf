@@ -542,8 +542,8 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert html =~ "Mon 2 Mar"
     assert html =~ "Tue 3 Mar"
     assert html =~ "<td>16 hours</td>"
-    assert html =~ "Those days do not all ask for the whole day."
-    assert html =~ "Saving this replaces what they ask for."
+    assert html =~ "are not a whole day of this leave type."
+    assert html =~ "Saving changes the request to match."
   end
 
   test "amending part of a day starts from it, in its leave type's unit", context do
@@ -557,7 +557,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     {:ok, amend, html} = live(context.conn, ~p"/leave/#{request}/amend")
 
     assert has_element?(amend, ~s(input[name="request[amount]"][value="0.50"]))
-    refute html =~ "Those days do not all ask for the whole day."
+    refute html =~ "are not a whole day of this leave type."
   end
 
   # Before a type counted in days was always held in days, the form filed its part days in hours.
@@ -573,6 +573,6 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     {:ok, _amend, html} = live(context.conn, ~p"/leave/#{request.id}/amend")
 
-    assert html =~ "Those days do not all ask for the whole day."
+    assert html =~ "are not a whole day of this leave type."
   end
 end

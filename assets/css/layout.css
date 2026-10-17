@@ -643,6 +643,10 @@ main.request-leave {
   & dd[data-tone="wrong"] {
     color: var(--clay-ink);
   }
+
+  & p[data-tone="caution"] {
+    color: var(--ochre);
+  }
 }
 
 main.who-is-away {
