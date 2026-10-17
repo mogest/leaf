@@ -297,8 +297,16 @@ main > header {
 
 main > header:has(> nav) {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   row-gap: var(--step-2);
+
+  @media (width < 48rem) {
+    display: flex;
+
+    & > :is(nav, h1) {
+      flex-basis: 100%;
+    }
+  }
 
   & > h1 {
     grid-row: 2;
@@ -309,6 +317,11 @@ main > header:has(> nav) {
   }
 
   & > .button {
+    grid-area: 1 / -2 / span 2;
+    align-self: start;
+  }
+
+  & > form {
     grid-area: 1 / 2 / span 2;
     align-self: start;
   }

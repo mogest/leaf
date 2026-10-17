@@ -14,7 +14,7 @@ section > header {
     flex-grow: 1;
   }
 
-  & > :is(a, form) {
+  & > a {
     font-size: var(--size-base);
     color: var(--ink-soft);
   }
@@ -100,6 +100,17 @@ li > button[popovertarget] {
   &:disabled {
     background: var(--ink-faint);
     cursor: not-allowed;
+  }
+
+  &[data-tone="quiet"] {
+    border: 1px solid var(--edge);
+    background: var(--sheet);
+    color: var(--ink-quiet);
+
+    &:hover {
+      border-color: var(--green);
+      color: var(--green);
+    }
   }
 }
 

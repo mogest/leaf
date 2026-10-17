@@ -76,6 +76,9 @@ defmodule LeafWeb.PersonLive do
           <.link navigate={~p"/people"}>People</.link>
         </nav>
         <h1>{@person.name}</h1>
+        <.form :if={@impersonable?} for={%{}} action={~p"/impersonate/#{@person}"}>
+          <button class="button" data-tone="quiet">Impersonate</button>
+        </.form>
         <.link :if={@admin?} class="button" navigate={~p"/people/#{@person}/edit"}>Edit</.link>
       </header>
 
@@ -83,9 +86,6 @@ defmodule LeafWeb.PersonLive do
         <section>
           <header>
             <h2>Details</h2>
-            <.form :if={@impersonable?} for={%{}} action={~p"/impersonate/#{@person}"}>
-              <button>Impersonate</button>
-            </.form>
           </header>
           <dl>
             <dt>Email</dt>
