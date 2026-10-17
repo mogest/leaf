@@ -3,10 +3,9 @@ defmodule LeafWeb.CalendarLive do
   One calendar: the public holidays entered on it, and the regions inside it.
 
   Only what is local to the calendar is entered here — a region's page holds its anniversary days
-  and nothing its country already observes. Holidays go on the dates they are observed rather than
-  the dates they fall, since that is the day nobody works. A holiday entered in error is deleted
-  rather than superseded — left there it would keep counting against every public holiday allowance
-  drawn from the calendar.
+  and nothing its country already observes. A holiday entered in error is deleted rather than
+  superseded — left there it would keep counting against every public holiday allowance drawn from
+  the calendar.
   """
 
   use LeafWeb, :live_view
@@ -70,6 +69,7 @@ defmodule LeafWeb.CalendarLive do
             <tr>
               <th scope="col">Date</th>
               <th scope="col">Name</th>
+              <th scope="col">Moves to</th>
               <td></td>
             </tr>
           </thead>
@@ -77,6 +77,7 @@ defmodule LeafWeb.CalendarLive do
             <tr :for={holiday <- @holidays}>
               <td>{holiday.date}</td>
               <th scope="row">{holiday.name}</th>
+              <td>{holiday.observed_on}</td>
               <td>
                 <Parts.row_menu id={"holiday-#{holiday.id}"} label={holiday.name}>
                   <button
@@ -120,11 +121,15 @@ defmodule LeafWeb.CalendarLive do
               <h2>Add a holiday</h2>
             </header>
             <.input field={@holiday_form[:date]} type="date" label="Date" />
+            <.input field={@holiday_form[:observed_on]} type="date" label="Moves to" />
             <.input field={@holiday_form[:name]} type="text" label="Name" />
           </section>
 
           <footer>
-            <p>A holiday goes on the date it is observed — a Saturday one on the Monday after.</p>
+            <p>
+              A holiday goes on the day it falls. If it falls on a weekend, Moves to is the weekday
+              taken instead by anybody who doesn't work that day.
+            </p>
             <button class="button" type="submit">Add it</button>
           </footer>
         </.form>
@@ -164,8 +169,16 @@ defmodule LeafWeb.CalendarLive do
   end
 
   defp row(holiday) do
-    %{id: holiday.id, date: Wording.date(holiday.date), name: holiday.name}
+    %{
+      id: holiday.id,
+      date: Wording.date(holiday.date),
+      observed_on: moves_to(holiday.observed_on),
+      name: holiday.name
+    }
   end
+
+  defp moves_to(nil), do: nil
+  defp moves_to(date), do: Wording.date(date)
 
   defp added(socket, {:ok, holiday}) do
     socket |> put_flash(:info, "#{holiday.name} is on the calendar.") |> blank() |> listed()

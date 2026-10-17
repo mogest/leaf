@@ -177,9 +177,11 @@ defmodule Leaf.Org do
   def holidays_preload, do: [:public_holidays, parent: :public_holidays]
 
   @doc """
-  Every public holiday somebody on a calendar observes within `range`, in date order.
+  Every public holiday on a calendar that falls or is observed within `range`, in date order.
 
   A region observes its country's holidays as well as its own, and cannot decline one of them.
+  Which of a holiday's two dates somebody takes depends on their work pattern, which is
+  `Leaf.People.public_holidays/2`'s to say, so both are matched here.
   """
   @spec observed_holidays(Calendar.t(), Date.Range.t()) :: [PublicHoliday.t()]
   def observed_holidays(calendar, range) do
@@ -190,7 +192,7 @@ defmodule Leaf.Org do
     # two names for it.
     (own ++ holidays(country))
     |> Enum.uniq_by(& &1.date)
-    |> Enum.filter(&(&1.date in range))
+    |> Enum.filter(&(&1.date in range or &1.observed_on in range))
     |> Enum.sort_by(& &1.date, Date)
   end
 

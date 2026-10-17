@@ -173,4 +173,17 @@ defmodule Leaf.OrgTest do
     assert {:error, changeset} = Org.create_public_holiday(calendar, nil, attrs)
     assert errors_on(changeset).date == ["has already been taken"]
   end
+
+  test "only a weekend holiday moves, and only to a later day" do
+    organisation = Fixtures.organisation()
+    calendar = Fixtures.calendar(%{organisation_id: organisation.id})
+    christmas = %{date: ~D[2027-12-25], observed_on: ~D[2027-12-25], name: "Christmas Day"}
+    boxing_day = %{date: ~D[2025-12-26], observed_on: ~D[2025-12-29], name: "Boxing Day"}
+
+    assert {:error, changeset} = Org.create_public_holiday(calendar, nil, christmas)
+    assert errors_on(changeset).observed_on == ["must be after the day it falls on"]
+
+    assert {:error, changeset} = Org.create_public_holiday(calendar, nil, boxing_day)
+    assert errors_on(changeset).observed_on == ["is only for a holiday on a weekend"]
+  end
 end

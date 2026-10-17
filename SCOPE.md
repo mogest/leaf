@@ -246,6 +246,10 @@ A region cannot decline a national holiday: whatever the country observes, every
 observes. Where that is wrong the place is not a region of that country as far as this system
 is concerned, and belongs at the top level as a calendar of its own.
 
+A holiday on a weekend can name the weekday it moves to (NZ Mondayisation, HA ss 45, 45A).
+Somebody whose work pattern has them working the day it falls on observes it there; everybody else
+observes it on the weekday.
+
 Which calendars exist, and what is on them, is the organisation's own record — nothing is
 supplied with the system.
 

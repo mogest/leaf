@@ -362,6 +362,46 @@ defmodule Leaf.PeopleTest do
     assert Enum.map(People.public_holidays(context.person, span), & &1.name) == ["King's"]
   end
 
+  test "a weekend holiday moves to its weekday only for somebody who does not work the day it falls",
+       context do
+    calendar = Fixtures.calendar(%{organisation_id: context.organisation.id})
+
+    Fixtures.public_holiday(%{
+      calendar_id: calendar.id,
+      date: ~D[2027-12-25],
+      observed_on: ~D[2027-12-27],
+      name: "Christmas Day"
+    })
+
+    Fixtures.public_holiday(%{
+      calendar_id: calendar.id,
+      date: ~D[2027-12-26],
+      observed_on: ~D[2027-12-28],
+      name: "Boxing Day"
+    })
+
+    saturday_worker = Fixtures.person(%{organisation_id: context.organisation.id})
+
+    for person <- [context.person, saturday_worker] do
+      Fixtures.calendar_assignment(%{person_id: person.id, calendar_id: calendar.id})
+    end
+
+    Fixtures.work_pattern(%{person_id: context.person.id})
+    Fixtures.work_pattern(%{person_id: saturday_worker.id, saturday_hours: "8"})
+
+    week = Date.range(~D[2027-12-25], ~D[2027-12-31])
+    taken = &(&1 |> People.public_holidays(week) |> Enum.map(fn holiday -> holiday.date end))
+
+    assert taken.(context.person) == [~D[2027-12-27], ~D[2027-12-28]]
+    assert taken.(saturday_worker) == [~D[2027-12-25], ~D[2027-12-28]]
+
+    after_christmas = Date.range(~D[2027-12-27], ~D[2027-12-31])
+
+    assert Enum.map(People.public_holidays(saturday_worker, after_christmas), & &1.name) == [
+             "Boxing Day"
+           ]
+  end
+
   test "a stretch on no calendar is a hole in the record where the whole share is counted",
        context do
     nz = Fixtures.calendar(%{organisation_id: context.organisation.id})

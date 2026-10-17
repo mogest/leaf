@@ -396,15 +396,17 @@ defmodule Leaf.People do
   end
 
   @doc """
-  The public holidays a person observes over `range`, in date order.
+  The public holidays a person observes over `range`, in date order, each `date` the one they take.
 
   Which calendar they are on can change within the range, so each stretch is read against the
   calendar in force over it, its country's holidays included. A stretch they are on no calendar for
   contributes nothing, because a calendar nobody has assigned holds no holidays to show.
+
+  A holiday that moves goes to its `observed_on` unless the person works the day it falls on.
   """
   @spec public_holidays(Person.t(), Date.Range.t()) :: [PublicHoliday.t()]
   def public_holidays(person, range) do
-    person |> calendar_segments(range) |> observed()
+    person |> calendar_segments(range) |> observed(person)
   end
 
   @doc """
@@ -416,7 +418,7 @@ defmodule Leaf.People do
   """
   @spec public_holidays!(Person.t(), Date.Range.t()) :: [PublicHoliday.t()]
   def public_holidays!(person, range) do
-    person |> calendar_segments(range) |> covering!(range, person, "calendar") |> observed()
+    person |> calendar_segments(range) |> covering!(range, person, "calendar") |> observed(person)
   end
 
   @doc """
@@ -501,9 +503,30 @@ defmodule Leaf.People do
     |> Enum.map(fn {span, assignment} -> {span, assignment.calendar} end)
   end
 
-  defp observed(segments) do
-    Enum.flat_map(segments, fn {span, calendar} -> Org.observed_holidays(calendar, span) end)
+  defp observed(segments, person) do
+    patterns = succession(person, :work_patterns)
+
+    Enum.flat_map(segments, fn {span, calendar} ->
+      calendar
+      |> Org.observed_holidays(span)
+      |> Enum.map(&taken(&1, patterns))
+      |> Enum.filter(&(&1.date in span))
+      |> Enum.uniq_by(& &1.date)
+      |> Enum.sort_by(& &1.date, Date)
+    end)
   end
+
+  defp taken(%{observed_on: nil} = holiday, _patterns), do: holiday
+
+  defp taken(holiday, patterns) do
+    case works?(Timeline.fetch(patterns, holiday.date), holiday.date) do
+      true -> holiday
+      false -> %{holiday | date: holiday.observed_on}
+    end
+  end
+
+  defp works?({:ok, pattern}, date), do: working_day?(pattern, date)
+  defp works?(:error, _date), do: false
 
   defp zone({:ok, assignment}), do: assignment.calendar.time_zone
   defp zone(:error), do: "Etc/UTC"

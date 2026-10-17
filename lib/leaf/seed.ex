@@ -179,10 +179,9 @@ defmodule Leaf.Seed do
     }
   ]
 
-  # New Zealand's national public holidays, on the dates they are observed rather than the dates
-  # they fall — a Saturday holiday is taken on the following Monday. Anniversary days are not here:
-  # they belong to a region, and everybody in the country observes this list whichever region that
-  # is.
+  # New Zealand's national public holidays, a weekend one with the weekday it moves to for anybody
+  # who does not work that weekend day. Anniversary days are not here: they belong to a region, and
+  # everybody in the country observes this list whichever region that is.
   @public_holiday_dates [
     {~D[2025-01-01], "New Year's Day"},
     {~D[2025-01-02], "Day after New Year's Day"},
@@ -200,23 +199,23 @@ defmodule Leaf.Seed do
     {~D[2026-02-06], "Waitangi Day"},
     {~D[2026-04-03], "Good Friday"},
     {~D[2026-04-06], "Easter Monday"},
-    {~D[2026-04-27], "ANZAC Day (observed)"},
+    {~D[2026-04-25], ~D[2026-04-27], "ANZAC Day"},
     {~D[2026-06-01], "King's Birthday"},
     {~D[2026-07-10], "Matariki"},
     {~D[2026-10-26], "Labour Day"},
     {~D[2026-12-25], "Christmas Day"},
-    {~D[2026-12-28], "Boxing Day (observed)"},
+    {~D[2026-12-26], ~D[2026-12-28], "Boxing Day"},
     {~D[2027-01-01], "New Year's Day"},
-    {~D[2027-01-04], "Day after New Year's Day (observed)"},
-    {~D[2027-02-08], "Waitangi Day (observed)"},
+    {~D[2027-01-02], ~D[2027-01-04], "Day after New Year's Day"},
+    {~D[2027-02-06], ~D[2027-02-08], "Waitangi Day"},
     {~D[2027-03-26], "Good Friday"},
     {~D[2027-03-29], "Easter Monday"},
-    {~D[2027-04-26], "ANZAC Day (observed)"},
+    {~D[2027-04-25], ~D[2027-04-26], "ANZAC Day"},
     {~D[2027-06-07], "King's Birthday"},
     {~D[2027-06-25], "Matariki"},
     {~D[2027-10-25], "Labour Day"},
-    {~D[2027-12-27], "Christmas Day (observed)"},
-    {~D[2027-12-28], "Boxing Day (observed)"}
+    {~D[2027-12-25], ~D[2027-12-27], "Christmas Day"},
+    {~D[2027-12-26], ~D[2027-12-28], "Boxing Day"}
   ]
 
   # A region holds what is local to it and nothing else. Anniversary days fall on the Monday nearest
@@ -298,10 +297,15 @@ defmodule Leaf.Seed do
   end
 
   defp add_holidays(calendar, dates) do
-    Enum.each(dates, fn {date, name} ->
-      {:ok, _holiday} = Org.create_public_holiday(calendar, @system, %{date: date, name: name})
+    Enum.each(dates, fn holiday ->
+      {:ok, _holiday} = Org.create_public_holiday(calendar, @system, holiday_attrs(holiday))
     end)
   end
+
+  defp holiday_attrs({date, name}), do: %{date: date, name: name}
+
+  defp holiday_attrs({date, observed_on, name}),
+    do: %{date: date, observed_on: observed_on, name: name}
 
   defp add_leave_types(organisation) do
     @leave_types
