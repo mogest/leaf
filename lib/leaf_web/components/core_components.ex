@@ -222,6 +222,61 @@ defmodule LeafWeb.CoreComponents do
     """
   end
 
+  @doc """
+  Renders a choice of one option, each carrying what applies only once it is chosen.
+
+  An option's inner block is rendered beside it while it is the one chosen.
+
+  ```heex
+  <.radios field={@form[:expiry_rule]} label="Rollover">
+    <:option value="never" label="Rolls over indefinitely" />
+    <:option value="cap" label="Rolls over up to a cap of">
+      <.input field={@form[:rollover_cap]} aria-label="Rollover cap" unit="days" />
+    </:option>
+  </.radios>
+  ```
+  """
+  attr :field, FormField, required: true
+  attr :label, :string, required: true
+  attr :value, :any, doc: "the option chosen, where it is not the field's own value"
+
+  attr :help, :string,
+    default: nil,
+    doc: "shown while the icon by the label is hovered or an option has focus"
+
+  slot :option, required: true do
+    attr :value, :string, required: true
+    attr :label, :string, required: true
+  end
+
+  def radios(assigns) do
+    assigns =
+      assigns
+      |> assign(:errors, Enum.map(assigns.field.errors, &translate_error(&1)))
+      |> assign(:chosen, to_string(Map.get(assigns, :value, assigns.field.value)))
+
+    ~H"""
+    <fieldset>
+      <legend>{@label}<.info :if={@help} /></legend>
+      <p :if={@help} id={help_id(@field.id)} role="tooltip">{@help}</p>
+      <div :for={option <- @option}>
+        <label>
+          <input
+            type="radio"
+            name={@field.name}
+            value={option.value}
+            checked={option.value == @chosen}
+            {described(@field.id, @errors, @help)}
+          />
+          {option.label}
+        </label>
+        {if option.value == @chosen and option.inner_block, do: render_slot(option)}
+      </div>
+      <.errors id={@field.id} errors={@errors} />
+    </fieldset>
+    """
+  end
+
   defp errors(assigns) do
     ~H"""
     <p :for={{msg, n} <- Enum.with_index(@errors, 1)} id={error_id(@id, n)}>{msg}</p>

@@ -163,28 +163,103 @@ defmodule LeafWeb.SettingsLiveTest do
     assert page_title(live) =~ "Aotearoa"
   end
 
-  test "an entitlement that grants nothing is refused a grant period", context do
+  test "an entitlement that grants nothing asks nothing about granting", context do
     leave_type = Fixtures.leave_type(%{organisation_id: context.organisation.id})
     policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
 
-    {:ok, live, _html} = live(context.conn, ~p"/settings/policies/#{policy}/entitlements/new")
+    {:ok, live, html} = live(context.conn, ~p"/settings/policies/#{policy}/entitlements/new")
+    assert html =~ "Grant period"
 
     html =
       live
       |> form("#entitlement",
-        policy_entitlement: %{
-          "leave_type_id" => leave_type.id,
-          "effective_from" => "2024-01-01",
-          "amount_source" => "none",
-          "grant_period" => "year",
-          "pro_rated_by_fte" => "false",
-          "expiry_rule" => "never"
-        }
+        policy_entitlement: %{"leave_type_id" => leave_type.id, "amount_source" => "none"}
       )
-      |> render_submit()
+      |> render_change()
 
-    assert html =~ "must be blank"
-    assert Policies.entitlements(policy.id) == []
+    refute html =~ "Grant period"
+    refute html =~ "What happens to unused leave"
+
+    live |> form("#entitlement") |> render_submit()
+
+    assert [%{amount_source: :none, grant_period: nil, expiry_rule: :never}] =
+             Policies.entitlements(policy.id)
+  end
+
+  test "an allowance moved off the start date shows the timing it is held to", context do
+    leave_type = Fixtures.leave_type(%{organisation_id: context.organisation.id})
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+
+    entitlement =
+      Fixtures.policy_entitlement(%{
+        leave_policy_id: policy.id,
+        leave_type_id: leave_type.id,
+        amount_source: :public_holidays,
+        grant_amount: nil
+      })
+
+    {:ok, live, _html} =
+      live(context.conn, ~p"/settings/policies/#{policy}/entitlements/#{entitlement}")
+
+    live
+    |> form("#entitlement", policy_entitlement: %{"grant_timing" => "period_start"})
+    |> render_change()
+
+    live
+    |> form("#entitlement", policy_entitlement: %{"grant_basis" => "calendar_year"})
+    |> render_change()
+
+    assert has_element?(
+             live,
+             ~s(input[name="policy_entitlement[grant_timing]"][checked][value="daily"])
+           )
+  end
+
+  test "a new entitlement offers only what its choices leave meaning, and restores what it hid",
+       context do
+    leave_type = Fixtures.leave_type(%{organisation_id: context.organisation.id})
+    policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
+    period = ~s(select[name="policy_entitlement[grant_period]"] option)
+    period_start = ~s(input[name="policy_entitlement[grant_timing]"][value="period_start"])
+
+    {:ok, live, _html} = live(context.conn, ~p"/settings/policies/#{policy}/entitlements/new")
+
+    live
+    |> form("#entitlement", policy_entitlement: %{"grant_basis" => "birthday"})
+    |> render_change()
+
+    assert has_element?(live, period, "Year")
+    refute has_element?(live, period, "Month")
+
+    holidays = %{"amount_source" => "public_holidays", "grant_basis" => "employment_date"}
+    live |> form("#entitlement", policy_entitlement: holidays) |> render_change()
+    assert has_element?(live, period_start)
+
+    holidays = %{holidays | "grant_basis" => "calendar_year"}
+    live |> form("#entitlement", policy_entitlement: holidays) |> render_change()
+    refute has_element?(live, period_start)
+
+    chosen = %{"leave_type_id" => leave_type.id, "amount_source" => "none"}
+    live |> form("#entitlement", policy_entitlement: chosen) |> render_change()
+
+    live
+    |> form("#entitlement", policy_entitlement: %{"amount_source" => "fixed"})
+    |> render_change()
+
+    live
+    |> form("#entitlement", policy_entitlement: %{"grant_amount" => "160"})
+    |> render_submit()
+
+    assert [
+             %{
+               amount_source: :fixed,
+               grant_period: :year,
+               grant_basis: :employment_date,
+               grant_timing: :daily,
+               pro_rated_by_fte: true,
+               expiry_rule: :never
+             }
+           ] = Policies.entitlements(policy.id)
   end
 
   test "a calendar holds the holidays put on it, and lets one off again", context do
@@ -284,9 +359,8 @@ defmodule LeafWeb.SettingsLiveTest do
     assert html =~ "After a year"
     refute html =~ "above the cap"
 
-    live
-    |> form("#entitlement", policy_entitlement: %{"expiry_rule" => "cap", "rollover_cap" => "40"})
-    |> render_change()
+    live |> form("#entitlement", policy_entitlement: %{"expiry_rule" => "cap"}) |> render_change()
+    live |> form("#entitlement", policy_entitlement: %{"rollover_cap" => "40"}) |> render_change()
 
     assert render_async(live, 2000) =~ "Loses 325 hours above the cap on 3 March 2025"
 

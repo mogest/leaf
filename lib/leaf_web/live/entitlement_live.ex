@@ -2,9 +2,9 @@ defmodule LeafWeb.EntitlementLive do
   @moduledoc """
   What one policy grants for one leave type, over one stretch of time.
 
-  Every rule §4.5 lists is a field here, and which of them apply to each other is the changeset's
-  to say rather than the form's: an amount that grants nothing wants no grant period, and an
-  entitlement that never lapses wants no cap. The form offers them all and reports the refusal.
+  Every rule §4.5 lists is a field here, offered only where the choices before it leave it meaning
+  anything: an amount that grants nothing wants no grant period, and an entitlement that never
+  lapses wants no cap. The changeset clears whatever the form stops offering.
   """
 
   use LeafWeb, :live_view
@@ -15,13 +15,6 @@ defmodule LeafWeb.EntitlementLive do
   alias Leaf.Ledger
   alias Leaf.Org
   alias Leaf.Policies
-  alias Phoenix.HTML.Form
-
-  @sources [
-    {"A fixed amount", "fixed"},
-    {"Their share of the public holiday calendar", "public_holidays"},
-    {"Nothing — recorded only", "none"}
-  ]
 
   @bases [
     {"Employee start date", "employment_date"},
@@ -31,18 +24,6 @@ defmodule LeafWeb.EntitlementLive do
   ]
 
   @periods [{"Month", "month"}, {"Quarter", "quarter"}, {"Year", "year"}]
-
-  @timings [
-    {"Accrues day by day", "daily"},
-    {"Lands whole when the period opens", "period_start"}
-  ]
-
-  @rules [
-    {"Rolls over indefinitely", "never"},
-    {"Rolls over up to a cap", "cap"},
-    {"Lapses at the end of its period", "grant_period_end"},
-    {"Lapses a fixed window after it lands", "window"}
-  ]
 
   @checkpoints [{"After a year", 12}, {"After two years", 24}, {"After three years", 36}]
 
@@ -62,11 +43,11 @@ defmodule LeafWeb.EntitlementLive do
   @impl Phoenix.LiveView
   @role :admin
   def handle_event("validate", %{"policy_entitlement" => params}, socket) do
-    changeset = change(socket.assigns, params)
+    changeset = change(socket.assigns, Map.merge(socket.assigns.defaults, params))
 
     socket =
       socket
-      |> assign(:form, to_form(changeset, action: :validate))
+      |> formed(changeset, action: :validate)
       |> assign(:unfunded, [])
       |> rehearsing(changeset)
 
@@ -80,6 +61,7 @@ defmodule LeafWeb.EntitlementLive do
 
   @role :admin
   def handle_event("save", %{"policy_entitlement" => params} = submitted, socket) do
+    params = Map.merge(socket.assigns.defaults, params)
     written = write(socket.assigns, params, submitted["confirmed"] == "true")
 
     {:noreply, socket |> assign(:unfunded, []) |> saved(written)}
@@ -153,80 +135,85 @@ defmodule LeafWeb.EntitlementLive do
           <header>
             <h2>What it grants</h2>
           </header>
-          <.input
+          <.radios
             field={@form[:amount_source]}
-            type="select"
             label="Where the amount comes from"
-            options={@choices.sources}
             help="A fixed amount: a set number of hours or days each period. Their share of the public holiday
               calendar: holidays become ordinary working days, and each person gets leave to cover the ones on
               their calendar, so a part-timer who never works Mondays still gets their share. Nothing: no
               balance, the leave is only recorded, as for unpaid leave."
-          />
-          <.input
-            field={@form[:pro_rated_by_fte]}
-            type="checkbox"
-            label="Pro-rated by the hours they work"
-            help="Tick to scale the amount to each person's hours: someone working three days a week gets 60% of
-              it. Leave unticked to give everyone the same amount."
-          />
-          <.input
-            field={@form[:grant_amount]}
-            type="text"
-            phx-debounce="500"
-            label={amount_label(@form[:pro_rated_by_fte].value)}
-            unit={unit(@types[@form[:leave_type_id].value])}
-            help="How much one person gets each grant period. When pro-rated, enter what someone working full
-              time gets."
-          />
-          <div>
+          >
+            <:option value="fixed" label="A fixed amount of">
+              <.input
+                field={@form[:grant_amount]}
+                phx-debounce="500"
+                aria-label="A fixed amount of"
+                unit={amount_unit(@types[@terms.leave_type_id], @terms.pro_rated_by_fte)}
+              />
+            </:option>
+            <:option value="public_holidays" label="Their share of the public holiday calendar" />
+            <:option value="none" label="Nothing — recorded only" />
+          </.radios>
+          <%= if @terms.amount_source != :none do %>
             <.input
-              field={@form[:grant_period]}
-              type="select"
-              label="Grant period"
-              prompt="not granted"
-              options={@choices.periods}
-              help="The stretch of time the amount is for. It builds up across each period or lands at its start.
-                A rollover cap, or lapsing at the end of the period, applies as each period ends. Must be Year when
-                aligned to a birthdate."
+              field={@form[:pro_rated_by_fte]}
+              type="checkbox"
+              label="Pro-rated by the hours they work"
+              help="Tick to scale the amount to each person's hours: someone working three days a week gets 60%
+                of it, and a fixed amount is entered as what someone working full time gets. Leave unticked to
+                give everyone the same amount."
             />
-            <.input
-              field={@form[:grant_basis]}
-              type="select"
-              label="Aligned to"
-              prompt="not granted"
-              options={@choices.bases}
-              help="When each period starts. Employee start date: periods run from the day they joined, so years
-                start on each work anniversary. Employee birthdate: years start on their birthday. Year only, and
-                anyone with no birthdate recorded gets nothing. Calendar year: years start on 1 January, quarters
-                every three months from it, months on the 1st. Financial year: the same, counted from the first
-                month of your financial year."
-            />
-          </div>
-          <div>
-            <.input
+            <div>
+              <.input
+                field={@form[:grant_period]}
+                type="select"
+                label="Grant period"
+                options={periods(@terms.grant_basis)}
+                help="The stretch of time the amount is for. It builds up across each period or lands at its
+                  start. A rollover cap, or lapsing at the end of the period, applies as each period ends."
+              />
+              <.input
+                field={@form[:grant_basis]}
+                type="select"
+                label="Aligned to"
+                options={@bases}
+                help="When each period starts. Employee start date: periods run from the day they joined, so
+                  years start on each work anniversary. Employee birthdate: years start on their birthday, and
+                  anyone with no birthdate recorded gets nothing. Calendar year: years start on 1 January,
+                  quarters every three months from it, months on the 1st. Financial year: the same, counted from
+                  the first month of your financial year."
+              />
+            </div>
+            <.radios
               field={@form[:grant_timing]}
-              type="select"
               label="How it arrives"
-              prompt="not granted"
-              options={@choices.timings}
+              value={@terms.grant_timing}
               help="Accrues day by day: the balance builds through the period from their first day. Lands whole:
                 the full amount arrives on the period's first day. Anyone who joins or moves onto these terms
                 part-way through a period gets nothing until the next one, including everyone if this entitlement
-                starts mid-period."
-            />
+                starts mid-period. A public holiday allowance lands whole only when aligned to the start date."
+            >
+              <:option value="daily" label="Accrues day by day" />
+              <:option
+                :if={
+                  @terms.amount_source != :public_holidays or @terms.grant_basis == :employment_date
+                }
+                value="period_start"
+                label="Lands whole when the period opens"
+              />
+            </.radios>
             <.input
+              :if={@terms.amount_source == :fixed and @terms.grant_timing == :daily}
               field={@form[:suspension_allowance_weeks]}
               type="text"
               phx-debounce="500"
               label="Unpaid leave allowance"
               unit="weeks"
-              help="Only for a fixed amount that accrues day by day. Leave that pauses accrual, such as unpaid
-                leave, normally earns nothing. In each period, up to this many weeks of it still earn leave,
-                counted afresh every period. Once leave has been taken, this can be raised but not lowered or
-                removed."
+              help="Leave that pauses accrual, such as unpaid leave, normally earns nothing. In each period, up to
+                this many weeks of it still earn leave, counted afresh every period. Once leave has been taken,
+                this can be raised but not lowered or removed."
             />
-          </div>
+          <% end %>
         </section>
 
         <section>
@@ -235,15 +222,16 @@ defmodule LeafWeb.EntitlementLive do
           </header>
           <div>
             <.input
+              :if={@terms.amount_source == :fixed and @terms.grant_basis == :employment_date}
               field={@form[:qualifying_months]}
               type="number"
               phx-debounce="500"
               label="First granted after"
               unit="months' service"
-              help="Leave empty to grant from their first day. Only for a fixed amount aligned to their start
-                date, up to 12 months. With 6, nothing is granted until six months after they join, and each
-                period runs from that date. Current staff's periods move too, so replacing an entitlement that
-                lands whole skips the grant for the period the replacement starts in."
+              help="Up to 12 months. Leave empty to grant from their first day. With 6, nothing is granted until
+                six months after they join, and each period runs from that date. Current staff's periods move
+                too, so replacing an entitlement that lands whole skips the grant for the period the
+                replacement starts in."
             />
             <.input
               field={@form[:takeable_after_months]}
@@ -258,39 +246,37 @@ defmodule LeafWeb.EntitlementLive do
           </div>
         </section>
 
-        <section>
+        <section :if={@terms.amount_source != :none}>
           <header>
             <h2>What happens to unused leave</h2>
           </header>
-          <.input
+          <.radios
             field={@form[:expiry_rule]}
-            type="select"
-            label="Rollover"
-            options={@choices.rules}
-            help="What happens to an unused balance at the end of each period: carried over in full, carried over
-              up to a cap, or lost. Lapsing a fixed window after it lands suits leave tied to a date, such as a
-              birthday."
-          />
-          <div>
-            <.input
-              field={@form[:rollover_cap]}
-              type="text"
-              phx-debounce="500"
-              label="Rollover cap"
-              unit={unit(@types[@form[:leave_type_id].value])}
-              help="Only for rolling over up to a cap. The most that carries into the next period. Anything above
-                it is lost when the period ends."
-            />
-            <.input
-              field={@form[:expiry_window_days]}
-              type="number"
-              phx-debounce="500"
-              label="Lapses after"
-              unit="days"
-              help="Only for lapsing a fixed window after it lands. How long each grant can be used: 14 means
-                birthday leave must be taken within two weeks of the birthday."
-            />
-          </div>
+            label="At the end of each period"
+            help="What happens to an unused balance: carried over in full, carried over up to a cap, or lost.
+              Lapsing a fixed window after it lands suits leave tied to a date, such as a birthday: 14 days
+              means birthday leave must be taken within two weeks of the birthday."
+          >
+            <:option value="never" label="Rolls over indefinitely" />
+            <:option value="cap" label="Rolls over up to a cap of">
+              <.input
+                field={@form[:rollover_cap]}
+                phx-debounce="500"
+                aria-label="Rolls over up to a cap of"
+                unit={unit(@types[@terms.leave_type_id])}
+              />
+            </:option>
+            <:option value="grant_period_end" label="Lapses at the end of its period" />
+            <:option value="window" label="Lapses within">
+              <.input
+                field={@form[:expiry_window_days]}
+                type="number"
+                phx-debounce="500"
+                aria-label="Lapses within"
+                unit="days of landing"
+              />
+            </:option>
+          </.radios>
         </section>
 
         <section :if={@unfunded != []}>
@@ -392,7 +378,7 @@ defmodule LeafWeb.EntitlementLive do
       |> assign(:entitlement, entitlement)
       |> assign(:leave_types, Enum.map(offered, &{Wording.leave_type(&1), &1.id}))
       |> assign(:types, Map.new(types, &{&1.id, &1}))
-      |> assign(:choices, choices())
+      |> assign(:bases, @bases)
       |> assign(:unfunded, [])
       |> assign(:samples, Ledger.rehearsal_names(policy.organisation_id))
       |> assign(:rehearsals, [])
@@ -400,14 +386,15 @@ defmodule LeafWeb.EntitlementLive do
       |> assign(:refused, false)
       |> assign(:shown, 0)
       |> assign(:drawn_on, entitlement != nil and Policies.drawn_on?(entitlement))
+      |> assign(:defaults, opening(entitlement, organisation))
 
-    changeset = change(socket.assigns, opening(entitlement, organisation))
+    changeset = change(socket.assigns, socket.assigns.defaults)
 
     {from, to} =
       Ledger.rehearsal_dates(organisation, Ecto.Changeset.get_field(changeset, :effective_from))
 
     socket
-    |> assign(:form, to_form(changeset))
+    |> formed(changeset)
     |> assign(:placeholder, placeholder(from, to))
     |> rehearsing(changeset)
   end
@@ -438,7 +425,8 @@ defmodule LeafWeb.EntitlementLive do
   defp chosen(assigns, params), do: assigns.types[params["leave_type_id"]]
 
   # An entitlement that has always applied starts where the organisation's records do: nothing
-  # before that date grants anything anyway.
+  # before that date grants anything anyway. A new one's fields fall back to these when the form
+  # stops offering them, so choosing one option and returning to another restores their defaults.
   defp opening(nil, organisation) do
     %{
       "effective_from" => to_string(organisation.tracked_from),
@@ -453,13 +441,18 @@ defmodule LeafWeb.EntitlementLive do
 
   defp opening(_entitlement, _organisation), do: %{}
 
-  # The amount is a full-time figure only where it is pro-rated, so the label says so.
-  defp amount_label(pro_rated) do
-    case Form.normalize_value("checkbox", pro_rated) do
-      true -> "Amount, at 1.0 FTE"
-      false -> "Amount"
-    end
+  # The terms are read once the changeset has settled them, so that what is offered follows what
+  # it will save rather than what was submitted.
+  defp formed(socket, changeset, opts \\ []) do
+    assign(socket, form: to_form(changeset, opts), terms: Ecto.Changeset.apply_changes(changeset))
   end
+
+  defp periods(:birthday), do: [{"Year", "year"}]
+  defp periods(_basis), do: @periods
+
+  # The amount is a full-time figure only where it is pro-rated, so the unit says so.
+  defp amount_unit(type, true), do: String.trim("#{unit(type)} at 1.0 FTE")
+  defp amount_unit(type, _pro_rated), do: unit(type)
 
   defp unit(nil), do: nil
   defp unit(type), do: to_string(type.unit)
@@ -533,10 +526,6 @@ defmodule LeafWeb.EntitlementLive do
       Wording.date(movement.date)
   end
 
-  defp choices do
-    %{sources: @sources, bases: @bases, periods: @periods, timings: @timings, rules: @rules}
-  end
-
   defp write(%{entitlement: nil} = assigns, params, _confirmed) do
     created(assigns, params, chosen(assigns, params))
   end
@@ -577,7 +566,5 @@ defmodule LeafWeb.EntitlementLive do
     )
   end
 
-  defp saved(socket, {:error, changeset}) do
-    assign(socket, :form, to_form(changeset, action: :validate))
-  end
+  defp saved(socket, {:error, changeset}), do: formed(socket, changeset, action: :validate)
 end

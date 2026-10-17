@@ -25,13 +25,7 @@ defmodule Leaf.Fixtures do
 
   @start_date ~D[2024-03-04]
 
-  @recorded_only %{
-    amount_source: :none,
-    grant_amount: nil,
-    grant_basis: nil,
-    grant_period: nil,
-    grant_timing: nil
-  }
+  @recorded_only %{amount_source: :none}
 
   @spec organisation(map()) :: Organisation.t()
   def organisation(attrs \\ %{}) do

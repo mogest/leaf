@@ -57,11 +57,9 @@ defmodule Leaf.Changeset do
     end
   end
 
-  @doc "Errors on each of `fields` that holds a value."
-  @spec validate_absent(Ecto.Changeset.t(), [atom()]) :: Ecto.Changeset.t()
-  def validate_absent(changeset, fields) do
-    Enum.reduce(fields, changeset, &absent(&2, &1, get_field(changeset, &1)))
-  end
+  @doc "Empties each of `fields`."
+  @spec clear(Ecto.Changeset.t(), [atom()]) :: Ecto.Changeset.t()
+  def clear(changeset, fields), do: Enum.reduce(fields, changeset, &put_change(&2, &1, nil))
 
   defp scaled(changeset, field, :decimal), do: update_change(changeset, field, &to_scale/1)
   defp scaled(changeset, _field, :integer), do: changeset
@@ -77,7 +75,4 @@ defmodule Leaf.Changeset do
   end
 
   defp ordered(changeset, _earlier, _later, _order, _opts), do: changeset
-
-  defp absent(changeset, _field, nil), do: changeset
-  defp absent(changeset, field, _value), do: add_error(changeset, field, "must be blank")
 end

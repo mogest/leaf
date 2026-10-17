@@ -78,6 +78,7 @@ defmodule Leaf.Policies.PolicyEntitlement do
   def changeset(entitlement, attrs) do
     entitlement
     |> cast(attrs, @fields)
+    |> settled()
     |> validate_required([
       :leave_policy_id,
       :leave_type_id,
@@ -88,8 +89,6 @@ defmodule Leaf.Policies.PolicyEntitlement do
     ])
     |> validate_amount_source()
     |> validate_expiry_rule()
-    |> validate_suspension_allowance()
-    |> validate_qualifying()
     |> as_stored(:grant_amount, greater_than_or_equal_to: 0)
     |> as_stored(:rollover_cap, greater_than_or_equal_to: 0)
     |> as_stored(:expiry_window_days, greater_than: 0)
@@ -107,97 +106,89 @@ defmodule Leaf.Policies.PolicyEntitlement do
     )
   end
 
-  defp validate_amount_source(changeset) do
-    validate_amount_source(changeset, get_field(changeset, :amount_source))
-  end
-
-  defp validate_amount_source(changeset, :fixed) do
+  # What one choice rules out is cleared rather than refused, so a form need only offer what
+  # applies, and a field it stops offering is emptied rather than left behind.
+  defp settled(changeset) do
     changeset
-    |> validate_required(@grant_fields)
-    |> validate_grant_period(get_field(changeset, :grant_basis))
+    |> settle_source(get_field(changeset, :amount_source))
+    |> settle_period()
+    |> settle_timing()
+    |> settle_expiry_rule()
+    |> settle_suspension_allowance()
+    |> settle_qualifying()
   end
 
-  defp validate_amount_source(changeset, :public_holidays) do
-    basis = get_field(changeset, :grant_basis)
-
+  defp settle_source(changeset, :none) do
     changeset
-    |> validate_absent([:grant_amount])
-    |> validate_required([:grant_basis, :grant_period, :grant_timing])
-    |> validate_grant_period(basis)
-    |> validate_allowance_timing(basis)
+    |> clear(@grant_fields)
+    |> put_change(:pro_rated_by_fte, false)
+    |> put_change(:expiry_rule, :never)
   end
 
-  defp validate_amount_source(changeset, :none), do: validate_absent(changeset, @grant_fields)
-  defp validate_amount_source(changeset, nil), do: changeset
+  defp settle_source(changeset, :public_holidays), do: clear(changeset, [:grant_amount])
+  defp settle_source(changeset, _source), do: changeset
 
-  defp validate_grant_period(changeset, :birthday),
-    do: validate_inclusion(changeset, :grant_period, [:year])
-
-  defp validate_grant_period(changeset, _basis), do: changeset
+  defp settle_period(changeset) do
+    case get_field(changeset, :grant_basis) do
+      :birthday -> put_change(changeset, :grant_period, :year)
+      _basis -> changeset
+    end
+  end
 
   # A block grant is skipped where its period opened before the person was covered, which is a
   # deliberate gap for a fixed amount but a wrong count for one measured off the calendar: a
   # mid-period joiner would be credited none of the holidays they go on to observe. Anchored to
   # anything but their own start date, the allowance therefore has to be counted as it falls.
-  defp validate_allowance_timing(changeset, :employment_date), do: changeset
+  defp settle_timing(changeset) do
+    case {get_field(changeset, :amount_source), get_field(changeset, :grant_basis)} do
+      {:public_holidays, basis} when basis != :employment_date ->
+        put_change(changeset, :grant_timing, :daily)
 
-  defp validate_allowance_timing(changeset, _basis) do
-    validate_inclusion(changeset, :grant_timing, [:daily])
+      _terms ->
+        changeset
+    end
+  end
+
+  defp settle_expiry_rule(changeset) do
+    case get_field(changeset, :expiry_rule) do
+      :cap -> clear(changeset, [:expiry_window_days])
+      :window -> clear(changeset, [:rollover_cap])
+      _rule -> clear(changeset, [:rollover_cap, :expiry_window_days])
+    end
+  end
+
+  defp settle_suspension_allowance(changeset) do
+    case {get_field(changeset, :amount_source), get_field(changeset, :grant_timing)} do
+      {:fixed, :daily} -> changeset
+      _terms -> clear(changeset, [:suspension_allowance_weeks])
+    end
+  end
+
+  defp settle_qualifying(changeset) do
+    case {get_field(changeset, :amount_source), get_field(changeset, :grant_basis)} do
+      {:fixed, :employment_date} -> changeset
+      _terms -> clear(changeset, [:qualifying_months])
+    end
+  end
+
+  defp validate_amount_source(changeset) do
+    case get_field(changeset, :amount_source) do
+      :fixed ->
+        validate_required(changeset, @grant_fields)
+
+      :public_holidays ->
+        validate_required(changeset, [:grant_basis, :grant_period, :grant_timing])
+
+      _source ->
+        changeset
+    end
   end
 
   defp validate_expiry_rule(changeset) do
-    validate_expiry_rule(changeset, get_field(changeset, :expiry_rule))
-  end
-
-  defp validate_expiry_rule(changeset, :cap) do
-    changeset
-    |> validate_required([:rollover_cap])
-    |> validate_absent([:expiry_window_days])
-  end
-
-  defp validate_expiry_rule(changeset, :window) do
-    changeset
-    |> validate_required([:expiry_window_days])
-    |> validate_absent([:rollover_cap])
-  end
-
-  defp validate_expiry_rule(changeset, _rule) do
-    validate_absent(changeset, [:rollover_cap, :expiry_window_days])
-  end
-
-  defp validate_suspension_allowance(changeset) do
-    weeks = get_field(changeset, :suspension_allowance_weeks)
-    terms = {get_field(changeset, :amount_source), get_field(changeset, :grant_timing)}
-
-    validate_suspension_allowance(changeset, weeks, terms)
-  end
-
-  defp validate_suspension_allowance(changeset, nil, _terms), do: changeset
-  defp validate_suspension_allowance(changeset, _weeks, {:fixed, :daily}), do: changeset
-
-  defp validate_suspension_allowance(changeset, _weeks, _terms) do
-    add_error(
-      changeset,
-      :suspension_allowance_weeks,
-      "applies only to a fixed amount accrued daily"
-    )
-  end
-
-  defp validate_qualifying(changeset) do
-    terms = {get_field(changeset, :amount_source), get_field(changeset, :grant_basis)}
-
-    validate_qualifying(changeset, get_field(changeset, :qualifying_months), terms)
-  end
-
-  defp validate_qualifying(changeset, months, {source, basis})
-       when is_nil(months) or (source in [:fixed, nil] and basis in [:employment_date, nil]),
-       do: changeset
-
-  defp validate_qualifying(changeset, _months, _terms) do
-    add_error(
-      changeset,
-      :qualifying_months,
-      "applies only to a fixed amount aligned to their start date"
-    )
+    case get_field(changeset, :expiry_rule) do
+      :cap -> validate_required(changeset, [:rollover_cap])
+      :window -> validate_required(changeset, [:expiry_window_days])
+      _rule -> changeset
+    end
   end
 end

@@ -58,17 +58,28 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
     assert errors.grant_timing == ["can't be blank"]
   end
 
-  test "rejects a grant schedule when nothing is granted" do
-    errors = errors_on(changeset(Map.put(@quarterly, :amount_source, :none)))
+  test "an entitlement that grants nothing drops its grant schedule, pro-rating and rollover" do
+    attrs =
+      Map.merge(@quarterly, %{
+        amount_source: :none,
+        pro_rated_by_fte: true,
+        expiry_rule: :cap,
+        rollover_cap: "8"
+      })
 
-    assert errors.grant_amount == ["must be blank"]
-    assert errors.grant_basis == ["must be blank"]
-    assert errors.grant_period == ["must be blank"]
-    assert errors.grant_timing == ["must be blank"]
-  end
+    changeset = changeset(attrs)
 
-  test "unpaid leave grants nothing" do
-    assert changeset(%{amount_source: :none}).valid?
+    assert changeset.valid?
+
+    assert %{
+             grant_amount: nil,
+             grant_basis: nil,
+             grant_period: nil,
+             grant_timing: nil,
+             pro_rated_by_fte: false,
+             expiry_rule: :never,
+             rollover_cap: nil
+           } = apply_changes(changeset)
   end
 
   test "the public holiday allowance is computed rather than configured" do
@@ -80,51 +91,39 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
     }
 
     assert changeset(attrs).valid?
+    assert apply_changes(changeset(attrs)).grant_timing == :period_start
   end
 
-  test "the public holiday allowance takes its amount from the calendar alone" do
-    attrs = Map.merge(@quarterly, %{amount_source: :public_holidays, grant_timing: :daily})
+  test "a public holiday allowance on a shared year takes its amount from the calendar as it falls" do
+    attrs = Map.merge(@quarterly, %{amount_source: :public_holidays, grant_basis: :calendar_year})
+    changeset = changeset(attrs)
 
-    assert errors_on(changeset(attrs)).grant_amount == ["must be blank"]
-  end
-
-  test "a public holiday allowance on a shared year is counted as it falls" do
-    attrs = %{amount_source: :public_holidays, grant_basis: :calendar_year, grant_period: :year}
-
-    assert errors_on(changeset(Map.put(attrs, :grant_timing, :period_start))).grant_timing ==
-             ["is invalid"]
-
-    assert changeset(Map.put(attrs, :grant_timing, :daily)).valid?
+    assert changeset.valid?
+    assert %{grant_amount: nil, grant_timing: :daily} = apply_changes(changeset)
   end
 
   test "birthday leave is granted yearly" do
-    attrs = Map.merge(@quarterly, %{grant_basis: :birthday, grant_period: :quarter})
+    attrs = Map.put(@quarterly, :grant_basis, :birthday)
 
-    assert errors_on(changeset(attrs)).grant_period == ["is invalid"]
+    assert apply_changes(changeset(attrs)).grant_period == :year
   end
 
-  test "a fixed amount may qualify only where aligned to the start date, within a year" do
+  test "a fixed amount qualifies only where aligned to the start date, within a year" do
     qualifying = Map.merge(@quarterly, %{grant_basis: :employment_date, qualifying_months: 6})
-    refused = ["applies only to a fixed amount aligned to their start date"]
 
-    assert changeset(qualifying).valid?
+    assert apply_changes(changeset(qualifying)).qualifying_months == 6
 
     assert errors_on(changeset(%{qualifying | qualifying_months: 13})).qualifying_months == [
              "must be less than or equal to 12"
            ]
 
-    assert errors_on(changeset(%{qualifying | grant_basis: :calendar_year})).qualifying_months ==
-             refused
-
-    assert errors_on(changeset(%{qualifying | amount_source: :none})).qualifying_months == refused
-
     allowance = %{qualifying | amount_source: :public_holidays, grant_amount: nil}
-    assert errors_on(changeset(allowance)).qualifying_months == refused
 
-    refute Map.has_key?(
-             errors_on(changeset(%{qualifying | grant_basis: nil})),
-             :qualifying_months
-           )
+    recorded = %{qualifying | amount_source: :none}
+
+    for attrs <- [%{qualifying | grant_basis: :calendar_year}, allowance, recorded] do
+      assert apply_changes(changeset(attrs)).qualifying_months == nil
+    end
   end
 
   test "any leave may wait on months of service before it is taken, within a year" do
@@ -134,18 +133,25 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
              %{takeable_after_months: ["must be less than or equal to 12"]}
   end
 
-  test "a capped rollover needs a cap and no expiry window" do
-    attrs = Map.merge(@quarterly, %{expiry_rule: :cap, expiry_window_days: 14})
-    errors = errors_on(changeset(attrs))
+  test "a rollover rule needs its own cap or window and drops the other" do
+    assert errors_on(changeset(Map.put(@quarterly, :expiry_rule, :cap))) ==
+             %{rollover_cap: ["can't be blank"]}
 
-    assert errors.rollover_cap == ["can't be blank"]
-    assert errors.expiry_window_days == ["must be blank"]
-  end
+    assert errors_on(changeset(Map.put(@quarterly, :expiry_rule, :window))) ==
+             %{expiry_window_days: ["can't be blank"]}
 
-  test "a lapsing window needs a window" do
-    attrs = Map.put(@quarterly, :expiry_rule, :window)
+    both = Map.merge(@quarterly, %{rollover_cap: "8", expiry_window_days: 14})
 
-    assert errors_on(changeset(attrs)).expiry_window_days == ["can't be blank"]
+    assert %{rollover_cap: %Decimal{}, expiry_window_days: nil} =
+             apply_changes(changeset(Map.put(both, :expiry_rule, :cap)))
+
+    assert %{rollover_cap: nil, expiry_window_days: 14} =
+             apply_changes(changeset(Map.put(both, :expiry_rule, :window)))
+
+    for rule <- [:never, :grant_period_end] do
+      assert %{rollover_cap: nil, expiry_window_days: nil} =
+               apply_changes(changeset(Map.put(both, :expiry_rule, rule)))
+    end
   end
 
   test "an unpaid leave allowance is only for a fixed amount accrued daily" do
@@ -153,8 +159,8 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
 
     assert changeset(Map.put(daily, :suspension_allowance_weeks, "1")).valid?
 
-    assert errors_on(changeset(Map.put(@quarterly, :suspension_allowance_weeks, "1"))) ==
-             %{suspension_allowance_weeks: ["applies only to a fixed amount accrued daily"]}
+    assert apply_changes(changeset(Map.put(@quarterly, :suspension_allowance_weeks, "1"))).suspension_allowance_weeks ==
+             nil
   end
 
   test "grants may stop before the entitlement ends" do

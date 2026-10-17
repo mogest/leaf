@@ -325,6 +325,18 @@ form {
     order: 1;
   }
 
+  & fieldset:has(> div > label > input[type="radio"]) {
+    flex-direction: column;
+
+    & > div {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--step-2) var(--step-3);
+    }
+  }
+
   & legend {
     padding: 0;
     padding-block-end: var(--step-1);
@@ -337,10 +349,10 @@ form {
     color: var(--clay-ink);
   }
 
-  & div:has(> [role="tooltip"]) {
+  & :is(div, fieldset):has(> [role="tooltip"]) {
     position: relative;
 
-    & > label svg {
+    & > :is(label, legend) svg {
       margin-inline-start: var(--step-1);
       vertical-align: -0.1875rem;
       cursor: help;
@@ -367,8 +379,9 @@ form {
       color: var(--ink-quiet);
     }
 
-    &:has(> label svg:hover) > [role="tooltip"],
-    &:focus-within > [role="tooltip"] {
+    &:has(> :is(label, legend) svg:hover) > [role="tooltip"],
+    &:is(div):focus-within > [role="tooltip"],
+    &:has(> div > label > input:focus) > [role="tooltip"] {
       display: block;
     }
   }
