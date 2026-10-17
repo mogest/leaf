@@ -526,6 +526,48 @@ defmodule Leaf.LedgerTest do
              %{~D[2026-06-30] => Decimal.new("5.00"), nil => Decimal.new("20.00")}
   end
 
+  test "a qualifying period grants nothing before it, and the cycle runs from it", context do
+    person = context.person
+    full_time(person)
+    violence = leave_type(context, %{name: "Family violence leave", unit: :days, position: 2})
+    quarterly = leave_type(context, %{name: "Quarterly leave", unit: :days, position: 3})
+
+    qualifying = %{
+      grant_amount: "10",
+      grant_timing: :period_start,
+      qualifying_months: 6,
+      pro_rated_by_fte: false,
+      expiry_rule: :grant_period_end
+    }
+
+    entitlement(context, violence, qualifying)
+
+    entitlement(
+      context,
+      quarterly,
+      Map.merge(qualifying, %{grant_amount: "1", grant_period: :quarter})
+    )
+
+    assert movements(statement(person, violence, ~D[2025-09-04])) == [
+             {:grant, ~D[2024-09-04], Decimal.new("10.00"), ~D[2025-09-03]},
+             {:expiry, ~D[2025-09-03], Decimal.new("-10.00"), nil},
+             {:grant, ~D[2025-09-04], Decimal.new("10.00"), ~D[2026-09-03]}
+           ]
+
+    assert movements(statement(person, quarterly, ~D[2024-12-04])) == [
+             {:grant, ~D[2024-09-04], Decimal.new("1.00"), ~D[2024-12-03]},
+             {:expiry, ~D[2024-12-03], Decimal.new("-1.00"), nil},
+             {:grant, ~D[2024-12-04], Decimal.new("1.00"), ~D[2025-03-03]}
+           ]
+
+    annual = leave_type(context, %{position: 4})
+    entitlement(context, annual, %{grant_amount: "200", qualifying_months: 6})
+
+    # 181 of the 365 days from 4 September.
+    assert movements(statement(person, annual, ~D[2025-03-03])) ==
+             [{:accrual, ~D[2025-03-03], Decimal.new("99.18"), nil}]
+  end
+
   test "birthday leave lapses a window after the birthday, and needs a birth date", context do
     person = context.person
     full_time(person)

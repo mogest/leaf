@@ -153,6 +153,15 @@ defmodule LeafWeb.EntitlementLive do
             options={@choices.bases}
           />
           <.input
+            field={@form[:qualifying_months]}
+            type="number"
+            label="Months' service before it grants anything (optional)"
+          />
+          <p>
+            Only where it is reckoned from their start date. NZ sick leave is first granted after six
+            months' service, then every twelve months from there.
+          </p>
+          <.input
             field={@form[:grant_timing]}
             type="select"
             label="How it arrives"

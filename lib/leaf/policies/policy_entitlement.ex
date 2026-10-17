@@ -10,6 +10,10 @@ defmodule Leaf.Policies.PolicyEntitlement do
 
   `grant_amount` is per `grant_period`, at 1.0 FTE, in the leave type's unit.
 
+  `qualifying_months` is service before an employment-date entitlement grants anything, and its
+  cycle runs from the date that service is reached: NZ sick leave is 10 days after six months, then
+  every 12 months from there.
+
   Two grant windows for one leave type under one policy may not overlap: the balance would be
   granted twice over. Changing the terms therefore means closing the old row with `granted_to` and
   opening the next the day after — their lives may overlap, and it is closing with `effective_to`
@@ -40,7 +44,8 @@ defmodule Leaf.Policies.PolicyEntitlement do
     :expiry_rule,
     :rollover_cap,
     :expiry_window_days,
-    :suspension_allowance_weeks | @grant_fields
+    :suspension_allowance_weeks,
+    :qualifying_months | @grant_fields
   ]
 
   schema "policy_entitlements" do
@@ -57,6 +62,7 @@ defmodule Leaf.Policies.PolicyEntitlement do
     field :rollover_cap, :decimal
     field :expiry_window_days, :integer
     field :suspension_allowance_weeks, :decimal
+    field :qualifying_months, :integer
 
     belongs_to :leave_policy, LeavePolicy
     belongs_to :leave_type, LeaveType
@@ -83,6 +89,7 @@ defmodule Leaf.Policies.PolicyEntitlement do
     |> as_stored(:rollover_cap, greater_than_or_equal_to: 0)
     |> as_stored(:expiry_window_days, greater_than: 0)
     |> as_stored(:suspension_allowance_weeks, greater_than: 0)
+    |> as_stored(:qualifying_months, greater_than: 0, less_than_or_equal_to: 12)
     |> validate_date_order(:effective_from, :granted_to)
     |> validate_date_order(:effective_from, :effective_to)
     |> validate_date_order(:granted_to, :effective_to)
@@ -99,28 +106,39 @@ defmodule Leaf.Policies.PolicyEntitlement do
   end
 
   defp validate_amount_source(changeset, :fixed) do
+    basis = get_field(changeset, :grant_basis)
+
     changeset
     |> validate_required(@grant_fields)
-    |> validate_grant_period(get_field(changeset, :grant_basis))
+    |> validate_grant_period(basis)
+    |> validate_qualifying(basis)
   end
 
   defp validate_amount_source(changeset, :public_holidays) do
     basis = get_field(changeset, :grant_basis)
 
     changeset
-    |> validate_absent([:grant_amount])
+    |> validate_absent([:grant_amount, :qualifying_months])
     |> validate_required([:grant_basis, :grant_period, :grant_timing])
     |> validate_grant_period(basis)
     |> validate_allowance_timing(basis)
   end
 
-  defp validate_amount_source(changeset, :none), do: validate_absent(changeset, @grant_fields)
+  defp validate_amount_source(changeset, :none) do
+    validate_absent(changeset, [:qualifying_months | @grant_fields])
+  end
+
   defp validate_amount_source(changeset, nil), do: changeset
 
   defp validate_grant_period(changeset, :birthday),
     do: validate_inclusion(changeset, :grant_period, [:year])
 
   defp validate_grant_period(changeset, _basis), do: changeset
+
+  defp validate_qualifying(changeset, :employment_date), do: changeset
+
+  defp validate_qualifying(changeset, _basis),
+    do: validate_absent(changeset, [:qualifying_months])
 
   # A block grant is skipped where its period opened before the person was covered, which is a
   # deliberate gap for a fixed amount but a wrong count for one measured off the calendar: a

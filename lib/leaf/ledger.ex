@@ -96,8 +96,9 @@ defmodule Leaf.Ledger do
   @doc """
   The leave types the person has ever been granted anything in, by a policy or by hand.
 
-  By a policy is an entitlement that grants something while they were employed and on it; by hand
-  is a balance entry adding to the balance. Every other type is recorded only for them. That is a
+  By a policy is an entitlement that grants something while they were employed and on it, even
+  where they left before its qualifying period let it grant them anything; by hand is a balance
+  entry adding to the balance. Every other type is recorded only for them. That is a
   fact about the person rather than about a date, so it is read over all of their history: a type
   does not turn recorded only by being read before its first grant.
   """

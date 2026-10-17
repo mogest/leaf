@@ -142,7 +142,13 @@ defmodule LeafWeb.PolicyLive do
 
   defp figure(entitlement, amount), do: Wording.figure(amount, entitlement.leave_type.unit)
 
-  defp anchored(%{grant_basis: :employment_date}), do: "reckoned from their start date"
+  defp anchored(%{grant_basis: :employment_date, qualifying_months: nil}),
+    do: "reckoned from their start date"
+
+  defp anchored(%{grant_basis: :employment_date, qualifying_months: months}) do
+    "reckoned from #{Wording.figure(Decimal.new(months), :months)} after their start date, with nothing before then"
+  end
+
   defp anchored(%{grant_basis: :birthday}), do: "reckoned from their birthday"
   defp anchored(%{grant_basis: :calendar_year}), do: "reckoned from the calendar year"
   defp anchored(%{grant_basis: :organisation_year}), do: "reckoned from the financial year"

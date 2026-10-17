@@ -177,6 +177,11 @@ their first one lands at the start of the next period (§8). Accrual is not affe
 proportional by nature, so it starts on their first day and their first period is simply a part
 period.
 
+An entitlement anchored to the employment date may have a **qualifying period**: a number of
+months' service before it grants anything, block or accrual, with its grant periods running from
+the date that service is reached. NZ sick leave, 10 days after six months' service and every twelve
+months from there, is a year with a six-month qualifying period.
+
 Balances may go **negative** where the policy allows it (advance leave). The person then
 accrues back to positive; the system doesn't block this, it just shows a negative balance.
 

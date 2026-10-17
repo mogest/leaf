@@ -103,6 +103,29 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
     assert errors_on(changeset(attrs)).grant_period == ["is invalid"]
   end
 
+  test "only a fixed amount reckoned from the start date may qualify, within a year" do
+    qualifying = %{@quarterly | grant_basis: :employment_date}
+
+    assert changeset(Map.put(qualifying, :qualifying_months, 6)).valid?
+
+    too_long = errors_on(changeset(Map.put(qualifying, :qualifying_months, 13)))
+
+    assert too_long.qualifying_months == ["must be less than or equal to 12"]
+
+    assert errors_on(changeset(Map.put(@quarterly, :qualifying_months, 6))).qualifying_months == [
+             "must be blank"
+           ]
+
+    allowance =
+      Map.merge(qualifying, %{
+        amount_source: :public_holidays,
+        grant_amount: nil,
+        qualifying_months: 6
+      })
+
+    assert errors_on(changeset(allowance)).qualifying_months == ["must be blank"]
+  end
+
   test "a capped rollover needs a cap and no expiry window" do
     attrs = Map.merge(@quarterly, %{expiry_rule: :cap, expiry_window_days: 14})
     errors = errors_on(changeset(attrs))
