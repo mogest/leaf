@@ -3,14 +3,14 @@ defmodule LeafWeb.PolicyLive do
   One policy: what it grants for each leave type over each stretch of time.
 
   Two entitlements for one leave type may not overlap, so succeeding one means closing the old
-  window rather than only opening a new one. Each is said in words here, because what a row of
-  enumerations means is the thing an administrator is actually checking.
+  window rather than only opening a new one.
   """
 
   use LeafWeb, :live_view
 
   on_mount {LeafWeb.SignIn, :admin}
 
+  alias Leaf.People
   alias Leaf.Policies
 
   @impl Phoenix.LiveView
@@ -30,7 +30,7 @@ defmodule LeafWeb.PolicyLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page="settings" viewer={@viewer}>
+    <Layouts.app flash={@flash} page="policy" rail="settings" viewer={@viewer}>
       <header>
         <nav aria-label="Breadcrumb">
           <.link navigate={~p"/settings/policies"}>Leave policies</.link>
@@ -47,24 +47,48 @@ defmodule LeafWeb.PolicyLive do
             Add
           </.link>
         </header>
-        <ol :if={@entitlements != []}>
-          <li :for={entitlement <- @entitlements}>
-            <.link navigate={entitlement.path}>{entitlement.leave_type}</.link>
-            <span>{entitlement.window}</span>
-            <Parts.row_menu id={"entitlement-#{entitlement.id}"} label={entitlement.leave_type}>
-              <button
-                type="button"
-                phx-click="remove"
-                phx-value-id={entitlement.id}
-                data-confirm="Remove this outright? One that ran and is over should be closed with an end date instead."
-              >
-                Remove
-              </button>
-            </Parts.row_menu>
-            <p>{entitlement.grant}</p>
-            <p>{entitlement.expiry}</p>
-          </li>
-        </ol>
+        <div :if={@entitlements != []}>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Leave type</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Aligned to</th>
+                <th scope="col">Arrives</th>
+                <th scope="col">Unused</th>
+                <td></td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :for={entitlement <- @entitlements}>
+                <th scope="row">
+                  <.link navigate={entitlement.path}>{entitlement.leave_type}</.link>
+                  <small :if={entitlement.notes != ""}>{entitlement.notes}</small>
+                </th>
+                <%= if grant = entitlement.grant do %>
+                  <td>{grant.amount} <small :if={grant.pro_rated}>{grant.pro_rated}</small></td>
+                  <td>{grant.aligned} <small :if={grant.waiting}>{grant.waiting}</small></td>
+                  <td>{grant.arrives} <small :if={grant.allowance}>{grant.allowance}</small></td>
+                  <td>{grant.unused}</td>
+                <% else %>
+                  <td colspan="4">Recorded only</td>
+                <% end %>
+                <td>
+                  <Parts.row_menu id={"entitlement-#{entitlement.id}"} label={entitlement.leave_type}>
+                    <button
+                      type="button"
+                      phx-click="remove"
+                      phx-value-id={entitlement.id}
+                      data-confirm="Remove this outright? One that ran and is over should be closed with an end date instead."
+                    >
+                      Remove
+                    </button>
+                  </Parts.row_menu>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <p :if={@entitlements == []}>This policy grants nothing yet.</p>
       </section>
     </Layouts.app>
@@ -86,25 +110,25 @@ defmodule LeafWeb.PolicyLive do
 
   defp listed(socket) do
     entitlements = Policies.entitlements(socket.assigns.policy.id)
+    today = People.today(socket.assigns.current_person)
 
-    assign(socket, :entitlements, Enum.map(entitlements, &row(&1, socket.assigns.policy)))
+    assign(socket, :entitlements, Enum.map(entitlements, &row(&1, socket.assigns.policy, today)))
   end
 
-  defp row(entitlement, policy) do
+  defp row(entitlement, policy, today) do
     %{
       id: entitlement.id,
       leave_type: entitlement.leave_type.name,
-      window: window(entitlement),
+      notes: notes(entitlement, today),
       grant: grant(entitlement),
-      expiry: lapsing(entitlement),
       path: ~p"/settings/policies/#{policy}/entitlements/#{entitlement}"
     }
   end
 
-  defp window(entitlement) do
+  defp notes(entitlement, today) do
     [
-      "offered from #{Wording.date(entitlement.effective_from)}",
-      taken_from(entitlement.takeable_after_months),
+      starting(entitlement.effective_from, today),
+      taken_after(entitlement.takeable_after_months),
       granting_to(entitlement.granted_to),
       until(entitlement.effective_to)
     ]
@@ -112,11 +136,12 @@ defmodule LeafWeb.PolicyLive do
     |> Enum.join(", ")
   end
 
-  defp taken_from(nil), do: nil
-  defp taken_from(months), do: "taken from #{after_starting(months)}"
+  defp starting(date, today) do
+    if Date.after?(date, today), do: "from #{Wording.date(date)}"
+  end
 
-  defp after_starting(months),
-    do: "#{Wording.figure(Decimal.new(months), :months)} after their start date"
+  defp taken_after(nil), do: nil
+  defp taken_after(months), do: "taken after #{months(months)}"
 
   defp granting_to(nil), do: nil
   defp granting_to(date), do: "granting until #{Wording.date(date)}"
@@ -124,61 +149,53 @@ defmodule LeafWeb.PolicyLive do
   defp until(nil), do: nil
   defp until(date), do: "spendable until #{Wording.date(date)}"
 
-  defp grant(%{amount_source: :none}), do: "Grants nothing — leave of this type is recorded only."
+  defp months(months), do: Wording.figure(Decimal.new(months), :months)
+
+  defp grant(%{amount_source: :none}), do: nil
 
   defp grant(entitlement) do
-    "#{amount(entitlement)}, #{anchored(entitlement)}, #{landing(entitlement)}#{pro_rated(entitlement)}" <>
-      "#{allowing(entitlement)}."
+    %{
+      amount: amount(entitlement),
+      pro_rated: entitlement.pro_rated_by_fte && "pro-rated",
+      aligned: aligned(entitlement.grant_basis),
+      waiting: waiting(entitlement.qualifying_months),
+      arrives: arrives(entitlement.grant_timing),
+      allowance: allowance(entitlement.suspension_allowance_weeks),
+      unused: unused(entitlement)
+    }
   end
 
-  defp allowing(%{suspension_allowance_weeks: nil}), do: ""
-
-  defp allowing(entitlement) do
-    weeks = Wording.figure(entitlement.suspension_allowance_weeks, :weeks)
-
-    ", still accruing over the first #{weeks} of unpaid leave each #{entitlement.grant_period}"
-  end
-
-  defp amount(%{amount_source: :public_holidays} = entitlement) do
-    "Their share of the public holidays on their calendar each #{entitlement.grant_period}"
-  end
+  defp amount(%{amount_source: :public_holidays}), do: "Public holidays"
 
   defp amount(entitlement) do
-    "#{figure(entitlement, entitlement.grant_amount)} each #{entitlement.grant_period}"
+    "#{figure(entitlement, entitlement.grant_amount)} a #{entitlement.grant_period}"
   end
 
   defp figure(entitlement, amount), do: Wording.figure(amount, entitlement.leave_type.unit)
 
-  defp anchored(%{grant_basis: basis, qualifying_months: nil}), do: aligned(basis)
+  defp aligned(:employment_date), do: "Start date"
+  defp aligned(:birthday), do: "Birthday"
+  defp aligned(:calendar_year), do: "Calendar year"
+  defp aligned(:organisation_year), do: "Financial year"
 
-  defp anchored(%{grant_basis: :employment_date, qualifying_months: months}),
-    do: "aligned to the day #{after_starting(months)}, granting nothing before then"
+  defp waiting(nil), do: nil
+  defp waiting(months), do: "first granted after #{months(months)}"
 
-  defp anchored(%{grant_basis: basis, qualifying_months: months}),
-    do: "#{aligned(basis)}, granting nothing before #{after_starting(months)}"
+  defp arrives(:daily), do: "Day by day"
+  defp arrives(:period_start), do: "Whole at period start"
 
-  defp aligned(:employment_date), do: "aligned to their start date"
-  defp aligned(:birthday), do: "aligned to their birthday"
-  defp aligned(:calendar_year), do: "aligned to the calendar year"
-  defp aligned(:organisation_year), do: "aligned to the financial year"
+  defp allowance(nil), do: nil
+  defp allowance(weeks), do: "accrues through #{Wording.figure(weeks, :weeks)} unpaid"
 
-  defp landing(%{grant_timing: :daily}), do: "accruing day by day"
-  defp landing(_entitlement), do: "landing whole when the period opens"
+  defp unused(%{expiry_rule: :never}), do: "Rolls over"
 
-  defp pro_rated(%{pro_rated_by_fte: true}), do: ", pro-rated by the hours they work"
-  defp pro_rated(_entitlement), do: ""
+  defp unused(%{expiry_rule: :cap} = entitlement),
+    do: "Rolls over up to #{figure(entitlement, entitlement.rollover_cap)}"
 
-  defp lapsing(%{expiry_rule: :never}), do: "Rolls over indefinitely"
+  defp unused(%{expiry_rule: :grant_period_end}), do: "Lapses at period end"
 
-  defp lapsing(%{expiry_rule: :cap} = entitlement) do
-    "Rolls over up to #{figure(entitlement, entitlement.rollover_cap)}"
-  end
-
-  defp lapsing(%{expiry_rule: :grant_period_end}), do: "Lapses at the end of each period"
-
-  defp lapsing(%{expiry_rule: :window} = entitlement) do
-    "Lapses #{entitlement.expiry_window_days} days after it lands"
-  end
+  defp unused(%{expiry_rule: :window} = entitlement),
+    do: "Lapses #{entitlement.expiry_window_days} days after landing"
 
   defp withdrawn(policy, zone) do
     "Withdrawn #{Wording.date(policy.archived_at, zone)}. " <>

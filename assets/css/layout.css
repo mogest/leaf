@@ -955,7 +955,7 @@ main.approvals > ol > li {
   }
 }
 
-:is(main.people, main.person, main.settings, main.your-requests, main.styleguide)
+:is(main.people, main.person, main.policy, main.settings, main.your-requests, main.styleguide)
   :is(tbody tr:has(th a), section > ol > li:has(> a:first-child)) {
   position: relative;
 
@@ -1127,18 +1127,17 @@ main.person section:not(.balance-sheet) > dl {
   }
 }
 
-main.settings section > ol > li {
-  & > a:first-child {
-    font-weight: 500;
+main.policy table {
+  & :is(th, td) {
+    white-space: nowrap;
   }
 
-  & > span {
-    font-size: var(--size-base);
+  & small {
+    display: block;
+    font-size: var(--size-sm);
   }
 
-  & > p {
-    flex-basis: 100%;
-    font-size: var(--size-base);
+  & td[colspan] {
     color: var(--ink-soft);
   }
 }

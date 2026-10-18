@@ -114,15 +114,27 @@ defmodule LeafWeb.SettingsLiveTest do
     {:ok, _live, html} = live(context.conn, ~p"/settings/policies")
     assert html =~ "one leave type"
 
+    jury = Fixtures.leave_type(%{organisation_id: context.organisation.id, name: "Jury service"})
+
+    recorded =
+      Fixtures.policy_entitlement(%{
+        leave_policy_id: policy.id,
+        leave_type_id: jury.id,
+        effective_from: ~D[2099-01-01],
+        amount_source: :none
+      })
+
     {:ok, live, html} = live(context.conn, ~p"/settings/policies/#{policy}")
 
-    assert html =~ "160 hours each year, aligned to the day 6 months after their start date"
-    assert html =~ "granting nothing before then, accruing day by day"
-    assert html =~ "taken from 3 months after their start date"
+    assert html =~ "160 hours a year <small>pro-rated</small>"
+    assert html =~ "Start date <small>first granted after 6 months</small>"
+    assert html =~ "taken after 3 months"
+    assert html =~ "Day by day"
+    assert html =~ "Rolls over"
+    assert html =~ "from 1 January 2099"
+    assert html =~ "Recorded only"
 
-    assert html =~ "pro-rated by the hours they work"
-    assert html =~ "Rolls over indefinitely"
-
+    live |> element("#entitlement-#{recorded.id} button", "Remove") |> render_click()
     html = live |> element("button", "Remove") |> render_click()
     assert html =~ "This policy grants nothing yet."
   end
