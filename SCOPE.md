@@ -179,12 +179,17 @@ period.
 
 Two waits on months of service are set on the entitlement, independently:
 
-- **Before it is first granted** — a qualifying period, for a fixed amount anchored to the
-  employment date. Nothing is granted before it, block or accrual, and grant periods run from the
-  date that service is reached: NZ sick leave, 10 days after six months' service and every twelve
-  months from there, is a year with a six-month qualifying period. The grant date moves for people
-  already employed too, so adding one on an entitlement that succeeds another skips a block grant:
-  the period the successor starts part-way through grants no block (§8). Accrual is not lost.
+- **Before it is first granted** — a qualifying period, for a fixed amount. Nothing is granted
+  before it, block or accrual. Anchored to the employment date, grant periods run from the date
+  that service is reached: NZ sick leave, 10 days after six months' service and every twelve months
+  from there, is a year with a six-month qualifying period. The grant date moves for people already
+  employed too, so adding one on an entitlement that succeeds another skips a block grant: the
+  period the successor starts part-way through grants no block (§8). Accrual is not lost.
+  Anchored to anything else, the periods stay where they are and the qualifying date is treated as
+  a joining date. Someone who started on 4 March 2024, on a day each calendar quarter after 24
+  months' service, qualifies on 4 March 2026, part-way through the January–March quarter. Granted
+  as a block, they get nothing for that quarter and their first day on 1 April. Accruing, they
+  build 28/90 of a day from 4 to 31 March, then a day each quarter from 1 April.
 - **Before it can be taken** — for any leave type. NZ bereavement leave, which grants nothing, can
   be taken after six months' service. Where one entitlement succeeds another and both are still
   spendable, the successor's wait applies, as the terms in force — even to someone holding a balance

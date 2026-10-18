@@ -222,16 +222,17 @@ defmodule LeafWeb.EntitlementLive do
           </header>
           <div>
             <.input
-              :if={@terms.amount_source == :fixed and @terms.grant_basis == :employment_date}
+              :if={@terms.amount_source == :fixed}
               field={@form[:qualifying_months]}
               type="number"
               phx-debounce="500"
               label="First granted after"
               unit="months' service"
-              help="Up to 12 months. Leave empty to grant from their first day. With 6, nothing is granted until
-                six months after they join, and each period runs from that date. Current staff's periods move
-                too, so replacing an entitlement that lands whole skips the grant for the period the
-                replacement starts in."
+              help="Leave empty to grant from their first day. With 6, nothing is granted until six months after
+                they join. Aligned to the start date, each period then runs from that date, and current staff's
+                periods move too, so replacing an entitlement that lands whole skips the grant for the period
+                the replacement starts in. Aligned to anything else, the periods stay put and the wait ending
+                part-way through one is treated like joining part-way through it."
             />
             <.input
               field={@form[:takeable_after_months]}
@@ -241,7 +242,7 @@ defmodule LeafWeb.EntitlementLive do
               unit="months' service"
               help="Leave empty to let them book it from their first day, going into a negative balance if
                 nothing has been granted yet. Leave already booked inside the wait can be approved or cancelled,
-                but not changed. Up to 12 months."
+                but not changed."
             />
           </div>
         </section>

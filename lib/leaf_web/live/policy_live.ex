@@ -149,15 +149,18 @@ defmodule LeafWeb.PolicyLive do
 
   defp figure(entitlement, amount), do: Wording.figure(amount, entitlement.leave_type.unit)
 
-  defp anchored(%{grant_basis: :employment_date, qualifying_months: nil}),
-    do: "aligned to their start date"
+  defp anchored(%{grant_basis: basis, qualifying_months: nil}), do: aligned(basis)
 
   defp anchored(%{grant_basis: :employment_date, qualifying_months: months}),
     do: "aligned to the day #{after_starting(months)}, granting nothing before then"
 
-  defp anchored(%{grant_basis: :birthday}), do: "aligned to their birthday"
-  defp anchored(%{grant_basis: :calendar_year}), do: "aligned to the calendar year"
-  defp anchored(%{grant_basis: :organisation_year}), do: "aligned to the financial year"
+  defp anchored(%{grant_basis: basis, qualifying_months: months}),
+    do: "#{aligned(basis)}, granting nothing before #{after_starting(months)}"
+
+  defp aligned(:employment_date), do: "aligned to their start date"
+  defp aligned(:birthday), do: "aligned to their birthday"
+  defp aligned(:calendar_year), do: "aligned to the calendar year"
+  defp aligned(:organisation_year), do: "aligned to the financial year"
 
   defp landing(%{grant_timing: :daily}), do: "accruing day by day"
   defp landing(_entitlement), do: "landing whole when the period opens"

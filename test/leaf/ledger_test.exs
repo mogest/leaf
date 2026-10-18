@@ -569,6 +569,50 @@ defmodule Leaf.LedgerTest do
              [{:accrual, ~D[2025-03-03], Decimal.new("99.18"), nil}]
   end
 
+  test "a qualifying period on calendar quarters leaves the quarters where they are", context do
+    person = context.person
+    full_time(person)
+    quarterly = leave_type(context, %{name: "Quarterly leave", unit: :days, position: 2})
+
+    block = %{
+      effective_from: @started,
+      amount_source: :fixed,
+      expiry_rule: :never,
+      grant_amount: "1",
+      grant_basis: :calendar_year,
+      grant_period: :quarter,
+      grant_timing: :period_start,
+      qualifying_months: 24,
+      pro_rated_by_fte: false
+    }
+
+    entitlement(context, quarterly, block)
+
+    # Qualified on 4 March 2026, part-way through a quarter.
+    assert movements(statement(person, quarterly, ~D[2026-07-01])) == [
+             {:grant, ~D[2026-04-01], Decimal.new("1.00"), nil},
+             {:grant, ~D[2026-07-01], Decimal.new("1.00"), nil}
+           ]
+
+    {:ok, [full_time | _others]} =
+      Ledger.rehearse(Policies.change_entitlement(context.policy, quarterly, block))
+
+    assert Decimal.equal?(full_time.granted, 0)
+
+    assert List.keyfind!(full_time.balances, ~D[2026-03-04], 0) ==
+             {~D[2026-03-04], Decimal.new("0.00")}
+
+    assert List.keyfind!(full_time.balances, ~D[2026-04-04], 0) ==
+             {~D[2026-04-04], Decimal.new("1.00")}
+
+    accruing = leave_type(context, %{name: "Accruing leave", unit: :days, position: 3})
+    entitlement(context, accruing, %{block | grant_timing: :daily})
+
+    # 28 of the quarter's 90 days.
+    assert movements(statement(person, accruing, ~D[2026-03-31])) ==
+             [{:accrual, ~D[2026-03-31], Decimal.new("0.31"), nil}]
+  end
+
   test "a qualifying period reached on a short month's end keeps later periods on the 31st",
        context do
     person =

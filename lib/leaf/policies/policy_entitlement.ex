@@ -10,11 +10,12 @@ defmodule Leaf.Policies.PolicyEntitlement do
 
   `grant_amount` is per `grant_period`, at 1.0 FTE, in the leave type's unit.
 
-  `qualifying_months` is service before a fixed amount aligned to the start date grants anything,
-  and its cycle runs from the date that service is reached: NZ sick leave is 10 days after six
-  months, then every 12 months from there. `takeable_after_months` is service before leave of the
-  type may be taken at all, so NZ bereavement leave waits six months, and sick leave may or may not
-  be taken in advance of its first grant as the organisation chooses.
+  `qualifying_months` is service before a fixed amount grants anything. Aligned to the start date,
+  its cycle runs from the date that service is reached: NZ sick leave is 10 days after six months,
+  then every 12 months from there. Aligned to anything else, the cycle stays put and the date that
+  service is reached is treated as a joining date. `takeable_after_months` is service before leave
+  of the type may be taken at all, so NZ bereavement leave waits six months, and sick leave may or
+  may not be taken in advance of its first grant as the organisation chooses.
 
   Two grant windows for one leave type under one policy may not overlap: the balance would be
   granted twice over. Changing the terms therefore means closing the old row with `granted_to` and
@@ -93,8 +94,8 @@ defmodule Leaf.Policies.PolicyEntitlement do
     |> as_stored(:rollover_cap, greater_than_or_equal_to: 0)
     |> as_stored(:expiry_window_days, greater_than: 0)
     |> as_stored(:suspension_allowance_weeks, greater_than: 0)
-    |> as_stored(:qualifying_months, greater_than: 0, less_than_or_equal_to: 12)
-    |> as_stored(:takeable_after_months, greater_than: 0, less_than_or_equal_to: 12)
+    |> as_stored(:qualifying_months, greater_than: 0)
+    |> as_stored(:takeable_after_months, greater_than: 0)
     |> validate_date_order(:effective_from, :granted_to)
     |> validate_date_order(:effective_from, :effective_to)
     |> validate_date_order(:granted_to, :effective_to)
@@ -165,9 +166,9 @@ defmodule Leaf.Policies.PolicyEntitlement do
   end
 
   defp settle_qualifying(changeset) do
-    case {get_field(changeset, :amount_source), get_field(changeset, :grant_basis)} do
-      {:fixed, :employment_date} -> changeset
-      _terms -> clear(changeset, [:qualifying_months])
+    case get_field(changeset, :amount_source) do
+      :fixed -> changeset
+      _source -> clear(changeset, [:qualifying_months])
     end
   end
 

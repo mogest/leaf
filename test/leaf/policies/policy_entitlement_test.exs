@@ -108,29 +108,27 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
     assert apply_changes(changeset(attrs)).grant_period == :year
   end
 
-  test "a fixed amount qualifies only where aligned to the start date, within a year" do
-    qualifying = Map.merge(@quarterly, %{grant_basis: :employment_date, qualifying_months: 6})
+  test "only a fixed amount qualifies, on any alignment" do
+    qualifying = Map.put(@quarterly, :qualifying_months, 24)
 
-    assert apply_changes(changeset(qualifying)).qualifying_months == 6
+    assert apply_changes(changeset(qualifying)).qualifying_months == 24
 
-    assert errors_on(changeset(%{qualifying | qualifying_months: 13})).qualifying_months == [
-             "must be less than or equal to 12"
+    assert errors_on(changeset(%{qualifying | qualifying_months: 0})).qualifying_months == [
+             "must be greater than 0"
            ]
 
     allowance = %{qualifying | amount_source: :public_holidays, grant_amount: nil}
 
-    recorded = %{qualifying | amount_source: :none}
-
-    for attrs <- [%{qualifying | grant_basis: :calendar_year}, allowance, recorded] do
+    for attrs <- [allowance, %{qualifying | amount_source: :none}] do
       assert apply_changes(changeset(attrs)).qualifying_months == nil
     end
   end
 
-  test "any leave may wait on months of service before it is taken, within a year" do
-    assert changeset(%{amount_source: :none, takeable_after_months: 6}).valid?
+  test "any leave may wait on months of service before it is taken" do
+    assert changeset(%{amount_source: :none, takeable_after_months: 24}).valid?
 
-    assert errors_on(changeset(%{amount_source: :none, takeable_after_months: 13})) ==
-             %{takeable_after_months: ["must be less than or equal to 12"]}
+    assert errors_on(changeset(%{amount_source: :none, takeable_after_months: 0})) ==
+             %{takeable_after_months: ["must be greater than 0"]}
   end
 
   test "a rollover rule needs its own cap or window and drops the other" do
