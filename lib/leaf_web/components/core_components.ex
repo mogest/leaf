@@ -268,7 +268,7 @@ defmodule LeafWeb.CoreComponents do
             checked={option.value == @chosen}
             {described(@field.id, @errors, @help)}
           />
-          {option.label}
+          {option.label}{if option.inner_block && option.value != @chosen, do: "…"}
         </label>
         {if option.value == @chosen and option.inner_block, do: render_slot(option)}
       </div>
