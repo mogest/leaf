@@ -145,7 +145,7 @@ defmodule LeafWeb.BalancesLiveTest do
 
     assert html =~ "Recorded as it is taken; nothing accrues."
     assert html =~ "Taken"
-    assert html =~ "1 day awaiting approval"
+    assert html =~ "1 day awaiting approval, not yet deducted"
 
     {:ok, _live, html} = live(context.conn, ~p"/balances/#{bereavement}?as_at=2023-06-01")
 

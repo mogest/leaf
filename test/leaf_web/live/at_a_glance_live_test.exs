@@ -56,7 +56,7 @@ defmodule LeafWeb.AtAGlanceLiveTest do
     {:ok, _live, html} = live(context.conn, ~p"/")
 
     assert html =~ "100 <small>hours</small>"
-    assert html =~ "8 hours awaiting approval"
+    assert html =~ "8 hours awaiting approval, not yet deducted"
   end
 
   test "a leave type nothing is held in is left off the balances", context do

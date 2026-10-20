@@ -92,7 +92,7 @@ defmodule LeafWeb.StyleguideLive do
       name: "Sick leave",
       amount: "33",
       unit: "days",
-      awaiting: "9 days awaiting approval",
+      awaiting: "9 days awaiting approval, not yet deducted",
       expiry: "13 days expire on 14 December",
       path: @here
     },

@@ -245,7 +245,7 @@ defmodule Leaf.Wording do
   @doc "An amount waiting on an answer, and nothing at all where none is."
   @spec asked(Decimal.t() | nil, Day.unit()) :: String.t() | nil
   def asked(nil, _unit), do: nil
-  def asked(amount, unit), do: "#{figure(amount, unit)} awaiting approval"
+  def asked(amount, unit), do: "#{figure(amount, unit)} awaiting approval, not yet deducted"
 
   @doc "The name a leave type is chosen by, and what it counts in."
   @spec leave_type(LeaveType.t()) :: String.t()
