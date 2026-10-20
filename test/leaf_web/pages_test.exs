@@ -158,7 +158,7 @@ defmodule LeafWeb.PagesTest do
     assert context.conn |> get(backwards) |> response(400)
 
     over_limit = context.conn |> get(~p"/reports/over_limit/download?weeks=2") |> response(200)
-    assert over_limit =~ "Person,Leave type,Balance,Limit,Excess,Unit\r\n"
+    assert over_limit =~ "Person,Leave type,Balance without booked leave,"
 
     assert build_conn() |> sign_in(context.other) |> get(path) |> redirected_to() == "/"
   end

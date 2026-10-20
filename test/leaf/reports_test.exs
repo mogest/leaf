@@ -308,15 +308,20 @@ defmodule Leaf.ReportsTest do
       Fixtures.balance_entry(%{person_id: someone.id, leave_type_id: type.id, amount: amount})
     end
 
+    take(person, leave_type, [{~D[2026-02-10], "8", :hours}])
+
     asked = %{"report" => "over_limit", "as_at" => "2026-02-01", "leave_type_id" => leave_type.id}
-    heading = "Person,Leave type,Balance,Limit,Excess,Unit\r\n"
+
+    heading =
+      "Person,Leave type,Balance without booked leave,Booked leave,Balance with booked leave," <>
+        "Limit,Excess,Unit\r\n"
 
     # Odile works 28 hours a week, Rae 40.
     assert {^heading <> over, _unready} = csv(person, Map.put(asked, "weeks", "1"))
 
     assert over ==
-             "Odile Brannigan,Annual leave,30.00,28.00,2.00,hours\r\n" <>
-               "Rae Halloran,Annual leave,50.00,40.00,10.00,hours\r\n"
+             "Odile Brannigan,Annual leave,30.00,0.00,30.00,28.00,2.00,hours\r\n" <>
+               "Rae Halloran,Annual leave,50.00,8.00,42.00,40.00,2.00,hours\r\n"
 
     assert {^heading, _unready} = csv(person, Map.put(asked, "weeks", "1.25"))
 
@@ -324,7 +329,7 @@ defmodule Leaf.ReportsTest do
     lieu_asked = %{asked | "leave_type_id" => lieu.id}
 
     assert csv(person, Map.put(lieu_asked, "weeks", "1")) ==
-             {heading <> "Odile Brannigan,Lieu,5.00,4.00,1.00,days\r\n",
+             {heading <> "Odile Brannigan,Lieu,5.00,0.00,5.00,4.00,1.00,days\r\n",
               ["Ines Vasquez's work pattern does not cover their leave, so it is left out."]}
   end
 

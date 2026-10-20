@@ -10,7 +10,16 @@ defmodule Leaf.Reports.OverLimit do
   alias Leaf.People
   alias Leaf.Reports.Table
 
-  @columns ["Person", "Leave type", "Balance", "Limit", "Excess", "Unit"]
+  @columns [
+    "Person",
+    "Leave type",
+    "Balance without booked leave",
+    "Booked leave",
+    "Balance with booked leave",
+    "Limit",
+    "Excess",
+    "Unit"
+  ]
 
   @doc "The balances of `leave_type_id`, or of every type where nil, over `weeks` on `as_at`."
   @spec table(Ecto.UUID.t(), Date.t(), Ecto.UUID.t() | nil, Decimal.t()) :: Table.t()
@@ -32,12 +41,14 @@ defmodule Leaf.Reports.OverLimit do
 
     rows =
       for {person, {:ok, pattern}, statements} <- held,
-          %{leave_type: leave_type, balance: balance} <- statements,
+          %{leave_type: leave_type, balance: balance, to_date: to_date} <- statements,
           limit = Decimal.mult(weeks, week(leave_type.unit, pattern)),
           Decimal.gt?(balance, limit) do
         [
           person.name,
           leave_type.name,
+          to_date,
+          Decimal.sub(to_date, balance),
           balance,
           limit,
           Decimal.sub(balance, limit),
