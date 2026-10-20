@@ -25,6 +25,19 @@ defmodule Leaf.Dates do
     bounded(Enum.max([range.first, from], Date), earliest(range.last, to))
   end
 
+  @doc "`range` cut at the end of every month it runs through."
+  @spec months(Date.Range.t()) :: [Date.Range.t()]
+  def months(range) do
+    range.first
+    |> Date.beginning_of_month()
+    |> Stream.iterate(&Date.shift(&1, month: 1))
+    |> Enum.take_while(&(not Date.after?(&1, range.last)))
+    |> Enum.map(fn month ->
+      {:ok, part} = intersect(range, month, Date.end_of_month(month))
+      part
+    end)
+  end
+
   @doc "The instant `date` begins in `zone`."
   @spec midnight(Date.t(), String.t()) :: DateTime.t()
   def midnight(date, zone) do

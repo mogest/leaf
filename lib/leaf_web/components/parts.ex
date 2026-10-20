@@ -337,16 +337,31 @@ defmodule LeafWeb.Parts do
       <Parts.steps earlier={@earlier} later={@later} what="months" />
 
   """
-  attr :earlier, :string, required: true, doc: "where the step backwards goes"
-  attr :later, :string, required: true, doc: "where the step forwards goes"
+  attr :earlier, :string,
+    default: nil,
+    doc: "where the step backwards goes, nil where there is none"
+
+  attr :later, :string, default: nil, doc: "where the step forwards goes, nil where there is none"
   attr :what, :string, required: true, doc: "what a step moves by, for the label"
 
   def steps(assigns) do
     ~H"""
-    <.link class="step" navigate={@earlier} aria-label={"Earlier #{@what}"} title={"Earlier #{@what}"}>
+    <.link
+      :if={@earlier}
+      class="step"
+      navigate={@earlier}
+      aria-label={"Earlier #{@what}"}
+      title={"Earlier #{@what}"}
+    >
       <.arrow d="M10 3L5 8l5 5" />
     </.link>
-    <.link class="step" navigate={@later} aria-label={"Later #{@what}"} title={"Later #{@what}"}>
+    <.link
+      :if={@later}
+      class="step"
+      navigate={@later}
+      aria-label={"Later #{@what}"}
+      title={"Later #{@what}"}
+    >
       <.arrow d="M6 3l5 5-5 5" />
     </.link>
     """

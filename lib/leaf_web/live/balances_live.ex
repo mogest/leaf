@@ -10,6 +10,9 @@ defmodule LeafWeb.BalancesLive do
   nothing for: what somebody may ask for is as much part of this page as what they have, and
   nothing held is an answer. One they have never been granted anything in shows no figure, at any
   date, since the only figure it has is the leave taken with a minus in front.
+
+  How the one being read was arrived at is told a financial year at a time, opening on the year
+  holding the date at the top.
   """
 
   use LeafWeb, :live_view
@@ -18,15 +21,24 @@ defmodule LeafWeb.BalancesLive do
   alias Leaf.Ledger
   alias Leaf.People
   alias Leaf.Policies
+  alias LeafWeb.Chart
 
   @kinds %{
     opening_balance: "Brought in",
     adjustment: "Adjusted",
     grant: "Granted",
     accrual: "Earned",
+    taken: "Taken",
+    booked: "Booked",
     expiry: "Lapsed",
-    rollover_cap: "Over the cap"
+    rollover_cap: "Over the cap",
+    started: "Started",
+    left: "Left"
   }
+
+  @lost %{expiry: "lapsed", rollover_cap: "over the cap"}
+
+  @blank %{earned: nil, taken: nil, lost: nil}
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket), do: {:ok, socket}
@@ -102,31 +114,114 @@ defmodule LeafWeb.BalancesLive do
           <p :if={@account.lots == []}>Nothing held.</p>
         </section>
 
-        <section>
-          <header>
-            <h2>How it was arrived at</h2>
-          </header>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Date</th>
-                <th scope="col">What</th>
-                <th scope="col">Amount</th>
-                <th scope="col">Lapses</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={movement <- @account.movements}>
-                <td>{movement.date}</td>
-                <td>{movement.kind}</td>
-                <td data-tone={movement.tone}>{movement.amount}</td>
-                <td>{movement.expires}</td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
+        <.history :if={@account.history} history={@account.history} />
       </div>
     </Layouts.app>
+    """
+  end
+
+  attr :history, :map, required: true
+
+  defp history(assigns) do
+    ~H"""
+    <section>
+      <header>
+        <h2>History</h2>
+        <span>{@history.span}</span>
+        <Parts.steps earlier={@history.earlier} later={@history.later} what="year" />
+      </header>
+      <.chart :if={@history.chart} chart={@history.chart} />
+      <div>
+        <table>
+          <caption>{@history.unit}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Month</th>
+              <th scope="col">{@history.earned}</th>
+              <th scope="col">Taken</th>
+              <th scope="col">Lost</th>
+              <th scope="col">Balance</th>
+            </tr>
+          </thead>
+          <tbody :if={@history.brought_forward}>
+            <tr>
+              <th scope="row">Brought forward</th>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td>{@history.brought_forward}</td>
+            </tr>
+          </tbody>
+          <tbody :for={month <- @history.months} id={month.id}>
+            <tr>
+              <th scope="row">
+                <button
+                  type="button"
+                  aria-expanded="false"
+                  phx-click={JS.toggle_attribute({"aria-expanded", "true", "false"})}
+                >
+                  {month.name} <small :if={month.note}>{month.note}</small>
+                </button>
+              </th>
+              <td>{month.earned}</td>
+              <td>{month.taken}</td>
+              <td>{month.lost}</td>
+              <td>{month.balance}</td>
+            </tr>
+            <tr :for={line <- month.lines}>
+              <td><span>{line.dates}</span> {line.what}</td>
+              <td>{line.earned}</td>
+              <td>{line.taken}</td>
+              <td>{line.lost}</td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    """
+  end
+
+  attr :chart, :map, required: true
+
+  defp chart(assigns) do
+    ~H"""
+    <figure>
+      <svg viewBox="0 0 600 200" role="group" aria-label={@chart.label}>
+        <line x1="0" y1={@chart.zero} x2="600" y2={@chart.zero} />
+        <line :for={x <- @chart.months} x1={x} y1="0" x2={x} y2="200" />
+        <line :if={@chart.as_at} data-as-at x1={@chart.as_at.x} y1="0" x2={@chart.as_at.x} y2="200" />
+        <polyline points={@chart.balance} />
+        <polyline data-tone="spent" points={@chart.booked} />
+        <circle
+          :for={loss <- @chart.losses}
+          cx={loss.x}
+          cy={loss.y}
+          r="7"
+          role="img"
+          aria-label={loss.label}
+        />
+      </svg>
+      <figcaption>
+        <span>{@chart.from}</span><span>{@chart.to}</span>
+      </figcaption>
+      <ul>
+        <li>
+          <svg width="16" height="16" aria-hidden="true"><polyline points="0,8 16,8" /></svg>Balance
+        </li>
+        <li :if={@chart.booked != ""}>
+          <svg width="16" height="16" aria-hidden="true">
+            <polyline data-tone="spent" points="0,8 16,8" />
+          </svg>Booked
+        </li>
+        <li :if={@chart.losses != []}>
+          <svg width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="5" /></svg>Lost
+        </li>
+        <li :if={@chart.as_at}>
+          <svg width="16" height="16" aria-hidden="true"><line data-as-at x1="8" y1="0" x2="8" y2="16" /></svg>{@chart.as_at.label}
+        </li>
+      </ul>
+    </figure>
     """
   end
 
@@ -153,11 +248,12 @@ defmodule LeafWeb.BalancesLive do
     as_at = as_at(params["as_at"], socket.assigns.current_person)
     mine? = person.id == socket.assigns.current_person.id
     ready? = Ledger.ready?(person, as_at)
+    reading = %{person: person, mine?: mine?, as_at: as_at, year: year(params["year"])}
 
     case accounts(person, as_at, ready?, params["leave_type_id"]) do
       {:ok, accounts, chosen} ->
         socket
-        |> listed(person, mine?, as_at, accounts, chosen)
+        |> listed(reading, accounts, chosen)
         |> assign(:nothing, nothing(accounts, ready?, mine?))
 
       :error ->
@@ -171,7 +267,8 @@ defmodule LeafWeb.BalancesLive do
     |> push_navigate(to: path(person, mine?, nil, to_string(as_at)))
   end
 
-  defp listed(socket, person, mine?, as_at, accounts, chosen) do
+  defp listed(socket, reading, accounts, chosen) do
+    %{person: person, mine?: mine?, as_at: as_at} = reading
     selected = selected(chosen)
     granted = Ledger.granted(person)
     listings = Enum.map(accounts, &listing(&1, granted, person, mine?, as_at, selected))
@@ -185,7 +282,7 @@ defmodule LeafWeb.BalancesLive do
     |> assign(:selected, selected)
     |> assign(:form, to_form(%{"as_at" => to_string(as_at)}, as: :ledger))
     |> assign(:accounts, listings)
-    |> assign(:account, account(chosen, granted, person, as_at))
+    |> assign(:account, account(chosen, granted, reading))
   end
 
   defp title(_person, true), do: "Your balances"
@@ -260,20 +357,20 @@ defmodule LeafWeb.BalancesLive do
     }
   end
 
-  defp account(nil, _granted, _person, _as_at), do: nil
+  defp account(nil, _granted, _reading), do: nil
 
-  defp account({leave_type, statement}, granted, person, as_at) do
+  defp account({leave_type, statement}, granted, reading) do
     %{
       name: leave_type.name,
-      as_at: Wording.date(as_at),
+      as_at: Wording.date(reading.as_at),
       figures:
         figures(
           accrued(statement, leave_type, granted, :to_date),
           accrued(statement, leave_type, granted, :balance)
         ),
-      awaiting: Wording.asked(Ledger.awaiting(person)[leave_type.id], leave_type.unit),
+      awaiting: Wording.asked(Ledger.awaiting(reading.person)[leave_type.id], leave_type.unit),
       lots: lots(statement, leave_type),
-      movements: movements(statement, leave_type, person)
+      history: history(statement, MapSet.member?(granted, leave_type.id), reading)
     }
   end
 
@@ -301,56 +398,128 @@ defmodule LeafWeb.BalancesLive do
   defp lapses(nil), do: "does not lapse"
   defp lapses(date), do: "lapses #{Wording.date(date)}"
 
-  defp movements(statement, leave_type, person) do
-    employment(person.employment_start_date, "Started") ++
-      recorded(statement, leave_type) ++
-      employment(person.employment_end_date, "Left")
-  end
+  # A type that is recorded only has no balance to show, so its history is the leave taken alone.
+  defp history(nil, _granted?, _reading), do: nil
 
-  defp recorded(nil, _leave_type), do: []
+  defp history(statement, granted?, reading) do
+    history = Ledger.history(reading.person, statement, reading.year)
+    %{leave_type: leave_type} = statement
 
-  defp recorded(statement, leave_type),
-    do: Enum.map(statement.movements, &movement(&1, statement.as_at, leave_type))
-
-  defp employment(nil, _kind), do: []
-
-  defp employment(date, kind),
-    do: [%{date: Wording.date(date), kind: kind, amount: nil, expires: nil, tone: nil}]
-
-  defp movement(movement, as_at, leave_type) do
     %{
-      date: Wording.date(movement.date),
-      kind: kind(movement, as_at),
-      amount: Wording.figure(movement.amount, leave_type.unit),
-      expires: Wording.date(movement.expires_on),
-      tone: tone(movement.amount)
+      span: "#{Wording.date(history.dates.first)} – #{Wording.date(history.dates.last)}",
+      earlier: step(history.previous, leave_type, reading),
+      later: step(history.next, leave_type, reading),
+      earned: earned(history.granted?),
+      unit: "In #{leave_type.unit}",
+      brought_forward: balance(history.brought_forward, granted?),
+      chart: chart(history, leave_type.unit, granted?),
+      months: Enum.map(history.months, &month(&1, history, granted?))
     }
   end
 
-  defp kind(%{kind: :taken, date: date}, as_at) do
-    case Date.after?(date, as_at) do
-      true -> "Booked"
-      false -> "Taken"
+  defp step(nil, _leave_type, _reading), do: nil
+
+  defp step(year, leave_type, reading),
+    do: path(reading.person, reading.mine?, leave_type.id, reading.as_at, year)
+
+  defp earned(true), do: "Granted"
+  defp earned(false), do: "Earned"
+
+  defp note(true), do: "booked"
+  defp note(false), do: nil
+
+  defp balance(_amount, false), do: nil
+  defp balance(amount, true), do: Wording.number(amount)
+
+  defp month(month, history, granted?) do
+    %{
+      id: "month-#{month.dates.first}",
+      name: Wording.month(month.dates.first, history.dates.first),
+      note: note(month.booked?),
+      earned: moved(month.earned),
+      taken: moved(month.taken),
+      lost: moved(month.lost),
+      balance: balance(month.balance, granted?),
+      lines: Enum.map(month.lines, &line/1)
+    }
+  end
+
+  defp moved(amount) do
+    case Decimal.equal?(amount, 0) do
+      true -> nil
+      false -> Wording.number(amount)
     end
   end
 
-  defp kind(movement, _as_at), do: Map.fetch!(@kinds, movement.kind)
-
-  defp tone(amount) do
-    case Decimal.negative?(amount) do
-      true -> "spent"
-      false -> nil
-    end
+  defp line(line) do
+    @blank
+    |> Map.merge(column(line))
+    |> Map.merge(%{dates: Wording.within_year(line.dates), what: what(line)})
   end
+
+  defp column(%{column: nil}), do: %{}
+  defp column(line), do: %{line.column => moved(line.amount)}
+
+  defp what(%{days: nil} = line), do: @kinds[line.kind]
+
+  defp what(line),
+    do: "#{@kinds[line.kind]}, #{Wording.figure(Decimal.new(line.days), :days)}"
+
+  defp chart(_history, _unit, false), do: nil
+
+  defp chart(history, unit, true) do
+    %{dates: dates, chart: chart} = history
+    figures = Enum.map(chart.balance ++ chart.booked, &elem(&1, 1))
+    place = Chart.placing(dates.first, dates.last, figures)
+    x = &elem(place.({&1, Decimal.new(0)}), 0)
+    {_x, zero} = place.({dates.first, Decimal.new(0)})
+
+    %{
+      label: "Balance from #{Wording.date(dates.first)} to #{Wording.date(dates.last)}",
+      zero: zero,
+      months: for(month <- 1..11, do: x.(Date.shift(dates.first, month: month))),
+      balance: Chart.points(chart.balance, place),
+      booked: Chart.points(chart.booked, place),
+      losses: Enum.map(chart.losses, &loss(&1, place, unit)),
+      as_at: marker(chart.as_at, x),
+      from: Wording.brief_date(dates.first),
+      to: Wording.brief_date(dates.last)
+    }
+  end
+
+  defp loss(loss, place, unit) do
+    {x, y} = place.({loss.date, loss.balance})
+    lost = Wording.figure(Decimal.abs(loss.amount), unit)
+
+    %{x: x, y: y, label: "#{lost} #{@lost[loss.kind]} on #{Wording.date(loss.date)}"}
+  end
+
+  defp marker(nil, _x), do: nil
+  defp marker(as_at, x), do: %{x: x.(as_at), label: "As at #{Wording.day_and_month(as_at)}"}
 
   defp nothing([], ready?, true), do: Wording.no_balance(ready?, "you")
   defp nothing([], ready?, false), do: Wording.no_balance(ready?, "they")
   defp nothing(_accounts, _ready?, _mine?), do: nil
 
-  defp path(_person, true, nil, as_at), do: ~p"/balances?as_at=#{as_at}"
-  defp path(person, false, nil, as_at), do: ~p"/people/#{person}/balances?as_at=#{as_at}"
-  defp path(_person, true, id, as_at), do: ~p"/balances/#{id}?as_at=#{as_at}"
-  defp path(person, false, id, as_at), do: ~p"/people/#{person}/balances/#{id}?as_at=#{as_at}"
+  defp path(person, mine?, id, as_at, year \\ nil) do
+    query = Enum.reject([as_at: to_string(as_at), year: year], &is_nil(elem(&1, 1)))
+
+    route(person, mine?, id, query)
+  end
+
+  defp route(_person, true, nil, query), do: ~p"/balances?#{query}"
+  defp route(person, false, nil, query), do: ~p"/people/#{person}/balances?#{query}"
+  defp route(_person, true, id, query), do: ~p"/balances/#{id}?#{query}"
+  defp route(person, false, id, query), do: ~p"/people/#{person}/balances/#{id}?#{query}"
+
+  defp year(entered) when is_binary(entered) do
+    case Integer.parse(entered) do
+      {year, ""} -> year
+      _not_a_year -> nil
+    end
+  end
+
+  defp year(_entered), do: nil
 
   defp as_at(entered, viewer) when is_binary(entered) do
     case Date.from_iso8601(entered) do

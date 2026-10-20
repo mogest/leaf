@@ -18,6 +18,7 @@ defmodule Leaf.Ledger do
   alias Leaf.Leave.Day
   alias Leaf.Ledger.Drawdown
   alias Leaf.Ledger.Grant
+  alias Leaf.Ledger.History
   alias Leaf.Ledger.Movement
   alias Leaf.Ledger.Rehearsal
   alias Leaf.Ledger.Span
@@ -79,6 +80,19 @@ defmodule Leaf.Ledger do
     }
 
     Enum.flat_map(leave_types, &statement(&1, context))
+  end
+
+  @doc """
+  How `statement`, one of the person's accounts, was arrived at over one financial year.
+
+  The year is the organisation's, starting in the calendar year `year` names; nil reads the one
+  holding the statement's `as_at`. `Leaf.Ledger.History` says how its months are worked out.
+  """
+  @spec history(Person.t(), Statement.t(), integer() | nil) :: History.t()
+  def history(person, statement, year) do
+    {:ok, organisation} = Org.fetch_organisation(person.organisation_id)
+
+    History.new(statement, person, organisation, year)
   end
 
   @doc """
@@ -414,7 +428,12 @@ defmodule Leaf.Ledger do
   defp taken_movement(day, leave_type, hours) do
     amount = Leave.in_unit(day, leave_type.unit, hours[day.date])
 
-    %Movement{date: day.date, kind: :taken, amount: Decimal.negate(amount)}
+    %Movement{
+      date: day.date,
+      kind: :taken,
+      amount: Decimal.negate(amount),
+      leave_request_id: day.leave_request_id
+    }
   end
 
   # The hours the request and the calendar are measured against, public holidays granted off

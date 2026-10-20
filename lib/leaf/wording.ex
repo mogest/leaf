@@ -221,6 +221,11 @@ defmodule Leaf.Wording do
   @spec day_and_month(DateTime.t(), String.t()) :: String.t()
   def day_and_month(at, zone), do: at |> on(zone) |> day_and_month()
 
+  @doc "A stretch of dates within the year it is read in, its month said once where it can be."
+  @spec within_year(Date.Range.t()) :: String.t()
+  def within_year(%{first: date, last: date}), do: day_and_month(date)
+  def within_year(range), do: stretch(range.first, range.last, "%-d", &day_and_month/1)
+
   @doc "A month, named with its year only where that is not the year being read in: August 2030."
   @spec month(Date.t(), Date.t()) :: String.t()
   def month(%{year: year} = date, %{year: year}), do: Calendar.strftime(date, "%B")

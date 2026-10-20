@@ -132,6 +132,76 @@ td[data-tone="spent"] {
   color: var(--clay-ink);
 }
 
+figure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--step-3);
+  margin: 0;
+
+  & > svg {
+    inline-size: 100%;
+    block-size: auto;
+    overflow: visible;
+  }
+
+  & svg line {
+    stroke: var(--rule-firm);
+    vector-effect: non-scaling-stroke;
+  }
+
+  & svg line[data-as-at] {
+    stroke: var(--ink-faint);
+    stroke-dasharray: 2 3;
+  }
+
+  & svg polyline {
+    fill: none;
+    stroke: var(--green);
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  & svg polyline[data-tone="spent"] {
+    stroke: var(--clay);
+    stroke-width: 2;
+    stroke-dasharray: 5 4;
+  }
+
+  & svg circle {
+    fill: var(--ochre);
+    stroke: var(--sheet);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+
+    &:focus-visible {
+      outline: none;
+      stroke: var(--ink);
+    }
+  }
+
+  & > figcaption {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--size-xs);
+    color: var(--ink-soft);
+  }
+
+  & > ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--step-2) var(--step-4);
+    font-size: var(--size-xs);
+    color: var(--ink-soft);
+
+    & > li {
+      display: flex;
+      align-items: center;
+      gap: var(--step-1);
+    }
+  }
+}
+
 button {
   padding: 0;
   border: 0;

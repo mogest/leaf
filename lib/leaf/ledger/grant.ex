@@ -103,17 +103,56 @@ defmodule Leaf.Ledger.Grant do
   defp arrival(span, {piece, measured}, organisation, holidays, suspended) do
     {kind, date} = lands(span.entitlement.grant_timing, piece)
     {_kind, whole_lands_on} = lands(span.entitlement.grant_timing, measured)
+    earned = &amount(span, &1, organisation, holidays, suspended)
+    amount = earned.(piece)
 
     %Movement{
       date: date,
       kind: kind,
-      amount: amount(span, piece, organisation, holidays, suspended),
-      expires_on: expires_on(span.entitlement, span.period, whole_lands_on)
+      amount: amount,
+      expires_on: expires_on(span.entitlement, span.period, whole_lands_on),
+      months: months(kind, piece, amount, earned)
     }
   end
 
   defp lands(:period_start, measured), do: {:grant, measured.first}
   defp lands(:daily, measured), do: {:accrual, measured.last}
+
+  defp months(:grant, _piece, _amount, _earned), do: nil
+
+  # Each month takes the share of the piece it would have earned measured on its own, so a holiday
+  # is earned in the month it falls in and suspended time in the month it was taken, while the
+  # months still add up to the piece exactly. A piece that earns nothing is dropped anyway.
+  defp months(:accrual, piece, amount, earned) do
+    months = Dates.months(piece)
+    weights = Enum.map(months, earned)
+    whole = Decimals.total(weights)
+
+    case Decimal.equal?(whole, 0) do
+      true -> [{piece, amount}]
+      false -> shared(Enum.zip(months, weights), amount, whole)
+    end
+  end
+
+  defp shared(weighted, amount, whole) do
+    {shares, _reached} =
+      Enum.map_reduce(weighted, {Decimal.new(0), Decimal.new(0)}, fn {month, weight},
+                                                                     {sum, before} ->
+        sum = Decimal.add(sum, weight)
+        reached = reached(amount, sum, whole)
+
+        {{month, Decimal.sub(reached, before)}, {sum, reached}}
+      end)
+
+    Enum.reject(shares, fn {_month, share} -> Decimal.equal?(share, 0) end)
+  end
+
+  defp reached(amount, sum, whole) do
+    case Decimal.equal?(sum, whole) do
+      true -> amount
+      false -> amount |> Decimal.mult(sum) |> Decimal.div(whole)
+    end
+  end
 
   defp amount(span, measured, organisation, holidays, suspended) do
     {base, num, den} = measure(span.entitlement, measured, span.period, organisation, holidays)

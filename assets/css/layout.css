@@ -542,6 +542,111 @@ main.balances {
       }
     }
   }
+
+  & section > header {
+    flex-wrap: wrap;
+
+    & > span {
+      font-size: var(--size-base);
+      font-variant-numeric: tabular-nums;
+      color: var(--ink-quiet);
+    }
+  }
+
+  & section > figure {
+    margin-block-end: var(--step-5);
+  }
+
+  & section table {
+    & :is(th, td):not(:first-child) {
+      text-align: end;
+      white-space: nowrap;
+    }
+
+    & :is(th, td):last-child {
+      padding-inline-end: 0;
+    }
+
+    & td:nth-child(2) {
+      color: var(--green-ink);
+    }
+
+    & td:nth-child(3) {
+      color: var(--clay-ink);
+    }
+
+    & td:nth-child(4) {
+      color: var(--ochre);
+    }
+
+    & td:nth-child(5) {
+      font-weight: 600;
+    }
+
+    & tbody:has(button[aria-expanded="false"]) > tr + tr {
+      display: none;
+    }
+
+    & tbody > tr + tr > td {
+      padding-block: var(--step-1);
+      border-block-end: 0;
+      background: var(--panel);
+      font-size: var(--size-sm);
+    }
+
+    & tbody > tr + tr:last-child > td {
+      padding-block-end: var(--step-2);
+      border-block-end: 1px solid var(--rule);
+    }
+
+    & tbody > tr + tr > td:first-child {
+      padding-inline-start: var(--step-5);
+
+      & > span {
+        display: inline-block;
+        min-inline-size: 8rem;
+        color: var(--ink-soft);
+      }
+    }
+
+    & tbody button {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--step-2);
+      font-weight: 500;
+
+      &::before {
+        content: "";
+        inline-size: 0.4375rem;
+        block-size: 0.4375rem;
+        border-block-start: 1.5px solid;
+        border-inline-end: 1.5px solid;
+        rotate: 45deg;
+        transition: rotate 0.15s;
+      }
+
+      &[aria-expanded="true"]::before {
+        rotate: 135deg;
+      }
+    }
+
+    @media (width < 48rem) {
+      font-size: var(--size-sm);
+
+      & :is(th, td) {
+        padding-inline-end: var(--step-2);
+      }
+
+      & tbody > tr + tr > td:first-child {
+        padding-inline-start: var(--step-2);
+
+        & > span {
+          display: block;
+          min-inline-size: 0;
+        }
+      }
+    }
+  }
 }
 
 main.request-leave {
@@ -1007,7 +1112,7 @@ main.person section:not(.balance-sheet) > dl {
 
 @media (width < 48rem) {
   :is(main.people, main.person, main.audit) table,
-  :is(main.balances section, .requests > div) > table {
+  .requests > div > table {
     display: block;
 
     & thead {
@@ -1041,7 +1146,7 @@ main.person section:not(.balance-sheet) > dl {
 }
 
 @media (width < 48rem) {
-  :is(main.person, main.balances) section > table {
+  main.person section > table {
     & td:empty {
       display: none;
     }
@@ -1054,9 +1159,7 @@ main.person section:not(.balance-sheet) > dl {
       order: 0;
       flex-grow: 1;
     }
-  }
 
-  main.person section > table {
     & td:nth-child(4) {
       order: 0;
     }
@@ -1082,21 +1185,6 @@ main.person section:not(.balance-sheet) > dl {
 
     & td:nth-child(6) {
       display: none;
-    }
-  }
-
-  main.balances section > table {
-    & td:nth-child(3) {
-      order: 0;
-    }
-
-    & td:is(:nth-child(2), :nth-child(4)) {
-      font-size: var(--size-sm);
-      color: var(--ink-soft);
-    }
-
-    & td:nth-child(4)::before {
-      content: "\2002\00b7\2002lapses ";
     }
   }
 }
@@ -1278,51 +1366,9 @@ main.entitlement {
     }
   }
 
-  & figure {
-    display: flex;
-    flex-direction: column;
-    gap: var(--step-3);
-    margin: 0;
-  }
-
   & figure > svg {
     position: relative;
     z-index: 1;
-    inline-size: 100%;
-    block-size: auto;
-    overflow: visible;
-  }
-
-  & figure svg line {
-    stroke: var(--rule-firm);
-    vector-effect: non-scaling-stroke;
-  }
-
-  & figure svg polyline {
-    fill: none;
-    stroke: var(--green);
-    stroke-width: 2.5;
-    stroke-linejoin: round;
-    vector-effect: non-scaling-stroke;
-  }
-
-  & figure svg circle {
-    fill: var(--ochre);
-    stroke: var(--sheet);
-    stroke-width: 2;
-    vector-effect: non-scaling-stroke;
-
-    &:focus-visible {
-      outline: none;
-      stroke: var(--ink);
-    }
-  }
-
-  & figcaption {
-    display: flex;
-    justify-content: space-between;
-    font-size: var(--size-xs);
-    color: var(--ink-soft);
   }
 
   & dl > div {
@@ -1361,18 +1407,5 @@ main.entitlement {
 
   & svg:has(g:is(:hover, :focus-within)) g:not(:hover, :focus-within) {
     opacity: 0;
-  }
-
-  & figure > ul {
-    display: flex;
-    gap: var(--step-4);
-    font-size: var(--size-xs);
-    color: var(--ink-soft);
-
-    & > li {
-      display: flex;
-      align-items: center;
-      gap: var(--step-1);
-    }
   }
 }

@@ -15,6 +15,7 @@ defmodule LeafWeb.EntitlementLive do
   alias Leaf.Ledger
   alias Leaf.Org
   alias Leaf.Policies
+  alias LeafWeb.Chart
 
   @bases [
     {"Employee start date", "employment_date"},
@@ -514,27 +515,18 @@ defmodule LeafWeb.EntitlementLive do
     }
   end
 
-  # Drawn in a 600 by 200 box, from the lower of zero and the least balance up to the greatest.
   defp line(balances, losses, from, to) do
-    figures = Enum.map(balances, fn {date, balance} -> {date, Decimal.to_float(balance)} end)
-    values = Enum.map(figures, &elem(&1, 1))
-    bottom = Enum.min([0 | values])
-    height = Enum.max([bottom + 1 | values]) - bottom
-    x = &round(Date.diff(&1, from) * 600 / Date.diff(to, from))
-    y = &round(195 - (&1 - bottom) * 190 / height)
+    place = Chart.placing(from, to, Enum.map(balances, &elem(&1, 1)))
+    {_x, zero} = place.({from, Decimal.new(0)})
 
     %{
-      zero: y.(0),
-      points: Enum.map_join(figures, " ", fn {date, figure} -> "#{x.(date)},#{y.(figure)}" end),
+      zero: zero,
+      points: Chart.points(balances, place),
       losses:
         for(
           {date, label} <- losses,
-          do: %{
-            x: x.(date),
-            y: y.(figures |> List.keyfind!(date, 0) |> elem(1)),
-            label: label,
-            label_x: (x.(date) - 180) |> max(0) |> min(240)
-          }
+          {x, y} = place.(List.keyfind!(balances, date, 0)),
+          do: %{x: x, y: y, label: label, label_x: (x - 180) |> max(0) |> min(240)}
         )
     }
   end

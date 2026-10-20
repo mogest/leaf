@@ -56,18 +56,30 @@ defmodule LeafWeb.BalancesLiveTest do
   end
 
   test "the page reads the first account, saying what is held and how it got there", context do
-    {:ok, live, html} = live(context.conn, ~p"/balances")
+    {:ok, live, html} = live(context.conn, ~p"/balances?as_at=2024-06-30")
 
     assert html =~ "<h1>Your balances</h1>"
     assert has_element?(live, ~s(#pages a[aria-current]), "Your balances")
     assert html =~ "Annual leave"
     assert html =~ "100 hours"
     assert html =~ "lapses 31 December 2030"
-    assert html =~ "Brought in"
-    assert has_element?(live, "tbody tr:first-child", ~r/4 March 2024\s*Started/)
+    assert html =~ "1 April 2024 – 31 March 2025"
+    assert has_element?(live, "tbody tr:first-child", ~r/June\s*100\s*100/)
+    assert has_element?(live, "tbody tr + tr", ~r/1 June\s*Brought in/)
+
+    assert has_element?(
+             live,
+             ~s(a[aria-label="Earlier year"][href$="as_at=2024-06-30&year=2023"])
+           )
+
+    refute has_element?(live, ~s(a[aria-label="Later year"]))
+
+    {:ok, live, _html} = live(context.conn, ~p"/balances?as_at=2024-06-30&year=2023")
+
+    assert has_element?(live, "tbody tr + tr", ~r/4 March\s*Started/)
   end
 
-  test "the balance reads as accrued, and what accrued it as earned", context do
+  test "an accruing balance reads as earned a month at a time, booked leave and all", context do
     policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
 
     Fixtures.policy_entitlement(%{
@@ -77,11 +89,19 @@ defmodule LeafWeb.BalancesLiveTest do
 
     Fixtures.policy_assignment(%{person_id: context.person.id, leave_policy_id: policy.id})
 
-    {:ok, _live, html} = live(context.conn, ~p"/balances?as_at=2025-01-01")
+    Fixtures.leave_request(%{
+      person_id: context.person.id,
+      days: [
+        %{leave_type_id: context.leave_type.id, date: ~D[2025-02-03], amount: "8", unit: :hours}
+      ]
+    })
 
-    assert html =~ "<dt>Balance</dt>"
-    assert html =~ "<td>Earned</td>"
-    assert [_before, _after] = String.split(html, "<dt>Balance")
+    {:ok, live, _html} = live(context.conn, ~p"/balances?as_at=2025-01-01")
+
+    assert has_element?(live, "thead th", "Earned")
+    assert has_element?(live, "tbody tr + tr td", "Earned")
+    assert has_element?(live, ~s(figure polyline[data-tone="spent"]))
+    assert has_element?(live, "figure li", "As at 1 January")
   end
 
   test "leave taken after the date read at reads as booked, and is out of the balance after it",
@@ -93,11 +113,16 @@ defmodule LeafWeb.BalancesLiveTest do
       })
     end
 
-    {:ok, live, _html} = live(context.conn, ~p"/balances?as_at=2024-08-01")
+    {:ok, live, html} = live(context.conn, ~p"/balances?as_at=2024-08-01")
 
-    assert has_element?(live, "tbody tr", ~r/1 July 2024\s*Taken/)
-    assert has_element?(live, "tbody tr", ~r/2 September 2024\s*Booked/)
-    assert render(live) =~ ~r/without booked leave.*92 hours.*with booked leave.*84 hours/s
+    assert has_element?(live, "tbody tr + tr", ~r/1 July\s*Taken, 1 day/)
+    assert has_element?(live, "tbody tr + tr", ~r/2 September\s*Booked, 1 day/)
+    assert has_element?(live, "tbody th small", "booked")
+    assert html =~ ~r/without booked leave.*92 hours.*with booked leave.*84 hours/s
+
+    {:ok, _live, html} = live(context.conn, ~p"/balances?as_at=2024-09-30")
+
+    assert html =~ "<dt>Balance</dt>"
   end
 
   test "a date that is not a date reads as today", context do
@@ -128,7 +153,7 @@ defmodule LeafWeb.BalancesLiveTest do
     assert html =~ "Recorded as it is taken; nothing accrues."
     refute html =~ "<dt>Balance"
     assert html =~ "Nothing held."
-    assert has_element?(live, "tbody tr:only-child", "Started")
+    refute has_element?(live, "table")
 
     Fixtures.leave_request(%{
       person_id: context.person.id,
@@ -144,8 +169,13 @@ defmodule LeafWeb.BalancesLiveTest do
     {:ok, _live, html} = live(context.conn, ~p"/balances/#{bereavement}")
 
     assert html =~ "Recorded as it is taken; nothing accrues."
-    assert html =~ "Taken"
     assert html =~ "1 day awaiting approval, not yet deducted"
+
+    {:ok, live, html} = live(context.conn, ~p"/balances/#{bereavement}?as_at=2024-07-31")
+
+    assert has_element?(live, "tbody tr + tr td", "Taken, 1 day")
+    refute has_element?(live, "figure")
+    refute html =~ "Brought forward"
 
     {:ok, _live, html} = live(context.conn, ~p"/balances/#{bereavement}?as_at=2023-06-01")
 
@@ -224,7 +254,7 @@ defmodule LeafWeb.BalancesLiveTest do
 
     assert html =~ "as at 1 May 2024"
     assert html =~ "0 hours"
-    assert has_element?(live, "tbody tr:only-child", "Started")
+    refute has_element?(live, "table")
   end
 
   test "a leave type that is nothing of theirs is no account of theirs", context do
@@ -279,9 +309,9 @@ defmodule LeafWeb.BalancesLiveTest do
       date: ~D[2024-06-01]
     })
 
-    path = ~p"/people/#{left}/balances?as_at=2025-01-01"
+    path = ~p"/people/#{left}/balances?as_at=2025-07-15"
     {:ok, live, _html} = live(sign_in(build_conn(), admin), path)
 
-    assert has_element?(live, "tbody tr:last-child", ~r/30 June 2025\s*Left/)
+    assert has_element?(live, "tbody tr + tr", ~r/30 June\s*Left/)
   end
 end

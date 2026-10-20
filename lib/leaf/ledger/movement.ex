@@ -12,6 +12,10 @@ defmodule Leaf.Ledger.Movement do
   A figure entered by hand with a lapse date of its own is not `capped`: a cap neither counts nor
   trims it. That is how leave the law carries over past the cap is held — UK leave a person could
   not take for sickness or family leave, which lapses on a deadline of its own.
+
+  An accrual says how much of it was earned in each month its dates run through, in `months`, and
+  leave taken says which request it was taken in. Neither changes what the movement does to a
+  balance; they are what lets its history be read a month and a request at a time.
   """
 
   @typedoc "What moved the balance. The first four add to it; the last three take from it."
@@ -29,9 +33,11 @@ defmodule Leaf.Ledger.Movement do
           kind: kind(),
           amount: Decimal.t(),
           expires_on: Date.t() | nil,
-          capped: boolean()
+          capped: boolean(),
+          months: [{Date.Range.t(), Decimal.t()}] | nil,
+          leave_request_id: Ecto.UUID.t() | nil
         }
 
   @enforce_keys [:date, :kind, :amount]
-  defstruct [:date, :kind, :amount, :expires_on, capped: true]
+  defstruct [:date, :kind, :amount, :expires_on, :months, :leave_request_id, capped: true]
 end
