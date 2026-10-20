@@ -21,6 +21,10 @@ defmodule LeafWeb.Chart do
     end
   end
 
+  @doc "Where a label 360 wide starts so it sits centred over `x`, held inside the box."
+  @spec label_x(integer()) :: integer()
+  def label_x(x), do: (x - 180) |> max(0) |> min(240)
+
   @doc "Dated figures as the points of a polyline, placed by `place`."
   @spec points([{Date.t(), Decimal.t()}], ({Date.t(), Decimal.t()} -> {integer(), integer()})) ::
           String.t()

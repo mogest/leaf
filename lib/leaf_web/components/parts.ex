@@ -355,6 +355,7 @@ defmodule LeafWeb.Parts do
     >
       <.arrow d="M10 3L5 8l5 5" />
     </.link>
+    <a :if={!@earlier} class="step"></a>
     <.link
       :if={@later}
       class="step"
@@ -364,6 +365,7 @@ defmodule LeafWeb.Parts do
     >
       <.arrow d="M6 3l5 5-5 5" />
     </.link>
+    <a :if={!@later} class="step"></a>
     """
   end
 

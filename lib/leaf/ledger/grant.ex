@@ -40,11 +40,13 @@ defmodule Leaf.Ledger.Grant do
   @spec movements(Span.t(), Organisation.t(), [Date.t()], [{Date.t(), Decimal.t()}], [Date.t()]) ::
           [Movement.t()]
   def movements(span, organisation, holidays, suspended, taken) do
-    span
-    |> measured()
-    |> Enum.flat_map(&pieces(span.entitlement.grant_timing, &1, taken))
-    |> Enum.map(&arrival(span, &1, organisation, holidays, suspended))
-    |> Enum.reject(&Decimal.equal?(&1.amount, 0))
+    earned = &amount(span, &1, organisation, holidays, suspended)
+
+    for measured <- measured(span),
+        {piece, _measured} = cut <- pieces(span.entitlement.grant_timing, measured, taken),
+        amount = earned.(piece),
+        not Decimal.equal?(amount, 0),
+        do: arrival(span, cut, amount, earned)
   end
 
   # Each piece with the range it was cut from.
@@ -100,11 +102,9 @@ defmodule Leaf.Ledger.Grant do
   defp granting_on?(%{granted_to: nil}, _date), do: true
   defp granting_on?(entitlement, date), do: not Date.before?(entitlement.granted_to, date)
 
-  defp arrival(span, {piece, measured}, organisation, holidays, suspended) do
+  defp arrival(span, {piece, measured}, amount, earned) do
     {kind, date} = lands(span.entitlement.grant_timing, piece)
     {_kind, whole_lands_on} = lands(span.entitlement.grant_timing, measured)
-    earned = &amount(span, &1, organisation, holidays, suspended)
-    amount = earned.(piece)
 
     %Movement{
       date: date,
@@ -122,36 +122,22 @@ defmodule Leaf.Ledger.Grant do
 
   # Each month takes the share of the piece it would have earned measured on its own, so a holiday
   # is earned in the month it falls in and suspended time in the month it was taken, while the
-  # months still add up to the piece exactly. A piece that earns nothing is dropped anyway.
+  # months still add up to the piece exactly.
   defp months(:accrual, piece, amount, earned) do
-    months = Dates.months(piece)
-    weights = Enum.map(months, earned)
-    whole = Decimals.total(weights)
+    weighted =
+      for month <- Dates.months(piece),
+          weight = earned.(month),
+          not Decimal.equal?(weight, 0),
+          do: {month, weight}
 
-    case Decimal.equal?(whole, 0) do
-      true -> [{piece, amount}]
-      false -> shared(Enum.zip(months, weights), amount, whole)
-    end
-  end
+    whole = Decimals.total(weighted, &elem(&1, 1))
+    {others, [{last, _weight}]} = Enum.split(weighted, -1)
 
-  defp shared(weighted, amount, whole) do
-    {shares, _reached} =
-      Enum.map_reduce(weighted, {Decimal.new(0), Decimal.new(0)}, fn {month, weight},
-                                                                     {sum, before} ->
-        sum = Decimal.add(sum, weight)
-        reached = reached(amount, sum, whole)
+    shares =
+      for {month, weight} <- others,
+          do: {month, amount |> Decimal.mult(weight) |> Decimal.div(whole)}
 
-        {{month, Decimal.sub(reached, before)}, {sum, reached}}
-      end)
-
-    Enum.reject(shares, fn {_month, share} -> Decimal.equal?(share, 0) end)
-  end
-
-  defp reached(amount, sum, whole) do
-    case Decimal.equal?(sum, whole) do
-      true -> amount
-      false -> amount |> Decimal.mult(sum) |> Decimal.div(whole)
-    end
+    shares ++ [{last, Decimal.sub(amount, Decimals.total(shares, &elem(&1, 1)))}]
   end
 
   defp amount(span, measured, organisation, holidays, suspended) do

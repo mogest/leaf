@@ -36,9 +36,7 @@ defmodule LeafWeb.BalancesLive do
     left: "Left"
   }
 
-  @lost %{expiry: "lapsed", rollover_cap: "over the cap"}
-
-  @blank %{earned: nil, taken: nil, lost: nil}
+  @columns [:earned, :taken, :lost]
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket), do: {:ok, socket}
@@ -101,20 +99,19 @@ defmodule LeafWeb.BalancesLive do
           <p :if={@account.figures == [] && @account.awaiting} data-awaiting>{@account.awaiting}</p>
         </section>
 
-        <section>
+        <.history :if={@account.history} history={@account.history} />
+
+        <section :if={@account.expiring != []}>
           <header>
-            <h2>Lots held</h2>
+            <h2>Expiry</h2>
           </header>
-          <ol :if={@account.lots != []}>
-            <li :for={lot <- @account.lots}>
+          <ol>
+            <li :for={lot <- @account.expiring}>
               <span>{lot.amount}</span>
-              <span>{lot.expires}</span>
+              <span>expiring {lot.expires}</span>
             </li>
           </ol>
-          <p :if={@account.lots == []}>Nothing held.</p>
         </section>
-
-        <.history :if={@account.history} history={@account.history} />
       </div>
     </Layouts.app>
     """
@@ -133,7 +130,6 @@ defmodule LeafWeb.BalancesLive do
       <.chart :if={@history.chart} chart={@history.chart} />
       <div>
         <table>
-          <caption>{@history.unit}</caption>
           <thead>
             <tr>
               <th scope="col">Month</th>
@@ -145,7 +141,7 @@ defmodule LeafWeb.BalancesLive do
           </thead>
           <tbody :if={@history.brought_forward}>
             <tr>
-              <th scope="row">Brought forward</th>
+              <th scope="row">{@history.opening}</th>
               <td></td>
               <td></td>
               <td></td>
@@ -163,16 +159,12 @@ defmodule LeafWeb.BalancesLive do
                   {month.name} <small :if={month.note}>{month.note}</small>
                 </button>
               </th>
-              <td>{month.earned}</td>
-              <td>{month.taken}</td>
-              <td>{month.lost}</td>
+              <td :for={figure <- month.figures}>{figure}</td>
               <td>{month.balance}</td>
             </tr>
             <tr :for={line <- month.lines}>
               <td><span>{line.dates}</span> {line.what}</td>
-              <td>{line.earned}</td>
-              <td>{line.taken}</td>
-              <td>{line.lost}</td>
+              <td :for={figure <- line.figures}>{figure}</td>
               <td></td>
             </tr>
           </tbody>
@@ -193,14 +185,12 @@ defmodule LeafWeb.BalancesLive do
         <line :if={@chart.as_at} data-as-at x1={@chart.as_at.x} y1="0" x2={@chart.as_at.x} y2="200" />
         <polyline points={@chart.balance} />
         <polyline data-tone="spent" points={@chart.booked} />
-        <circle
-          :for={loss <- @chart.losses}
-          cx={loss.x}
-          cy={loss.y}
-          r="7"
-          role="img"
-          aria-label={loss.label}
-        />
+        <g :for={loss <- @chart.losses}>
+          <circle cx={loss.x} cy={loss.y} r="7" tabindex="0" role="img" aria-label={loss.label} />
+          <foreignObject x={loss.label_x} y={loss.y + 14} width="360" height="200" aria-hidden="true">
+            <p>{loss.label}</p>
+          </foreignObject>
+        </g>
       </svg>
       <figcaption>
         <span>{@chart.from}</span><span>{@chart.to}</span>
@@ -369,7 +359,7 @@ defmodule LeafWeb.BalancesLive do
           accrued(statement, leave_type, granted, :balance)
         ),
       awaiting: Wording.asked(Ledger.awaiting(reading.person)[leave_type.id], leave_type.unit),
-      lots: lots(statement, leave_type),
+      expiring: expiring(statement, leave_type),
       history: history(statement, MapSet.member?(granted, leave_type.id), reading)
     }
   end
@@ -388,20 +378,18 @@ defmodule LeafWeb.BalancesLive do
   defp figures(to_date, after_booked),
     do: [{"Balance without booked leave", to_date}, {"Balance with booked leave", after_booked}]
 
-  defp lots(nil, _leave_type), do: []
-  defp lots(statement, leave_type), do: Enum.map(statement.lots, &lot(&1, leave_type))
+  defp expiring(nil, _leave_type), do: []
 
-  defp lot(lot, leave_type) do
-    %{amount: Wording.figure(lot.amount, leave_type.unit), expires: lapses(lot.expires_on)}
+  defp expiring(statement, leave_type) do
+    for %{expires_on: %Date{} = date} = lot <- statement.lots,
+        do: %{amount: Wording.figure(lot.amount, leave_type.unit), expires: Wording.date(date)}
   end
 
-  defp lapses(nil), do: "does not lapse"
-  defp lapses(date), do: "lapses #{Wording.date(date)}"
+  # A type with no statement has had nothing happen in it, so there is no history to tell.
+  defp history(nil, _balance?, _reading), do: nil
 
   # A type that is recorded only has no balance to show, so its history is the leave taken alone.
-  defp history(nil, _granted?, _reading), do: nil
-
-  defp history(statement, granted?, reading) do
+  defp history(statement, balance?, reading) do
     history = Ledger.history(reading.person, statement, reading.year)
     %{leave_type: leave_type} = statement
 
@@ -410,10 +398,10 @@ defmodule LeafWeb.BalancesLive do
       earlier: step(history.previous, leave_type, reading),
       later: step(history.next, leave_type, reading),
       earned: earned(history.granted?),
-      unit: "In #{leave_type.unit}",
-      brought_forward: balance(history.brought_forward, granted?),
-      chart: chart(history, leave_type.unit, granted?),
-      months: Enum.map(history.months, &month(&1, history, granted?))
+      opening: opening(history.brought_in),
+      brought_forward: balance(history.brought_forward, balance?),
+      chart: chart(history, leave_type.unit, balance?),
+      months: Enum.map(history.months, &month(&1, history, leave_type.unit, balance?))
     }
   end
 
@@ -421,6 +409,9 @@ defmodule LeafWeb.BalancesLive do
 
   defp step(year, leave_type, reading),
     do: path(reading.person, reading.mine?, leave_type.id, reading.as_at, year)
+
+  defp opening(nil), do: "Brought forward"
+  defp opening(date), do: "Brought in, #{Wording.date(date)}"
 
   defp earned(true), do: "Granted"
   defp earned(false), do: "Earned"
@@ -431,38 +422,31 @@ defmodule LeafWeb.BalancesLive do
   defp balance(_amount, false), do: nil
   defp balance(amount, true), do: Wording.number(amount)
 
-  defp month(month, history, granted?) do
+  defp month(month, history, unit, balance?) do
     %{
       id: "month-#{month.dates.first}",
       name: Wording.month(month.dates.first, history.dates.first),
       note: note(month.booked?),
-      earned: moved(month.earned),
-      taken: moved(month.taken),
-      lost: moved(month.lost),
-      balance: balance(month.balance, granted?),
-      lines: Enum.map(month.lines, &line/1)
+      figures: for(column <- @columns, do: moved(month[column])),
+      balance: balance(month.balance, balance?),
+      lines: Enum.map(month.lines, &line(&1, unit))
     }
   end
 
-  defp moved(amount) do
-    case Decimal.equal?(amount, 0) do
-      true -> nil
-      false -> Wording.number(amount)
-    end
+  defp moved(amount), do: unless(Decimal.equal?(amount, 0), do: Wording.number(amount))
+
+  defp line(line, unit) do
+    %{
+      dates: Wording.within_year(line.dates),
+      what: what(line, unit),
+      figures: for(column <- @columns, do: if(column == line.column, do: moved(line.amount)))
+    }
   end
 
-  defp line(line) do
-    @blank
-    |> Map.merge(column(line))
-    |> Map.merge(%{dates: Wording.within_year(line.dates), what: what(line)})
-  end
+  # Leave counted in days says how many in its figure already.
+  defp what(%{days: days} = line, unit) when days == nil or unit == :days, do: @kinds[line.kind]
 
-  defp column(%{column: nil}), do: %{}
-  defp column(line), do: %{line.column => moved(line.amount)}
-
-  defp what(%{days: nil} = line), do: @kinds[line.kind]
-
-  defp what(line),
+  defp what(line, :hours),
     do: "#{@kinds[line.kind]}, #{Wording.figure(Decimal.new(line.days), :days)}"
 
   defp chart(_history, _unit, false), do: nil
@@ -488,10 +472,12 @@ defmodule LeafWeb.BalancesLive do
   end
 
   defp loss(loss, place, unit) do
-    {x, y} = place.({loss.date, loss.balance})
+    {x, y} = place.({loss.at, loss.balance})
     lost = Wording.figure(Decimal.abs(loss.amount), unit)
 
-    %{x: x, y: y, label: "#{lost} #{@lost[loss.kind]} on #{Wording.date(loss.date)}"}
+    label = "#{lost} #{String.downcase(@kinds[loss.kind])} on #{Wording.date(loss.date)}"
+
+    %{x: x, y: y, label: label, label_x: Chart.label_x(x)}
   end
 
   defp marker(nil, _x), do: nil

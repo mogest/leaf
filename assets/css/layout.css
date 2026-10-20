@@ -558,6 +558,12 @@ main.balances {
   }
 
   & section table {
+    table-layout: fixed;
+
+    & thead th:not(:first-child) {
+      inline-size: 5.5rem;
+    }
+
     & :is(th, td):not(:first-child) {
       text-align: end;
       white-space: nowrap;
@@ -604,7 +610,7 @@ main.balances {
 
       & > span {
         display: inline-block;
-        min-inline-size: 8rem;
+        min-inline-size: 7rem;
         color: var(--ink-soft);
       }
     }
@@ -631,7 +637,12 @@ main.balances {
     }
 
     @media (width < 48rem) {
+      min-inline-size: 30rem;
       font-size: var(--size-sm);
+
+      & thead th:not(:first-child) {
+        inline-size: 4.5rem;
+      }
 
       & :is(th, td) {
         padding-inline-end: var(--step-2);
@@ -1366,11 +1377,6 @@ main.entitlement {
     }
   }
 
-  & figure > svg {
-    position: relative;
-    z-index: 1;
-  }
-
   & dl > div {
     display: flex;
     justify-content: space-between;
@@ -1382,30 +1388,5 @@ main.entitlement {
   & dd {
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-  }
-
-  & foreignObject {
-    display: none;
-
-    & > p {
-      inline-size: fit-content;
-      margin-inline: auto;
-      padding: 0.5em 0.75em;
-      border: 1px solid var(--edge);
-      border-radius: var(--radius);
-      background: var(--sheet);
-      box-shadow: var(--lift);
-      font-size: 20px;
-      line-height: 1.45;
-      color: var(--ink-quiet);
-    }
-  }
-
-  & g:is(:hover, :focus-within) > foreignObject {
-    display: block;
-  }
-
-  & svg:has(g:is(:hover, :focus-within)) g:not(:hover, :focus-within) {
-    opacity: 0;
   }
 }

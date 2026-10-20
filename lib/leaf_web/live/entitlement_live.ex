@@ -526,7 +526,7 @@ defmodule LeafWeb.EntitlementLive do
         for(
           {date, label} <- losses,
           {x, y} = place.(List.keyfind!(balances, date, 0)),
-          do: %{x: x, y: y, label: label, label_x: (x - 180) |> max(0) |> min(240)}
+          do: %{x: x, y: y, label: label, label_x: Chart.label_x(x)}
         )
     }
   end

@@ -139,6 +139,8 @@ figure {
   margin: 0;
 
   & > svg {
+    position: relative;
+    z-index: 1;
     inline-size: 100%;
     block-size: auto;
     overflow: visible;
@@ -178,6 +180,31 @@ figure {
       outline: none;
       stroke: var(--ink);
     }
+  }
+
+  & svg foreignObject {
+    display: none;
+
+    & > p {
+      inline-size: fit-content;
+      margin-inline: auto;
+      padding: 0.5em 0.75em;
+      border: 1px solid var(--edge);
+      border-radius: var(--radius);
+      background: var(--sheet);
+      box-shadow: var(--lift);
+      font-size: 20px;
+      line-height: 1.45;
+      color: var(--ink-quiet);
+    }
+  }
+
+  & svg g:is(:hover, :focus-within) > foreignObject {
+    display: block;
+  }
+
+  & svg:has(g:is(:hover, :focus-within)) g:not(:hover, :focus-within) {
+    opacity: 0;
   }
 
   & > figcaption {

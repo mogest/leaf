@@ -8,6 +8,8 @@ defmodule Leaf.LedgerTest do
   alias Leaf.Leave
   alias Leaf.Leave.Day
   alias Leaf.Ledger
+  alias Leaf.Ledger.Movement
+  alias Leaf.Ledger.Statement
   alias Leaf.People
   alias Leaf.Policies
 
@@ -1644,6 +1646,27 @@ defmodule Leaf.LedgerTest do
              {:accrual, ~D[2024-03-04], ~D[2024-03-31], "28.00", nil},
              {:started, ~D[2024-03-04], ~D[2024-03-04], nil, nil}
            ]
+
+    # Brought in where the ledger starts, it opens the first year; entered later, it is a line.
+    for {date, amount} <- [{~D[2024-03-04], "10"}, {~D[2024-05-20], "5"}] do
+      Fixtures.balance_entry(%{
+        person_id: person.id,
+        leave_type_id: annual.id,
+        date: date,
+        amount: amount
+      })
+    end
+
+    statement = statement(person, annual, ~D[2024-06-15])
+    started = Ledger.history(person, statement, 2023)
+    history = Ledger.history(person, statement, nil)
+
+    assert {started.brought_in, started.brought_forward} == {~D[2024-03-04], Decimal.new("10.00")}
+    assert {history.brought_in, history.brought_forward} == {nil, Decimal.new("38.00")}
+
+    assert {:opening_balance, ~D[2024-05-20], ~D[2024-05-20], "5.00", nil} in lines(
+             Enum.at(history.months, 1)
+           )
   end
 
   test "a type that grants at a period's start reads as granted, leaving out empty months",
@@ -1672,6 +1695,7 @@ defmodule Leaf.LedgerTest do
 
     # The year they started in is there to read, though nothing was granted in it.
     assert {past.previous, past.next} == {2023, 2025}
+    assert Ledger.history(person, statement, 2023).granted?
 
     assert months(past) == [
              {~D[2024-04-01], "16.00", "0.00", "0.00", "16.00", false},
@@ -1679,7 +1703,11 @@ defmodule Leaf.LedgerTest do
              {~D[2025-03-01], "0.00", "0.00", "-8.00", "0.00", false}
            ]
 
-    assert [%{date: ~D[2025-03-31], kind: :expiry}] = past.chart.losses
+    # Lapsing on the year's last day, it is drawn as how that year ends, not in the next one.
+    assert [%{date: ~D[2025-03-31], at: ~D[2025-03-31], kind: :expiry}] = past.chart.losses
+    assert current.chart.losses == []
+    assert List.last(past.chart.balance) == {~D[2025-03-31], Decimal.new("0.00")}
+    assert hd(current.chart.balance) == {~D[2025-04-01], Decimal.new("0.00")}
     assert Ledger.history(person, statement, 1999).year == 2023
     assert Ledger.history(person, statement, 2099).year == 2025
   end
@@ -1724,5 +1752,99 @@ defmodule Leaf.LedgerTest do
              {~D[2024-04-01], "7.20", "0.00", "0.00", "7.20", false},
              {~D[2024-12-01], "7.20", "0.00", "0.00", "14.40", false}
            ]
+  end
+
+  test "every figure is what it moves the rounded balance by, so lines add up to their month",
+       context do
+    annual = leave_type(context, %{})
+    moved = &%Movement{date: &1, kind: &2, amount: Decimal.new(&3)}
+
+    booked =
+      Statement.new(
+        annual,
+        ~D[2024-06-15],
+        [
+          moved.(~D[2024-04-01], :grant, "12.004"),
+          moved.(~D[2024-05-06], :taken, "-2"),
+          moved.(~D[2024-07-01], :taken, "-0.41667")
+        ],
+        []
+      )
+
+    # July's balance rounds from 10.00 to 9.59, though -0.41667 alone rounds to -0.42.
+    history = Ledger.history(context.person, booked, nil)
+
+    assert months(history) == [
+             {~D[2024-04-01], "12.00", "0.00", "0.00", "12.00", false},
+             {~D[2024-05-01], "0.00", "-2.00", "0.00", "10.00", false},
+             {~D[2024-06-01], "0.00", "0.00", "0.00", "10.00", false},
+             {~D[2024-07-01], "0.00", "-0.41", "0.00", "9.59", true}
+           ]
+
+    assert [%{kind: :booked, amount: amount}] = List.last(history.months).lines
+    assert amount == Decimal.new("-0.41")
+
+    lapsed =
+      Statement.new(
+        annual,
+        ~D[2024-09-30],
+        [moved.(~D[2024-04-01], :grant, "10.006"), moved.(~D[2024-08-31], :expiry, "-0.004")],
+        []
+      )
+
+    # August's balance rounds from 10.01 to 10.00 though its lapse rounds to nothing.
+    assert months(Ledger.history(context.person, lapsed, nil)) == [
+             {~D[2024-04-01], "10.01", "0.00", "0.00", "10.01", false},
+             {~D[2024-08-01], "0.00", "0.00", "-0.01", "10.00", false},
+             {~D[2024-09-01], "0.00", "0.00", "0.00", "10.00", false}
+           ]
+  end
+
+  test "a day of leave counts only where it drew on the balance", context do
+    person = context.person
+    full_time(person)
+    annual = leave_type(context, %{})
+    entitlement(context, annual, %{grant_amount: "200"})
+
+    week =
+      for date <- Date.range(~D[2024-05-06], ~D[2024-05-10]),
+          do: %{leave_type_id: annual.id, date: date, amount: "8", unit: :hours}
+
+    Fixtures.leave_request(%{person_id: person.id, days: week})
+    observes(context, person, [~D[2024-05-08]])
+
+    history = Ledger.history(person, statement(person, annual, ~D[2024-05-31]), nil)
+    [_april, may] = history.months
+
+    assert [_accrual, {:taken, ~D[2024-05-06], ~D[2024-05-10], "-32.00", 4}] = lines(may)
+  end
+
+  test "a leaver's history ends with the later of their leaving and the last that moved",
+       context do
+    person = context.person
+    full_time(person)
+    annual = leave_type(context, %{})
+    training = leave_type(context, %{name: "Training leave", position: 2})
+    entitlement(context, annual, %{})
+
+    entitlement(context, training, %{
+      grant_amount: "16",
+      grant_basis: :organisation_year,
+      grant_timing: :period_start,
+      pro_rated_by_fte: false,
+      expiry_rule: :window,
+      expiry_window_days: 400
+    })
+
+    {:ok, left} = People.update_person(person, nil, %{employment_end_date: ~D[2024-09-30]})
+
+    annual_history = Ledger.history(left, statement(left, annual, ~D[2026-10-21]), nil)
+    # April's grant lapses in May 2025, after they left.
+    training_history = Ledger.history(left, statement(left, training, ~D[2026-10-21]), nil)
+
+    assert {annual_history.year, annual_history.next} == {2024, nil}
+    assert {training_history.year, training_history.next} == {2025, nil}
+    assert [%{lost: lost}] = training_history.months
+    assert Decimal.equal?(lost, -16)
   end
 end

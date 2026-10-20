@@ -181,6 +181,10 @@ li > button[popovertarget] {
     color: var(--green);
     text-decoration: none;
   }
+
+  &:not([href]) {
+    visibility: hidden;
+  }
 }
 
 .legend {

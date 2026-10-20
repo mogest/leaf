@@ -62,9 +62,8 @@ defmodule LeafWeb.BalancesLiveTest do
     assert has_element?(live, ~s(#pages a[aria-current]), "Your balances")
     assert html =~ "Annual leave"
     assert html =~ "100 hours"
-    assert html =~ "lapses 31 December 2030"
+    assert html =~ "expiring 31 December 2030"
     assert html =~ "1 April 2024 – 31 March 2025"
-    assert has_element?(live, "tbody tr:first-child", ~r/June\s*100\s*100/)
     assert has_element?(live, "tbody tr + tr", ~r/1 June\s*Brought in/)
 
     assert has_element?(
@@ -73,6 +72,7 @@ defmodule LeafWeb.BalancesLiveTest do
            )
 
     refute has_element?(live, ~s(a[aria-label="Later year"]))
+    assert has_element?(live, "header a.step[href] + a.step:not([href])")
 
     {:ok, live, _html} = live(context.conn, ~p"/balances?as_at=2024-06-30&year=2023")
 
@@ -152,12 +152,12 @@ defmodule LeafWeb.BalancesLiveTest do
 
     assert html =~ "Recorded as it is taken; nothing accrues."
     refute html =~ "<dt>Balance"
-    assert html =~ "Nothing held."
+    refute html =~ "Expiry"
     refute has_element?(live, "table")
 
     Fixtures.leave_request(%{
       person_id: context.person.id,
-      days: [%{leave_type_id: bereavement.id, date: ~D[2024-07-01], amount: "1", unit: :days}]
+      days: [%{leave_type_id: bereavement.id, date: ~D[2024-07-01], amount: "0.5", unit: :days}]
     })
 
     Fixtures.leave_request(%{
@@ -173,7 +173,8 @@ defmodule LeafWeb.BalancesLiveTest do
 
     {:ok, live, html} = live(context.conn, ~p"/balances/#{bereavement}?as_at=2024-07-31")
 
-    assert has_element?(live, "tbody tr + tr td", "Taken, 1 day")
+    # Leave counted in days says how many in its figure, so the line does not count them again.
+    assert has_element?(live, "tbody tr + tr", ~r/^\s*1 July\s*Taken\s*-0.5\s*$/)
     refute has_element?(live, "figure")
     refute html =~ "Brought forward"
 

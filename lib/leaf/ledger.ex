@@ -90,9 +90,14 @@ defmodule Leaf.Ledger do
   """
   @spec history(Person.t(), Statement.t(), integer() | nil) :: History.t()
   def history(person, statement, year) do
-    {:ok, organisation} = Org.fetch_organisation(person.organisation_id)
+    person = People.dated(person)
+    %{leave_type: %{id: id}} = statement
 
-    History.new(statement, person, organisation, year)
+    timings =
+      for {_life, %{leave_type_id: ^id} = entitlement} <- lives(person),
+          do: entitlement.grant_timing
+
+    History.new(statement, person, timings, year)
   end
 
   @doc """
