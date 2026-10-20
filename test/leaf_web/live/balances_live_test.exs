@@ -79,12 +79,13 @@ defmodule LeafWeb.BalancesLiveTest do
 
     {:ok, _live, html} = live(context.conn, ~p"/balances?as_at=2025-01-01")
 
-    assert html =~ "<dt>Accrued</dt>"
+    assert html =~ "<dt>Balance</dt>"
     assert html =~ "<td>Earned</td>"
-    assert [_before, _after] = String.split(html, "Accrued")
+    assert [_before, _after] = String.split(html, "<dt>Balance")
   end
 
-  test "leave taken after the date read at reads as booked", context do
+  test "leave taken after the date read at reads as booked, and is out of the balance after it",
+       context do
     for date <- [~D[2024-07-01], ~D[2024-09-02]] do
       Fixtures.leave_request(%{
         person_id: context.person.id,
@@ -96,6 +97,7 @@ defmodule LeafWeb.BalancesLiveTest do
 
     assert has_element?(live, "tbody tr", ~r/1 July 2024\s*Taken/)
     assert has_element?(live, "tbody tr", ~r/2 September 2024\s*Booked/)
+    assert render(live) =~ ~r/without booked leave.*92 hours.*with booked leave.*84 hours/s
   end
 
   test "a date that is not a date reads as today", context do
@@ -124,7 +126,7 @@ defmodule LeafWeb.BalancesLiveTest do
     html = live |> element(link) |> render_click()
 
     assert html =~ "Recorded as it is taken; nothing accrues."
-    refute html =~ "<dt>Accrued</dt>"
+    refute html =~ "<dt>Balance"
     assert html =~ "Nothing held."
     assert has_element?(live, "tbody tr:only-child", "Started")
 

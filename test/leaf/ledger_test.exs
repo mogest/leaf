@@ -344,6 +344,7 @@ defmodule Leaf.LedgerTest do
            ]
 
     assert Decimal.equal?(statement.balance, "42.00")
+    assert Decimal.equal?(statement.to_date, "50.00")
   end
 
   test "leave draws on what an accrual has earned by its date, and no more", context do

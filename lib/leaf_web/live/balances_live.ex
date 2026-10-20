@@ -78,13 +78,15 @@ defmodule LeafWeb.BalancesLive do
           <header>
             <h2>{@account.name} <small>as at {@account.as_at}</small></h2>
           </header>
-          <dl :if={@account.accrued}>
-            <dt>Accrued</dt>
-            <dd>{@account.accrued}</dd>
+          <dl :if={@account.figures != []}>
+            <%= for {label, figure} <- @account.figures do %>
+              <dt>{label}</dt>
+              <dd>{figure}</dd>
+            <% end %>
             <dd :if={@account.awaiting} data-awaiting>{@account.awaiting}</dd>
           </dl>
-          <p :if={!@account.accrued}>Recorded as it is taken; nothing accrues.</p>
-          <p :if={!@account.accrued && @account.awaiting} data-awaiting>{@account.awaiting}</p>
+          <p :if={@account.figures == []}>Recorded as it is taken; nothing accrues.</p>
+          <p :if={@account.figures == [] && @account.awaiting} data-awaiting>{@account.awaiting}</p>
         </section>
 
         <section>
@@ -252,7 +254,7 @@ defmodule LeafWeb.BalancesLive do
   defp listing({leave_type, statement}, granted, person, mine?, as_at, selected) do
     %{
       name: leave_type.name,
-      amount: accrued(statement, leave_type, granted),
+      amount: accrued(statement, leave_type, granted, :balance),
       path: path(person, mine?, leave_type.id, to_string(as_at)),
       current?: leave_type.id == selected
     }
@@ -264,20 +266,30 @@ defmodule LeafWeb.BalancesLive do
     %{
       name: leave_type.name,
       as_at: Wording.date(as_at),
-      accrued: accrued(statement, leave_type, granted),
+      figures:
+        figures(
+          accrued(statement, leave_type, granted, :to_date),
+          accrued(statement, leave_type, granted, :balance)
+        ),
       awaiting: Wording.asked(Ledger.awaiting(person)[leave_type.id], leave_type.unit),
       lots: lots(statement, leave_type),
       movements: movements(statement, leave_type, person)
     }
   end
 
-  defp accrued(statement, leave_type, granted) do
+  defp accrued(statement, leave_type, granted, figure) do
     case {MapSet.member?(granted, leave_type.id), statement} do
       {false, _statement} -> nil
       {true, nil} -> Wording.figure(Decimal.new(0), leave_type.unit)
-      {true, statement} -> Wording.figure(statement.balance, leave_type.unit)
+      {true, statement} -> Wording.figure(Map.fetch!(statement, figure), leave_type.unit)
     end
   end
+
+  defp figures(nil, nil), do: []
+  defp figures(same, same), do: [{"Balance", same}]
+
+  defp figures(to_date, after_booked),
+    do: [{"Balance without booked leave", to_date}, {"Balance with booked leave", after_booked}]
 
   defp lots(nil, _leave_type), do: []
   defp lots(statement, leave_type), do: Enum.map(statement.lots, &lot(&1, leave_type))
