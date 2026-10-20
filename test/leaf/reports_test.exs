@@ -278,7 +278,7 @@ defmodule Leaf.ReportsTest do
                 "Rae Halloran,Sick leave,9.00,days,03/03/2026\r\n", unready}
   end
 
-  test "over the limit is more than so many of each person's own weeks", context do
+  test "over the limit flags a balance over so many of each person's own weeks", context do
     %{organisation: organisation, person: person, leave_type: leave_type} = context
     [assignment] = People.policy_assignments(person)
     part_timer = Fixtures.person(%{organisation_id: organisation.id, name: "Odile Brannigan"})
@@ -323,14 +323,16 @@ defmodule Leaf.ReportsTest do
              "Odile Brannigan,Annual leave,30.00,0.00,30.00,28.00,2.00,hours\r\n" <>
                "Rae Halloran,Annual leave,50.00,8.00,42.00,40.00,2.00,hours\r\n"
 
-    assert {^heading, _unready} = csv(person, Map.put(asked, "weeks", "1.25"))
-
     # Odile works 4 days a week, Rae 5.
-    lieu_asked = %{asked | "leave_type_id" => lieu.id}
+    lieu_asked = Map.merge(asked, %{"leave_type_id" => lieu.id, "weeks" => "1"})
 
-    assert csv(person, Map.put(lieu_asked, "weeks", "1")) ==
-             {heading <> "Odile Brannigan,Lieu,5.00,0.00,5.00,4.00,1.00,days\r\n",
+    assert csv(person, lieu_asked) ==
+             {heading <>
+                "Odile Brannigan,Lieu,5.00,0.00,5.00,4.00,1.00,days\r\n" <>
+                "Rae Halloran,Lieu,5.00,0.00,5.00,5.00,0.00,days\r\n",
               ["Ines Vasquez's work pattern does not cover their leave, so it is left out."]}
+
+    assert {:ok, %{flagged: [0]}} = Reports.run(person, lieu_asked)
   end
 
   test "a period that ends before it starts is refused", %{person: person} do

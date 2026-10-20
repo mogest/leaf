@@ -4,15 +4,23 @@ defmodule Leaf.Reports.Table do
 
   Cells hold the values themselves rather than text, so a page and a file can each say them their
   own way. Figures are exact, rounded only where they are said.
+
+  `flagged` holds the positions of rows a page should draw the eye to. A file cannot, so its
+  columns have to say as much.
   """
 
   alias Leaf.People.Person
 
   @type cell :: String.t() | Date.t() | DateTime.t() | Decimal.t() | nil
-  @type t :: %__MODULE__{columns: [String.t()], rows: [[cell()]], notes: [String.t()]}
+  @type t :: %__MODULE__{
+          columns: [String.t()],
+          rows: [[cell()]],
+          flagged: [non_neg_integer()],
+          notes: [String.t()]
+        }
 
   @enforce_keys [:columns, :rows]
-  defstruct [:columns, :rows, notes: []]
+  defstruct [:columns, :rows, flagged: [], notes: []]
 
   @doc """
   The table as CSV: the headings, then a line a row, dates day first and figures to 2dp.

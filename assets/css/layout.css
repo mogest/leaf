@@ -1218,6 +1218,10 @@ main.reports {
       margin-block-start: var(--step-4);
     }
   }
+
+  & tr[data-tone="caution"] td {
+    background: var(--ochre-wash);
+  }
 }
 
 main.entitlement {

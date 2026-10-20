@@ -160,6 +160,13 @@ defmodule LeafWeb.PagesTest do
     over_limit = context.conn |> get(~p"/reports/over_limit/download?weeks=2") |> response(200)
     assert over_limit =~ "Person,Leave type,Balance without booked leave,"
 
+    {:ok, live, _html} = live(context.conn, ~p"/reports/over_limit?weeks=0.01")
+    assert has_element?(live, ~s(tbody tr[data-tone="caution"]))
+
+    {:ok, live, _html} = live(context.conn, ~p"/reports/over_limit?weeks=520")
+    assert has_element?(live, "tbody tr")
+    refute has_element?(live, ~s(tbody tr[data-tone="caution"]))
+
     assert build_conn() |> sign_in(context.other) |> get(path) |> redirected_to() == "/"
   end
 

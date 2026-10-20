@@ -1,6 +1,6 @@
 defmodule Leaf.Reports.OverLimit do
   @moduledoc """
-  Everyone holding more of a leave type than a limit in weeks, a row for each balance over it.
+  Every balance against a limit in weeks, flagging those over it.
 
   A week is the person's own, as their work pattern on the date has it: its hours where the type
   counts in hours, its working days where it counts in days. So a part-timer's limit is smaller.
@@ -21,7 +21,7 @@ defmodule Leaf.Reports.OverLimit do
     "Unit"
   ]
 
-  @doc "The balances of `leave_type_id`, or of every type where nil, over `weeks` on `as_at`."
+  @doc "The balances of `leave_type_id`, or of every type where nil, against `weeks` on `as_at`."
   @spec table(Ecto.UUID.t(), Date.t(), Ecto.UUID.t() | nil, Decimal.t()) :: Table.t()
   def table(organisation_id, as_at, leave_type_id, weeks) do
     {ready, unready} =
@@ -39,26 +39,36 @@ defmodule Leaf.Reports.OverLimit do
           statements != [],
           do: {person, People.fetch_work_pattern_on(person, as_at), statements}
 
-    rows =
-      for {person, {:ok, pattern}, statements} <- held,
-          %{leave_type: leave_type, balance: balance, to_date: to_date} <- statements,
-          limit = Decimal.mult(weeks, week(leave_type.unit, pattern)),
-          Decimal.gt?(balance, limit) do
-        [
-          person.name,
-          leave_type.name,
-          to_date,
-          Decimal.sub(to_date, balance),
-          balance,
-          limit,
-          Decimal.sub(balance, limit),
-          to_string(leave_type.unit)
-        ]
-      end
+    {rows, over} =
+      Enum.unzip(
+        for {person, {:ok, pattern}, statements} <- held,
+            %{leave_type: leave_type, balance: balance, to_date: to_date} <- statements do
+          limit = Decimal.mult(weeks, week(leave_type.unit, pattern))
+          excess = Decimal.sub(balance, limit)
+
+          row = [
+            person.name,
+            leave_type.name,
+            to_date,
+            Decimal.sub(to_date, balance),
+            balance,
+            limit,
+            Decimal.max(excess, 0),
+            to_string(leave_type.unit)
+          ]
+
+          {row, Decimal.gt?(excess, 0)}
+        end
+      )
 
     patternless = for {person, :error, _statements} <- held, do: person
 
-    %Table{columns: @columns, rows: rows, notes: Table.unmeasured(unready ++ patternless)}
+    %Table{
+      columns: @columns,
+      rows: rows,
+      flagged: for({true, index} <- Enum.with_index(over), do: index),
+      notes: Table.unmeasured(unready ++ patternless)
+    }
   end
 
   defp week(:hours, pattern), do: People.weekly_hours(pattern)

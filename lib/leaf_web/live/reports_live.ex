@@ -27,8 +27,8 @@ defmodule LeafWeb.ReportsLive do
     {"Expiring soon", "expiring", "Leave that lapses within so many days unless it is taken.",
      [:as_at, :within]},
     {"Over limit", "over_limit",
-     "Everyone holding more than so many weeks of leave, a week being their own working week.",
-     [:as_at, :leave_type_id, :weeks]},
+     "Everyone's balances against a limit of so many weeks, a week being their own working " <>
+       "week, those over it highlighted.", [:as_at, :leave_type_id, :weeks]},
     {"iPayroll export", "ipayroll",
      "Approved requests whose first day falls in the period, each whole, as iPayroll's Leave " <>
        "Requests upload takes them.", [:from, :to]}
@@ -148,7 +148,10 @@ defmodule LeafWeb.ReportsLive do
               </tr>
             </thead>
             <tbody>
-              <tr :for={row <- @table.rows}>
+              <tr
+                :for={{row, index} <- Enum.with_index(@table.rows)}
+                data-tone={index in @table.flagged && "caution"}
+              >
                 <td :for={cell <- row}>{cell}</td>
               </tr>
             </tbody>
