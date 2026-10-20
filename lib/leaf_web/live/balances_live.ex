@@ -24,7 +24,6 @@ defmodule LeafWeb.BalancesLive do
     adjustment: "Adjusted",
     grant: "Granted",
     accrual: "Earned",
-    taken: "Taken",
     expiry: "Lapsed",
     rollover_cap: "Over the cap"
   }
@@ -292,27 +291,38 @@ defmodule LeafWeb.BalancesLive do
 
   defp movements(statement, leave_type, person) do
     employment(person.employment_start_date, "Started") ++
-      Enum.map(recorded(statement), &movement(&1, leave_type)) ++
+      recorded(statement, leave_type) ++
       employment(person.employment_end_date, "Left")
   end
 
-  defp recorded(nil), do: []
-  defp recorded(statement), do: statement.movements
+  defp recorded(nil, _leave_type), do: []
+
+  defp recorded(statement, leave_type),
+    do: Enum.map(statement.movements, &movement(&1, statement.as_at, leave_type))
 
   defp employment(nil, _kind), do: []
 
   defp employment(date, kind),
     do: [%{date: Wording.date(date), kind: kind, amount: nil, expires: nil, tone: nil}]
 
-  defp movement(movement, leave_type) do
+  defp movement(movement, as_at, leave_type) do
     %{
       date: Wording.date(movement.date),
-      kind: Map.fetch!(@kinds, movement.kind),
+      kind: kind(movement, as_at),
       amount: Wording.figure(movement.amount, leave_type.unit),
       expires: Wording.date(movement.expires_on),
       tone: tone(movement.amount)
     }
   end
+
+  defp kind(%{kind: :taken, date: date}, as_at) do
+    case Date.after?(date, as_at) do
+      true -> "Booked"
+      false -> "Taken"
+    end
+  end
+
+  defp kind(movement, _as_at), do: Map.fetch!(@kinds, movement.kind)
 
   defp tone(amount) do
     case Decimal.negative?(amount) do
