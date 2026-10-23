@@ -23,6 +23,7 @@ defmodule Leaf.People do
 
   alias Ecto.Changeset
   alias Leaf.Audit
+  alias Leaf.Leave
   alias Leaf.Org
   alias Leaf.Org.Calendar
   alias Leaf.Org.Organisation
@@ -35,7 +36,9 @@ defmodule Leaf.People do
   alias Leaf.Policies
   alias Leaf.Policies.LeavePolicy
   alias Leaf.Repo
+  alias Leaf.Wording
 
+  @dawn ~D[0000-01-01]
   @forever ~D[9999-12-31]
 
   @typedoc "A stretch of dates over which one answer holds."
@@ -80,14 +83,25 @@ defmodule Leaf.People do
   Amends a person.
 
   Correcting an employment start date moves every anniversary that hangs off it, so this is the
-  one edit here that can re-work a whole entitlement history on its own.
+  one edit here that can re-work a whole entitlement history on its own. Neither employment date
+  may move so that leave approved or pending falls outside it.
   """
   @spec update_person(Person.t(), Person.t() | nil, map()) :: Audit.written(Person.t())
   def update_person(person, actor, attrs) do
-    person
-    |> Person.changeset(attrs)
-    |> validate_reporting_line()
-    |> Audit.write("person.updated", actor, person.id)
+    Leave.serialised([person.id], fn ->
+      person
+      |> Person.changeset(attrs)
+      |> validate_reporting_line()
+      |> Changeset.validate_change(
+        :employment_start_date,
+        &held(person, &1, "is after", Date.range(&2, @forever))
+      )
+      |> Changeset.validate_change(
+        :employment_end_date,
+        &held(person, &1, "is before", Date.range(@dawn, &2))
+      )
+      |> Audit.write("person.updated", actor, person.id)
+    end)
   end
 
   @doc "The person, or `:error` where no such person exists."
@@ -485,6 +499,15 @@ defmodule Leaf.People do
     manager_id = Repo.one(from other in Person, where: other.id == ^id, select: other.manager_id)
     above?(person, manager_id)
   end
+
+  defp held(person, field, says, range) do
+    case Leave.requests_outside(person, range) do
+      [] -> []
+      requests -> [{field, "#{says} #{Enum.map_join(requests, ", ", &held/1)}"}]
+    end
+  end
+
+  defp held(request), do: "#{request.status} leave on #{Wording.dates_in_full(request)}"
 
   defp branches(people, reports) do
     Enum.map(people, &{&1, branches(Map.get(reports, &1.id, []), reports)})

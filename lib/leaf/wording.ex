@@ -156,6 +156,14 @@ defmodule Leaf.Wording do
     span(first, last)
   end
 
+  @doc "The span a request's days cover, with its year: 11 – 15 January 2027."
+  @spec dates_in_full(Request.t()) :: String.t()
+  def dates_in_full(request) do
+    {first, last} = covered(request)
+
+    full_span(first, last)
+  end
+
   @doc """
   What a request comes to.
 
@@ -321,6 +329,9 @@ defmodule Leaf.Wording do
 
   defp span(date, date), do: weekday(date)
   defp span(first, last), do: stretch(first, last, "%A %-d", &weekday/1)
+
+  defp full_span(date, date), do: date(date)
+  defp full_span(first, last), do: stretch(first, last, "%-d", &date/1)
 
   defp brief_span(date, date), do: brief(date)
   defp brief_span(first, last), do: stretch(first, last, "%a %-d", &brief/1)

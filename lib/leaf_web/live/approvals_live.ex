@@ -124,6 +124,14 @@ defmodule LeafWeb.ApprovalsLive do
     put_flash(socket, :error, "That is not yours to decide.")
   end
 
+  defp decided(socket, {:error, %{errors: [days: _]}}) do
+    put_flash(
+      socket,
+      :error,
+      "That leave is no longer on offer on its dates, or falls outside their employment."
+    )
+  end
+
   defp decided(socket, {:error, _changeset}) do
     put_flash(socket, :error, "The decision would not save.")
   end

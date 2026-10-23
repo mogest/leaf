@@ -7,6 +7,7 @@ defmodule LeafWeb.ApprovalsLiveTest do
   alias Leaf.Leave
   alias Leaf.Ledger
   alias Leaf.People
+  alias Leaf.Policies
 
   @date ~D[2030-03-04]
 
@@ -140,6 +141,20 @@ defmodule LeafWeb.ApprovalsLiveTest do
 
     assert live |> element("main form") |> render_submit(%{"decision" => "approve"}) =~
              "That is not yours to decide."
+
+    assert [%{status: :pending}] = Leave.requests(context.person)
+  end
+
+  test "leave withdrawn while it waited is refused, saying why", context do
+    {:ok, live, _html} = live(sign_in(context.conn, context.manager), ~p"/approvals")
+
+    {:ok, _withdrawn} =
+      Policies.update_leave_type(context.leave_type, nil, %{
+        archived_at: DateTime.truncate(DateTime.utc_now(), :second)
+      })
+
+    assert live |> element("main form") |> render_submit(%{"decision" => "approve"}) =~
+             "That leave is no longer on offer on its dates, or falls outside their employment."
 
     assert [%{status: :pending}] = Leave.requests(context.person)
   end

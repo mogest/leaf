@@ -87,6 +87,8 @@ defmodule Leaf.Leave do
           {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden}
   def request(person, actor, attrs) do
     serialised([person.id], fn ->
+      {:ok, person} = People.fetch_person(person.id)
+
       with :ok <- permit(person.id == actor.id or approver?(person, actor)) do
         %Request{person_id: person.id, submitted_by_id: actor.id, status: :pending}
         |> Request.changeset(measured(person, attrs))
@@ -254,6 +256,25 @@ defmodule Leaf.Leave do
         join: request in assoc(day, :leave_request),
         where: request.person_id == ^person.id and request.status == ^status,
         order_by: day.date
+    )
+  end
+
+  @doc """
+  A person's approved and pending requests holding any day outside `range`, the earliest first.
+
+  Each comes with all of its days. Declined and cancelled leave is nobody's to take, so it is not
+  among them.
+  """
+  @spec requests_outside(Person.t(), Date.Range.t()) :: [Request.t()]
+  def requests_outside(person, range) do
+    Repo.all(
+      from request in Request,
+        join: day in assoc(request, :days),
+        where: request.person_id == ^person.id and request.status in [:pending, :approved],
+        where: day.date < ^range.first or day.date > ^range.last,
+        group_by: request.id,
+        order_by: [min(day.date), request.inserted_at],
+        preload: :days
     )
   end
 
@@ -653,8 +674,14 @@ defmodule Leaf.Leave do
       reviewed_at: now(),
       review_comment: comment
     })
+    |> offered(status, request.person)
     |> Audit.write("leave_request.#{status}", actor, request.person_id)
   end
+
+  # Approving is filing's check asked again, since a type can be withdrawn, or employment end,
+  # while a request waits.
+  defp offered(changeset, :approved, person), do: Offer.validate(changeset, person)
+  defp offered(changeset, _status, _person), do: changeset
 
   # Told only once the write has committed, so that nobody hears of one that did not happen.
   defp notify({:ok, request} = written, notice) do

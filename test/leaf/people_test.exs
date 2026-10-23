@@ -174,6 +174,40 @@ defmodule Leaf.PeopleTest do
     end
   end
 
+  test "neither employment date may move past approved or pending leave, only past declined or cancelled",
+       %{person: person} do
+    leave_type = Fixtures.leave_type(%{organisation_id: person.organisation_id})
+
+    for {status, dates} <- [
+          approved: [~D[2027-01-11], ~D[2027-01-15]],
+          pending: [~D[2027-02-02]],
+          declined: [~D[2027-03-01]],
+          cancelled: [~D[2027-03-02]]
+        ] do
+      days =
+        Enum.map(dates, &%{leave_type_id: leave_type.id, date: &1, amount: "8", unit: :hours})
+
+      Fixtures.leave_request(%{person_id: person.id, status: status, days: days})
+    end
+
+    assert {:error, ending} =
+             People.update_person(person, nil, %{employment_end_date: ~D[2027-01-10]})
+
+    assert errors_on(ending).employment_end_date == [
+             "is before approved leave on 11 – 15 January 2027, pending leave on 2 February 2027"
+           ]
+
+    assert {:error, starting} =
+             People.update_person(person, nil, %{employment_start_date: ~D[2027-02-01]})
+
+    assert errors_on(starting).employment_start_date == [
+             "is after approved leave on 11 – 15 January 2027"
+           ]
+
+    assert {:ok, _left} =
+             People.update_person(person, nil, %{employment_end_date: ~D[2027-02-02]})
+  end
+
   defp policy_ids(person, range) do
     person
     |> People.leave_policy_segments(range)

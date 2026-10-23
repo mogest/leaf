@@ -56,15 +56,10 @@ defmodule Leaf.Leave.Request do
 
   An amendment carries the days it is dropping alongside the ones it is keeping, so what it will
   hold is what is left after those: a rule about the days is a rule about these and not about the
-  ones on their way out.
+  ones on their way out. A decision leaves the days alone, so they are the ones it already holds.
   """
   @spec filing(Ecto.Changeset.t()) :: [Day.t()]
-  def filing(changeset) do
-    changeset
-    |> get_change(:days, [])
-    |> Enum.reject(&(&1.action in [:replace, :delete]))
-    |> Enum.map(&apply_changes/1)
-  end
+  def filing(changeset), do: get_assoc(changeset, :days, :struct)
 
   @doc """
   Records a decision.

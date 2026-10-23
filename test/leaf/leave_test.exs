@@ -363,13 +363,28 @@ defmodule Leaf.LeaveTest do
     {:ok, filed} = file(context, [@thursday])
     {:ok, person} = People.update_person(context.person, nil, %{employment_end_date: @thursday})
 
-    assert {:error, filing} = file(%{context | person: person}, [@friday])
+    assert {:error, filing} = file(context, [@friday])
     assert errors_on(filing).days == ["hold a leave type that was not on offer on its date"]
 
     assert {:error, amending} =
              Leave.amend(reload(filed), person, %{days: [entry(context.leave_type, @friday)]})
 
     assert errors_on(amending).days == ["hold a leave type that was not on offer on its date"]
+  end
+
+  test "leave left outside employment cannot be approved, only declined", context do
+    {:ok, person} = People.update_person(context.person, nil, %{employment_end_date: @thursday})
+
+    outside =
+      Fixtures.leave_request(%{
+        person_id: person.id,
+        status: :pending,
+        days: [entry(context.leave_type, @friday)]
+      })
+
+    assert {:error, approving} = outside |> reload() |> Leave.approve(context.manager)
+    assert errors_on(approving).days == ["hold a leave type that was not on offer on its date"]
+    assert {:ok, %{status: :declined}} = outside |> reload() |> Leave.decline(context.manager)
   end
 
   test "leave cannot be filed against a leave type nobody offers the person", context do
@@ -383,7 +398,8 @@ defmodule Leaf.LeaveTest do
     assert Repo.all(Entry) == []
   end
 
-  test "withdrawing a leave type stops it being filed against, or amended into", context do
+  test "withdrawing a leave type stops it being filed against, amended into, or approved",
+       context do
     {:ok, filed} = file(context, [@thursday])
 
     {:ok, _withdrawn} =
@@ -400,6 +416,9 @@ defmodule Leaf.LeaveTest do
              })
 
     assert errors_on(amending).days == ["hold a leave type that was not on offer on its date"]
+
+    assert {:error, approving} = filed |> reload() |> Leave.approve(context.manager)
+    assert errors_on(approving).days == ["hold a leave type that was not on offer on its date"]
   end
 
   test "leave cannot be filed on a date its entitlement no longer covers", context do
@@ -756,9 +775,8 @@ defmodule Leaf.LeaveTest do
 
   test "a calendar has nothing on a day before somebody started or after they left", context do
     observes(context, ~D[2024-03-01])
-    {:ok, approving} = file(context, [@friday])
-    {:ok, _approved} = approving |> reload() |> Leave.approve(context.manager)
     {:ok, left} = People.update_person(context.person, nil, %{employment_end_date: @thursday})
+    Fixtures.leave_request(%{person_id: left.id, days: [entry(context.leave_type, @friday)]})
 
     assert [%{weeks: [[_, _, _, _, before_start | _] | _]}] =
              Leave.calendar(left, Date.range(~D[2024-03-01], ~D[2024-03-31]))
