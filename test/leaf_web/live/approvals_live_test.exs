@@ -135,6 +135,7 @@ defmodule LeafWeb.ApprovalsLiveTest do
     admin =
       Fixtures.person(%{organisation_id: context.organisation.id, name: "Kit Rua", role: :admin})
 
+    Fixtures.person(%{organisation_id: context.organisation.id, role: :admin})
     {:ok, live, _html} = live(sign_in(context.conn, admin), ~p"/approvals")
 
     {:ok, _demoted} = People.update_person(admin, nil, %{role: :member})

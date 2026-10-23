@@ -84,23 +84,29 @@ defmodule Leaf.People do
 
   Correcting an employment start date moves every anniversary that hangs off it, so this is the
   one edit here that can re-work a whole entitlement history on its own. Neither employment date
-  may move so that leave approved or pending falls outside it.
+  may move so that leave approved or pending falls outside it, nor may the organisation's last
+  administrator stop being one.
   """
   @spec update_person(Person.t(), Person.t() | nil, map()) :: Audit.written(Person.t())
   def update_person(person, actor, attrs) do
-    Leave.serialised([person.id], fn ->
-      person
-      |> Person.changeset(attrs)
-      |> validate_reporting_line()
-      |> Changeset.validate_change(
-        :employment_start_date,
-        &held(person, &1, "is after", Date.range(&2, @forever))
-      )
-      |> Changeset.validate_change(
-        :employment_end_date,
-        &held(person, &1, "is before", Date.range(@dawn, &2))
-      )
-      |> Audit.write("person.updated", actor, person.id)
+    Repo.transact(fn ->
+      lock_organisation(person.organisation_id)
+
+      Leave.serialised([person.id], fn ->
+        person
+        |> Person.changeset(attrs)
+        |> validate_reporting_line()
+        |> Changeset.validate_change(
+          :employment_start_date,
+          &held(person, &1, "is after", Date.range(&2, @forever))
+        )
+        |> Changeset.validate_change(
+          :employment_end_date,
+          &held(person, &1, "is before", Date.range(@dawn, &2))
+        )
+        |> Changeset.validate_change(:role, &administered(person, &1, &2))
+        |> Audit.write("person.updated", actor, person.id)
+      end)
     end)
   end
 
@@ -508,6 +514,31 @@ defmodule Leaf.People do
   end
 
   defp held(request), do: "#{request.status} leave on #{Wording.dates_in_full(request)}"
+
+  # So that two administrators stepping down at once take turns rather than each finding the other
+  # still there. `NO KEY` leaves inserts referencing the organisation unblocked.
+  defp lock_organisation(id) do
+    Repo.one!(
+      from organisation in Organisation,
+        where: organisation.id == ^id,
+        select: 1,
+        lock: "FOR NO KEY UPDATE"
+    )
+  end
+
+  defp administered(person, field, :member) do
+    others =
+      from other in Person,
+        where: other.organisation_id == ^person.organisation_id,
+        where: other.role == :admin and other.id != ^person.id
+
+    case Repo.exists?(others) do
+      true -> []
+      false -> [{field, "nobody else administers the organisation"}]
+    end
+  end
+
+  defp administered(_person, _field, :admin), do: []
 
   defp branches(people, reports) do
     Enum.map(people, &{&1, branches(Map.get(reports, &1.id, []), reports)})

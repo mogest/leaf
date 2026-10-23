@@ -114,6 +114,7 @@ defmodule LeafWeb.PeopleLiveTest do
 
   test "an administrator demoted while a page is open has its next removal refused", context do
     [pattern] = People.work_patterns(context.person)
+    Fixtures.person(%{organisation_id: context.organisation.id, role: :admin})
     {:ok, live, _html} = live(context.conn, ~p"/people/#{context.person}")
 
     {:ok, _demoted} = People.update_person(context.admin, nil, %{role: :member})

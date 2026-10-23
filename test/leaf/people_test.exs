@@ -174,6 +174,17 @@ defmodule Leaf.PeopleTest do
     end
   end
 
+  test "the last administrator cannot step down", %{organisation: organisation} do
+    kit = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+    Fixtures.person(%{organisation_id: Fixtures.organisation().id, role: :admin})
+
+    assert {:error, changeset} = People.update_person(kit, nil, %{role: :member})
+    assert errors_on(changeset).role == ["nobody else administers the organisation"]
+
+    Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+    assert {:ok, %{role: :member}} = People.update_person(kit, nil, %{role: :member})
+  end
+
   test "neither employment date may move past approved or pending leave, only past declined or cancelled",
        %{person: person} do
     leave_type = Fixtures.leave_type(%{organisation_id: person.organisation_id})
