@@ -375,6 +375,11 @@ defmodule Leaf.People do
     Date.range(person.employment_start_date, person.employment_end_date || @forever)
   end
 
+  @doc "Whether the person may use Leaf today: an administrator always, anybody else while employed."
+  @spec admitted?(Person.t()) :: boolean()
+  def admitted?(%Person{role: :admin}), do: true
+  def admitted?(person), do: today(person) in employment_dates(person)
+
   @doc "Everyone an organisation employs over any part of `range`, by name, `dated/1`."
   @spec employed(Ecto.UUID.t(), Date.Range.t()) :: [Person.t()]
   def employed(organisation_id, range) do

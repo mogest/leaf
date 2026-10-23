@@ -8,7 +8,10 @@ defmodule LeafWeb.SignInTest do
 
   use LeafWeb.ConnCase, async: true
 
+  import Phoenix.LiveViewTest
+
   alias Leaf.Fixtures
+  alias Leaf.People
   alias LeafWeb.SignIn
   alias Phoenix.LiveView.Socket
 
@@ -40,6 +43,67 @@ defmodule LeafWeb.SignInTest do
       assert conn |> Plug.Test.init_test_session(session) |> get(~p"/") |> redirected_to() ==
                "/sign-in"
     end
+  end
+
+  test "somebody outside their employment dates is turned away saying why, unless an administrator or impersonated",
+       %{conn: conn} do
+    organisation = Fixtures.organisation()
+    yesterday = Date.add(Date.utc_today(), -1)
+    leaver = Fixtures.person(%{organisation_id: organisation.id, employment_end_date: yesterday})
+
+    starter =
+      Fixtures.person(%{
+        organisation_id: organisation.id,
+        employment_start_date: Date.add(Date.utc_today(), 2)
+      })
+
+    admin =
+      Fixtures.person(%{
+        organisation_id: organisation.id,
+        role: :admin,
+        employment_end_date: yesterday
+      })
+
+    now = System.os_time(:second)
+
+    for person <- [leaver, starter] do
+      session = %{"person_id" => person.id, "signed_in_at" => now}
+      mounting = %Socket{assigns: %{__changed__: %{}, flash: %{}}}
+
+      assert {:halt, socket} = SignIn.on_mount(:current_person, %{}, session, mounting)
+      assert {:redirect, %{to: "/sign-in"}} = socket.redirected
+      assert socket.assigns.flash["error"] == "Leaf is only open to you while you're employed."
+
+      signed_in = Plug.Test.init_test_session(conn, session)
+      turned_away = get(signed_in, ~p"/")
+      assert redirected_to(turned_away) == "/sign-in"
+
+      assert turned_away.assigns.flash["error"] ==
+               "Leaf is only open to you while you're employed."
+
+      refute get(signed_in, ~p"/sign-in").assigns.flash["error"]
+    end
+
+    for session <- [
+          %{"person_id" => admin.id, "signed_in_at" => now},
+          %{
+            "person_id" => leaver.id,
+            "signed_in_at" => now,
+            "impersonation" => {admin.id, now + 3600}
+          }
+        ] do
+      assert conn |> Plug.Test.init_test_session(session) |> get(~p"/") |> html_response(200)
+    end
+  end
+
+  test "an open page stops acting for somebody once their employment has ended", %{conn: conn} do
+    person = Fixtures.person(%{organisation_id: Fixtures.organisation().id})
+    {:ok, live, _html} = live(sign_in(conn, person), ~p"/")
+
+    {:ok, _left} =
+      People.update_person(person, nil, %{employment_end_date: Date.add(Date.utc_today(), -1)})
+
+    assert {:error, {:redirect, %{to: "/sign-in"}}} = render_hook(live, "anything", %{})
   end
 
   test "a session signed in under a week ago is let in", %{conn: conn} do

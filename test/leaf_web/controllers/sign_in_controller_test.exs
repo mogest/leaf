@@ -6,6 +6,7 @@ defmodule LeafWeb.SignInControllerTest do
 
   alias Assent.Strategy.Google
   alias Leaf.Fixtures
+  alias Leaf.People
 
   setup do
     person = Fixtures.person(%{organisation_id: Fixtures.organisation().id})
@@ -42,6 +43,23 @@ defmodule LeafWeb.SignInControllerTest do
 
     assert redirected_to(conn) == "/sign-in"
     assert conn.assigns.flash["error"] == "Nobody in Leaf has the address stranger@example.test."
+    refute get_session(conn, "person_id")
+  end
+
+  test "somebody outside their employment dates is turned away without a session", context do
+    {:ok, leaver} =
+      People.update_person(context.person, nil, %{
+        employment_end_date: Date.add(Date.utc_today(), -1)
+      })
+
+    expect(Google, :callback, fn _config, _params ->
+      {:ok, %{user: %{"email" => leaver.email, "email_verified" => true}}}
+    end)
+
+    conn = get(recycle(context.conn), ~p"/sign-in/callback")
+
+    assert redirected_to(conn) == "/sign-in"
+    assert conn.assigns.flash["error"] == "Leaf is only open to you while you're employed."
     refute get_session(conn, "person_id")
   end
 

@@ -64,10 +64,13 @@ defmodule LeafWeb.SignInController do
 
   defp sign_in_as(conn, email) do
     case People.fetch_person_by_email(email) do
-      {:ok, person} -> conn |> SignIn.sign_in(person) |> redirect(to: ~p"/")
+      {:ok, person} -> admit(conn, person, People.admitted?(person))
       :error -> refuse(conn, "Nobody in Leaf has the address #{email}.")
     end
   end
+
+  defp admit(conn, person, true), do: conn |> SignIn.sign_in(person) |> redirect(to: ~p"/")
+  defp admit(conn, _person, false), do: refuse(conn, SignIn.outside())
 
   defp refuse(conn, message), do: conn |> put_flash(:error, message) |> redirect(to: ~p"/sign-in")
 

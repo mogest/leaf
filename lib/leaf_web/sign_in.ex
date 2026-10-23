@@ -9,6 +9,10 @@ defmodule LeafWeb.SignIn do
   and an impersonation an hour, after which the session names nobody. Neither is renewed by use, so
   a copied cookie runs out with the rest.
 
+  Nor does it name anybody outside their employment dates but an administrator, or somebody an
+  administrator is impersonating: they are sent to sign in and told why, and an open page stops at
+  their next event.
+
   Each signing in names a socket id of its own, and signing in again or out disconnects whatever the
   last one had open, so no page goes on acting as somebody the session no longer names.
   """
@@ -32,7 +36,10 @@ defmodule LeafWeb.SignIn do
   @doc "Puts whoever the session names on the connection."
   @spec fetch_current_person(Plug.Conn.t(), keyword()) :: Plug.Conn.t()
   def fetch_current_person(conn, _opts) do
-    assign(conn, :current_person, signed_in(get_session(conn)))
+    case signed_in(get_session(conn)) do
+      :outside -> conn |> put_private(:outside, true) |> assign(:current_person, nil)
+      person -> assign(conn, :current_person, person)
+    end
   end
 
   @doc """
@@ -57,6 +64,7 @@ defmodule LeafWeb.SignIn do
   def on_mount(:current_person, _params, session, socket) do
     case signed_in(session) do
       nil -> {:halt, LiveView.redirect(socket, to: "/sign-in")}
+      :outside -> {:halt, turned_away(socket)}
       person -> {:cont, viewing(socket, person, session)}
     end
   end
@@ -100,6 +108,10 @@ defmodule LeafWeb.SignIn do
 
   @doc "Sends anyone the session does not name to sign in."
   @spec require_person(Plug.Conn.t(), keyword()) :: Plug.Conn.t()
+  def require_person(%{assigns: %{current_person: nil}, private: %{outside: true}} = conn, _opts) do
+    conn |> put_flash(:error, outside()) |> redirect(to: "/sign-in") |> halt()
+  end
+
   def require_person(%{assigns: %{current_person: nil}} = conn, _opts) do
     conn |> redirect(to: "/sign-in") |> halt()
   end
@@ -114,7 +126,15 @@ defmodule LeafWeb.SignIn do
     conn |> put_flash(:error, refused()) |> redirect(to: "/") |> halt()
   end
 
+  @doc "Why somebody outside their employment dates is turned away."
+  @spec outside() :: String.t()
+  def outside, do: "Leaf is only open to you while you're employed."
+
   defp refused, do: "That page is the administrator's."
+
+  defp turned_away(socket) do
+    socket |> LiveView.put_flash(:error, outside()) |> LiveView.redirect(to: "/sign-in")
+  end
 
   defp name(conn, id) do
     conn
@@ -136,7 +156,7 @@ defmodule LeafWeb.SignIn do
 
   defp signed_in(%{@named => id, @signed_in_at => signed_in_at} = session) do
     case System.os_time(:second) < ends(signed_in_at, session[@impersonation]) do
-      true -> named(id)
+      true -> id |> named() |> admitted(session[@impersonation] != nil)
       false -> nil
     end
   end
@@ -161,8 +181,21 @@ defmodule LeafWeb.SignIn do
 
   defp current(_event, _params, socket) do
     case People.fetch_person(socket.assigns.current_person.id) do
-      {:ok, person} -> {:cont, Component.assign(socket, :current_person, person)}
+      {:ok, person} -> carry_on(socket, admitted(person, socket.assigns.viewer.impersonated?))
       :error -> {:halt, LiveView.redirect(socket, to: "/sign-in")}
+    end
+  end
+
+  defp carry_on(socket, :outside), do: {:halt, turned_away(socket)}
+  defp carry_on(socket, person), do: {:cont, Component.assign(socket, :current_person, person)}
+
+  defp admitted(nil, _impersonated?), do: nil
+  defp admitted(person, true), do: person
+
+  defp admitted(person, false) do
+    case People.admitted?(person) do
+      true -> person
+      false -> :outside
     end
   end
 
