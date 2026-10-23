@@ -15,7 +15,7 @@ defmodule LeafWeb.SignInTest do
   alias LeafWeb.SignIn
   alias Phoenix.LiveView.Socket
 
-  test "a session naming nobody, signed in too long ago, or whose impersonation has run out, is sent to sign in",
+  test "a session naming nobody or somebody archived, too old, or whose impersonation has run out, is sent to sign in",
        %{conn: conn} do
     organisation = Fixtures.organisation()
     admin = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
@@ -24,6 +24,8 @@ defmodule LeafWeb.SignInTest do
     leaver =
       Fixtures.person(%{organisation_id: organisation.id, employment_end_date: ~D[2026-01-30]})
 
+    archived = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+    {:ok, _archived} = People.archive_person(archived, nil)
     now = System.os_time(:second)
 
     for session <- [
@@ -31,6 +33,12 @@ defmodule LeafWeb.SignInTest do
           %{"person_id" => leaver.id},
           %{"person_id" => leaver.id, "signed_in_at" => now - 8 * 24 * 60 * 60},
           %{"person_id" => person.id, "signed_in_at" => now, "impersonation" => {admin.id, 0}},
+          %{"person_id" => archived.id, "signed_in_at" => now},
+          %{
+            "person_id" => archived.id,
+            "signed_in_at" => now,
+            "impersonation" => {admin.id, now + 3600}
+          },
           %{
             "person_id" => person.id,
             "signed_in_at" => now - 8 * 24 * 60 * 60,

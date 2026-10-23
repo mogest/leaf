@@ -177,6 +177,67 @@ defmodule LeafWeb.PeopleLiveTest do
     assert html =~ "On no policy, so nothing is granted."
   end
 
+  test "an archived person is listed only behind Show archived, and is nobody's manager to pick",
+       context do
+    {:ok, _archived} = People.archive_person(context.person, nil)
+
+    {:ok, live, html} = live(context.conn, ~p"/people")
+    refute html =~ "Rae Halloran"
+
+    html = live |> element("a", "Show archived") |> render_click()
+    assert html =~ "Rae Halloran"
+    assert html =~ "<small>archived</small>"
+
+    {:ok, _live, html} = live(context.conn, ~p"/people/new")
+    refute html =~ "Rae Halloran"
+  end
+
+  test "an archived person's page keeps their history, and is where they are archived and brought back",
+       context do
+    %{person: person, leave_type: leave_type} = context
+    days = [%{leave_type_id: leave_type.id, date: ~D[2025-02-03], amount: "8", unit: :hours}]
+    Fixtures.leave_request(%{person_id: person.id, days: days})
+
+    Fixtures.balance_entry(%{
+      person_id: person.id,
+      leave_type_id: leave_type.id,
+      kind: :adjustment,
+      amount: "12.5",
+      reason: "Carried over"
+    })
+
+    report =
+      Fixtures.person(%{
+        organisation_id: person.organisation_id,
+        name: "Bo Ngata",
+        manager_id: person.id
+      })
+
+    {:ok, live, _html} = live(context.conn, ~p"/people/#{person}")
+
+    assert live |> element("button[phx-click=archive]") |> render_click() =~
+             "Rae Halloran can&#39;t be archived: they manage Bo Ngata."
+
+    {:ok, _report} = People.update_person(report, nil, %{manager_id: nil})
+    html = live |> element("button[phx-click=archive]") |> render_click()
+
+    assert html =~ "Rae Halloran is archived."
+    assert html =~ "Archived "
+    assert html =~ "Mon 3 Feb"
+    assert html =~ "Carried over"
+    refute html =~ "Impersonate"
+
+    clash = Fixtures.person(%{organisation_id: person.organisation_id, email: person.email})
+
+    assert live |> element("button[phx-click=unarchive]") |> render_click() =~
+             "Rae Halloran can&#39;t be unarchived: their email has already been taken."
+
+    {:ok, _clash} = People.archive_person(clash, nil)
+
+    assert live |> element("button[phx-click=unarchive]") |> render_click() =~
+             "Rae Halloran is unarchived."
+  end
+
   test "an administrator can cancel somebody's leave from their page", context do
     days = [
       %{leave_type_id: context.leave_type.id, date: ~D[2030-03-04], amount: "8", unit: :hours}

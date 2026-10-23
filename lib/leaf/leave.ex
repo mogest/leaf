@@ -282,6 +282,20 @@ defmodule Leaf.Leave do
     )
   end
 
+  @doc "A person's pending requests and approved ones holding any day from `date`, the earliest first."
+  @spec outstanding(Person.t(), Date.t()) :: [Request.t()]
+  def outstanding(person, date) do
+    Repo.all(
+      from request in Request,
+        join: day in assoc(request, :days),
+        where: request.person_id == ^person.id,
+        where: request.status == :pending or (request.status == :approved and day.date >= ^date),
+        group_by: request.id,
+        order_by: [min(day.date), request.inserted_at],
+        preload: :days
+    )
+  end
+
   @doc "The earliest date a person has leave approved or awaiting a decision on, or nil."
   @spec first_filed_on(Person.t()) :: Date.t() | nil
   def first_filed_on(person) do

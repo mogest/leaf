@@ -110,15 +110,54 @@ defmodule Leaf.People do
     end)
   end
 
-  @doc "The person, or `:error` where no such person exists."
+  @doc """
+  Archives a person, leaving them off every current list but the administrators' People list.
+
+  Refused, naming what is in the way, while they have leave pending or still to come, while anybody
+  not archived reports to them, or while they are the organisation's last administrator.
+  """
+  @spec archive_person(Person.t(), Person.t() | nil) :: Audit.written(Person.t())
+  def archive_person(person, actor) do
+    Repo.transact(fn ->
+      lock_organisation(person.organisation_id)
+
+      Leave.serialised([person.id], fn ->
+        {:ok, person} = fetch_person(person.id)
+
+        person
+        |> archived(person.archived_at || DateTime.truncate(DateTime.utc_now(), :second))
+        |> Changeset.validate_change(:archived_at, &in_the_way(person, &1, &2))
+        |> Audit.write("person.archived", actor, person.id)
+      end)
+    end)
+  end
+
+  @doc """
+  Brings an archived person back.
+
+  Refused on `email` or `employee_number` while somebody not archived has the same.
+  """
+  @spec unarchive_person(Person.t(), Person.t() | nil) :: Audit.written(Person.t())
+  def unarchive_person(person, actor) do
+    {:ok, person} = fetch_person(person.id)
+
+    person |> archived(nil) |> Audit.write("person.unarchived", actor, person.id)
+  end
+
+  @doc "The person, archived or not, or `:error` where no such person exists."
   @spec fetch_person(Ecto.UUID.t()) :: {:ok, Person.t()} | :error
   def fetch_person(id), do: Repo.fetch(Person, id)
 
-  @doc "The person with that email address, in any case, or `:error` where nobody has it."
+  @doc "The person, or `:error` where no such person exists or they are archived."
+  @spec fetch_unarchived_person(Ecto.UUID.t()) :: {:ok, Person.t()} | :error
+  def fetch_unarchived_person(id), do: Repo.fetch(unarchived(), id)
+
+  @doc "The person not archived with that email address, in any case, or `:error` where nobody has it."
   @spec fetch_person_by_email(String.t()) :: {:ok, Person.t()} | :error
   def fetch_person_by_email(email) do
     query =
-      from person in Person, where: fragment("lower(?)", person.email) == ^String.downcase(email)
+      from person in unarchived(),
+        where: fragment("lower(?)", person.email) == ^String.downcase(email)
 
     case Repo.one(query) do
       nil -> :error
@@ -256,16 +295,14 @@ defmodule Leaf.People do
     do: succession(person, :calendar_assignments, calendar: :parent)
 
   @doc """
-  Whether anybody reports to `person`.
+  Whether anybody not archived reports to `person`.
 
   Being a manager is not a role but a consequence, so this is the question asked of somebody
   wherever a manager's standing decides something. Whoever has left is still counted: their
   requests outlive their leaving, and `Leaf.Leave.awaiting/1` will hand them over all the same.
   """
   @spec manager?(Person.t()) :: boolean()
-  def manager?(person) do
-    Repo.exists?(from other in Person, where: other.manager_id == ^person.id)
-  end
+  def manager?(person), do: Repo.exists?(reports(person))
 
   @doc """
   Whether `actor` may see and act on `person`'s record.
@@ -278,13 +315,10 @@ defmodule Leaf.People do
     actor.id == person.id or person.manager_id == actor.id or actor.role == :admin
   end
 
-  @doc "The people `actor` oversees, by name: the whole organisation for an administrator, else their reports."
+  @doc "The people `actor` oversees, archived ones aside: the organisation for an administrator, else their reports."
   @spec overseen(Person.t()) :: [Person.t()]
   def overseen(%Person{role: :admin} = actor), do: people(actor.organisation_id)
-
-  def overseen(actor) do
-    Repo.all(from person in Person, where: person.manager_id == ^actor.id, order_by: person.name)
-  end
+  def overseen(actor), do: Repo.all(reports(actor))
 
   @doc "Each work pattern the person is on over part of `range`, with the span it covers."
   @spec work_pattern_segments(Person.t(), Date.Range.t()) :: [segment(WorkPattern.t())]
@@ -380,10 +414,16 @@ defmodule Leaf.People do
   def admitted?(%Person{role: :admin}), do: true
   def admitted?(person), do: today(person) in employment_dates(person)
 
-  @doc "Everyone an organisation employs over any part of `range`, by name, `dated/1`."
+  @doc "Everyone not archived an organisation employs over any part of `range`, by name, `dated/1`."
   @spec employed(Ecto.UUID.t(), Date.Range.t()) :: [Person.t()]
   def employed(organisation_id, range) do
     organisation_id |> employing(range) |> Repo.all() |> dated()
+  end
+
+  @doc "Everyone an organisation employed over any part of `range`, archived or not, by name, `dated/1`."
+  @spec on_record(Ecto.UUID.t(), Date.Range.t()) :: [Person.t()]
+  def on_record(organisation_id, range) do
+    Person |> employed_by(organisation_id, range) |> Repo.all() |> dated()
   end
 
   @doc """
@@ -401,15 +441,15 @@ defmodule Leaf.People do
     people |> Enum.reject(&MapSet.member?(ids, &1.manager_id)) |> branches(reports)
   end
 
-  @doc "Everyone in an organisation, by name."
+  @doc "Everyone in an organisation not archived, by name."
   @spec people(Ecto.UUID.t()) :: [Person.t()]
   def people(organisation_id) do
-    Repo.all(
-      from person in Person,
-        where: person.organisation_id == ^organisation_id,
-        order_by: person.name
-    )
+    Repo.all(from person in everybody_in(organisation_id), where: is_nil(person.archived_at))
   end
+
+  @doc "Everyone in an organisation, archived or not, by name."
+  @spec everybody(Ecto.UUID.t()) :: [Person.t()]
+  def everybody(organisation_id), do: Repo.all(everybody_in(organisation_id))
 
   @doc "Everyone employed to administer an organisation on `date`, by name."
   @spec administrators(Ecto.UUID.t(), Date.t()) :: [Person.t()]
@@ -488,8 +528,22 @@ defmodule Leaf.People do
   @spec fte(WorkPattern.t(), Decimal.t()) :: Decimal.t()
   defdelegate fte(work_pattern, full_time_week_hours), to: WorkPattern
 
-  defp employing(organisation_id, range) do
+  defp everybody_in(organisation_id) do
     from person in Person,
+      where: person.organisation_id == ^organisation_id,
+      order_by: person.name
+  end
+
+  defp unarchived, do: from(person in Person, where: is_nil(person.archived_at))
+
+  defp reports(person) do
+    from other in unarchived(), where: other.manager_id == ^person.id, order_by: other.name
+  end
+
+  defp employing(organisation_id, range), do: employed_by(unarchived(), organisation_id, range)
+
+  defp employed_by(people, organisation_id, range) do
+    from person in people,
       where: person.organisation_id == ^organisation_id,
       where: person.employment_start_date <= ^range.last,
       where: is_nil(person.employment_end_date) or person.employment_end_date >= ^range.first,
@@ -531,9 +585,9 @@ defmodule Leaf.People do
     )
   end
 
-  defp administered(person, field, :member) do
+  defp administered(%{role: :admin} = person, field, :member) do
     others =
-      from other in Person,
+      from other in unarchived(),
         where: other.organisation_id == ^person.organisation_id,
         where: other.role == :admin and other.id != ^person.id
 
@@ -543,7 +597,28 @@ defmodule Leaf.People do
     end
   end
 
-  defp administered(_person, _field, :admin), do: []
+  defp administered(_person, _field, _role), do: []
+
+  defp archived(person, at),
+    do: person |> Person.changeset(%{}) |> Changeset.put_change(:archived_at, at)
+
+  defp in_the_way(person, field, _at) do
+    booked(person, field) ++ managing(person, field) ++ administered(person, field, :member)
+  end
+
+  defp booked(person, field) do
+    case Leave.outstanding(person, today(person)) do
+      [] -> []
+      requests -> [{field, "they have #{Enum.map_join(requests, ", ", &held/1)}"}]
+    end
+  end
+
+  defp managing(person, field) do
+    case Repo.all(reports(person)) do
+      [] -> []
+      reports -> [{field, "they manage #{Enum.map_join(reports, ", ", & &1.name)}"}]
+    end
+  end
 
   defp branches(people, reports) do
     Enum.map(people, &{&1, branches(Map.get(reports, &1.id, []), reports)})

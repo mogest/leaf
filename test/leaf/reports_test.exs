@@ -117,6 +117,20 @@ defmodule Leaf.ReportsTest do
     end
   end
 
+  test "an archived person's past leave stays in the iPayroll export and leave taken", context do
+    %{manager: manager, person: person, leave_type: leave_type} = context
+    take(person, leave_type, [{~D[2026-09-29], "8", :hours}])
+    {:ok, _archived} = People.archive_person(person, nil)
+
+    assert {@heading <> "1001,Rae Halloran,AL,29/09/2026,29/09/2026,8.00,,\r\n", []} =
+             ipayroll(manager, "2026-09-01", "2026-09-30")
+
+    assert {taken, []} =
+             csv(manager, %{"report" => "taken", "from" => "2026-09-01", "to" => "2026-09-30"})
+
+    assert taken =~ "Rae Halloran"
+  end
+
   test "leave taken counts only its days in the period, narrowed by country and type", context do
     %{organisation: organisation, person: person, leave_type: leave_type} = context
     new_zealand = Fixtures.calendar(%{organisation_id: organisation.id})

@@ -5,6 +5,7 @@ defmodule LeafWeb.WhoIsAwayLiveTest do
 
   alias Leaf.Fixtures
   alias Leaf.Leave
+  alias Leaf.People
 
   @date ~D[2030-03-04]
 
@@ -56,6 +57,17 @@ defmodule LeafWeb.WhoIsAwayLiveTest do
     assert html =~ ~s(<td data-leave="approved" data-part)
     assert html =~ "Fair Day"
     assert html =~ ~s(data-working="no")
+  end
+
+  test "an archived person is not on the month", context do
+    wren = Fixtures.person(%{organisation_id: context.organisation.id, name: "Wren Okafor"})
+    Fixtures.work_pattern(%{person_id: wren.id})
+    {:ok, _wren} = People.archive_person(wren, nil)
+
+    {:ok, _live, html} = live(context.conn, ~p"/away?month=2030-03")
+
+    assert html =~ "Rae Halloran"
+    refute html =~ "Wren Okafor"
   end
 
   test "a month that is not a month reads as this one", context do

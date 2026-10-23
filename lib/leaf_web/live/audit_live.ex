@@ -133,7 +133,7 @@ defmodule LeafWeb.AuditLive do
 
   defp people(socket) do
     socket.assigns.current_person.organisation_id
-    |> People.people()
+    |> People.everybody()
     |> Enum.map(&{&1.name, &1.id})
   end
 

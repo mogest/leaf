@@ -25,7 +25,7 @@ defmodule LeafWeb.ImpersonationController do
   end
 
   def create(conn, %{"id" => id}) do
-    case People.fetch_person(id) do
+    case People.fetch_unarchived_person(id) do
       {:ok, person} ->
         Logger.info("Person #{conn.assigns.current_person.id} is impersonating #{person.id}")
         conn |> SignIn.impersonate(person) |> redirect(to: ~p"/")

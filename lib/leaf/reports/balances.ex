@@ -16,7 +16,7 @@ defmodule Leaf.Reports.Balances do
   def table(organisation_id, as_at) do
     {ready, unready} =
       organisation_id
-      |> People.employed(Date.range(as_at, as_at))
+      |> People.on_record(Date.range(as_at, as_at))
       |> Enum.split_with(&Ledger.ready?(&1, as_at))
 
     held =

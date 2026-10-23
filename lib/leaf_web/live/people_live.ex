@@ -1,5 +1,9 @@
 defmodule LeafWeb.PeopleLive do
-  @moduledoc "Everyone the viewer oversees, and how much of a week each of them works."
+  @moduledoc """
+  Everyone the viewer oversees, and how much of a week each of them works.
+
+  An administrator may have the archived listed too, which is the only list they appear on.
+  """
 
   use LeafWeb, :live_view
 
@@ -7,8 +11,11 @@ defmodule LeafWeb.PeopleLive do
   alias Leaf.People
 
   @impl Phoenix.LiveView
-  def mount(_params, _session, socket) do
-    {:ok, listed(socket, People.overseen(socket.assigns.current_person))}
+  def handle_params(params, _uri, socket) do
+    actor = socket.assigns.current_person
+
+    {:noreply,
+     socket |> assign(:archived?, params["archived"] == "shown") |> listed(people(actor, params))}
   end
 
   @impl Phoenix.LiveView
@@ -17,6 +24,9 @@ defmodule LeafWeb.PeopleLive do
     <Layouts.app flash={@flash} page="people" viewer={@viewer}>
       <header>
         <h1>People</h1>
+        <.link :if={@viewer.admin?} class="button" data-tone="quiet" patch={toggle_path(@archived?)}>
+          {toggle_label(@archived?)}
+        </.link>
         <.link :if={@viewer.admin?} class="button" navigate={~p"/people/new"}>Add</.link>
       </header>
 
@@ -36,6 +46,7 @@ defmodule LeafWeb.PeopleLive do
               <th scope="row">
                 <.link navigate={person.path}>{person.name}</.link>
                 <small :if={person.admin?}>administrator</small>
+                <small :if={person.archived?}>archived</small>
               </th>
               <td>{person.email}</td>
               <td>{person.employment}</td>
@@ -49,6 +60,17 @@ defmodule LeafWeb.PeopleLive do
     """
   end
 
+  defp toggle_path(true), do: ~p"/people"
+  defp toggle_path(false), do: ~p"/people?archived=shown"
+
+  defp toggle_label(true), do: "Hide archived"
+  defp toggle_label(false), do: "Show archived"
+
+  defp people(%{role: :admin} = actor, %{"archived" => "shown"}),
+    do: People.everybody(actor.organisation_id)
+
+  defp people(actor, _params), do: People.overseen(actor)
+
   defp listed(socket, []) do
     socket |> put_flash(:error, "Nobody reports to you.") |> push_navigate(to: ~p"/")
   end
@@ -56,7 +78,7 @@ defmodule LeafWeb.PeopleLive do
   defp listed(socket, people) do
     {:ok, organisation} = Org.fetch_organisation(socket.assigns.current_person.organisation_id)
     today = People.today(socket.assigns.current_person)
-    names = Map.new(People.people(organisation.id), &{&1.id, &1.name})
+    names = Map.new(People.everybody(organisation.id), &{&1.id, &1.name})
 
     socket
     |> assign(:page_title, "People")
@@ -69,6 +91,7 @@ defmodule LeafWeb.PeopleLive do
       path: ~p"/people/#{person}",
       email: person.email,
       admin?: person.role == :admin,
+      archived?: person.archived_at != nil,
       employment: Wording.employment(person),
       hours: hours(person, organisation, today),
       manager: names[person.manager_id],
@@ -90,6 +113,7 @@ defmodule LeafWeb.PeopleLive do
     "#{Wording.number(weekly)} (#{Wording.number(fte)} FTE)"
   end
 
+  defp tone(%{archived_at: %DateTime{}}, _today), do: "past"
   defp tone(%{employment_end_date: nil}, _today), do: nil
 
   defp tone(person, today) do

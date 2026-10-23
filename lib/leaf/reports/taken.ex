@@ -23,7 +23,7 @@ defmodule Leaf.Reports.Taken do
 
     people =
       organisation_id
-      |> People.employed(period)
+      |> People.on_record(period)
       |> Enum.map(&{&1, country(&1, period.last)})
       |> Enum.filter(fn {_person, country} -> wanted?(country, country_id) end)
 

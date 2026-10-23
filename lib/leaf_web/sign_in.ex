@@ -11,7 +11,7 @@ defmodule LeafWeb.SignIn do
 
   Nor does it name anybody outside their employment dates but an administrator, or somebody an
   administrator is impersonating: they are sent to sign in and told why, and an open page stops at
-  their next event.
+  their next event. Somebody archived it does not name at all.
 
   Each signing in names a socket id of its own, and signing in again or out disconnects whatever the
   last one had open, so no page goes on acting as somebody the session no longer names.
@@ -180,7 +180,7 @@ defmodule LeafWeb.SignIn do
   end
 
   defp current(_event, _params, socket) do
-    case People.fetch_person(socket.assigns.current_person.id) do
+    case People.fetch_unarchived_person(socket.assigns.current_person.id) do
       {:ok, person} -> carry_on(socket, admitted(person, socket.assigns.viewer.impersonated?))
       :error -> {:halt, LiveView.redirect(socket, to: "/sign-in")}
     end
@@ -211,7 +211,7 @@ defmodule LeafWeb.SignIn do
   defp over(_message, socket), do: {:cont, socket}
 
   defp named(id) do
-    case People.fetch_person(id) do
+    case People.fetch_unarchived_person(id) do
       {:ok, person} ->
         Sentry.Context.set_user_context(%{id: person.id, email: person.email})
         person

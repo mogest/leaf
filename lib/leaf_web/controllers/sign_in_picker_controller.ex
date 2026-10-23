@@ -23,7 +23,7 @@ defmodule LeafWeb.SignInPickerController do
   end
 
   def create(conn, %{"id" => id}) do
-    case People.fetch_person(id) do
+    case People.fetch_unarchived_person(id) do
       {:ok, person} -> conn |> SignIn.sign_in(person) |> redirect(to: ~p"/")
       :error -> redirect(conn, to: ~p"/sign-in/pick")
     end

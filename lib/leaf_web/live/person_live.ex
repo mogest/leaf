@@ -62,6 +62,20 @@ defmodule LeafWeb.PersonLive do
     {:noreply, remove(socket, entry, &Leave.archive_balance_entry/2)}
   end
 
+  @role :admin
+  def handle_event("archive", _params, socket) do
+    written = People.archive_person(socket.assigns.person, actor(socket))
+
+    {:noreply, archived(socket, written, "archived")}
+  end
+
+  @role :admin
+  def handle_event("unarchive", _params, socket) do
+    written = People.unarchive_person(socket.assigns.person, actor(socket))
+
+    {:noreply, archived(socket, written, "unarchived")}
+  end
+
   @role :member
   def handle_event("cancel-request", %{"id" => id}, socket) do
     {:noreply, socket |> Parts.cancel_request(id) |> loaded()}
@@ -76,9 +90,29 @@ defmodule LeafWeb.PersonLive do
           <.link navigate={~p"/people"}>People</.link>
         </nav>
         <h1>{@person.name}</h1>
+        <p :if={@archived}>{@archived}</p>
         <.form :if={@impersonable?} for={%{}} action={~p"/impersonate/#{@person}"}>
           <button class="button" data-tone="quiet">Impersonate</button>
         </.form>
+        <button
+          :if={@admin? and !@archived}
+          type="button"
+          class="button"
+          data-tone="quiet"
+          phx-click="archive"
+          data-confirm="Archive them? They will be on no list but People's archived, and unable to sign in."
+        >
+          Archive
+        </button>
+        <button
+          :if={@admin? and @archived}
+          type="button"
+          class="button"
+          data-tone="quiet"
+          phx-click="unarchive"
+        >
+          Unarchive
+        </button>
         <.link :if={@admin?} class="button" navigate={~p"/people/#{@person}/edit"}>Edit</.link>
       </header>
 
@@ -282,6 +316,7 @@ defmodule LeafWeb.PersonLive do
     |> assign(:admin?, socket.assigns.current_person.role == :admin)
     |> assign(:impersonable?, impersonable?(socket.assigns.current_person, person))
     |> assign(:reasons?, reasons?(socket.assigns.current_person, person))
+    |> assign(:archived, archived_on(person, socket.assigns.zone))
     |> assign(:role, role(person))
     |> assign(:employment, Wording.employment(person))
     |> assign(:born, Wording.date(person.birth_date) || "not on record")
@@ -312,10 +347,17 @@ defmodule LeafWeb.PersonLive do
   # reading. It is the person's own and the administrator's.
   defp reasons?(viewer, person), do: viewer.role == :admin or viewer.id == person.id
 
-  defp impersonable?(%{role: :admin, id: id}, %{id: other}) when id != other,
+  defp impersonable?(%{role: :admin, id: id}, %{id: other, archived_at: nil}) when id != other,
     do: ImpersonationController.enabled?()
 
   defp impersonable?(_viewer, _person), do: false
+
+  defp archived_on(%{archived_at: nil}, _zone), do: nil
+
+  defp archived_on(person, zone) do
+    "Archived #{Wording.date(person.archived_at, zone)}, so on no list but People's archived, " <>
+      "and unable to sign in."
+  end
 
   defp role(%{role: :admin}), do: "Administrator"
   defp role(_person), do: "Member"
@@ -410,6 +452,32 @@ defmodule LeafWeb.PersonLive do
 
   defp kind(:opening_balance), do: "Brought in"
   defp kind(:adjustment), do: "Adjusted"
+
+  defp archived(socket, {:ok, person}, done) do
+    socket
+    |> assign(:person, person)
+    |> put_flash(:info, "#{person.name} is #{done}.")
+    |> loaded()
+  end
+
+  defp archived(socket, {:error, changeset}, done) do
+    put_flash(
+      socket,
+      :error,
+      "#{socket.assigns.person.name} can't be #{done}: #{refusal(changeset)}."
+    )
+  end
+
+  defp refusal(changeset) do
+    Enum.map_join(changeset.errors, "; ", fn {field, error} ->
+      objection(field, translate_error(error))
+    end)
+  end
+
+  defp objection(:archived_at, message), do: message
+
+  defp objection(field, message),
+    do: "their #{String.downcase(Phoenix.Naming.humanize(field))} #{message}"
 
   defp remove(socket, :error, _delete) do
     put_flash(socket, :error, "That is not on their record.")

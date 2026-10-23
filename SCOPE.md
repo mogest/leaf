@@ -54,6 +54,12 @@ manager, and a status (active / ended, with an end date).
 Employee vs contractor is **not** a distinction the system makes. It is expressed purely by
 which leave policy the person is on.
 
+A person can be archived: they are then on no current list but the administrators' People list,
+and cannot sign in, while their history is kept — their past leave stays in the balances, leave
+taken and payroll reports for the dates it covers. Somebody re-employed is a new person: the old
+one is archived and they are created again, with the same email if they like, starting afresh —
+a new anniversary and no balance carried from before.
+
 ### 4.3 Work pattern
 Hours worked on each day of the week — e.g. Mon 9, Tue 9, Wed 4, Thu 0, Fri 0, Sat 0, Sun 0.
 The system derives contracted weekly hours and FTE fraction from this against an

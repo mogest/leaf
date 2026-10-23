@@ -34,16 +34,20 @@ defmodule LeafWeb.SignInControllerTest do
     assert get_session(conn, "person_id") == context.person.id
   end
 
-  test "an address nobody in Leaf has is turned away", context do
-    expect(Google, :callback, fn _config, _params ->
-      {:ok, %{user: %{"email" => "stranger@example.test", "email_verified" => true}}}
-    end)
+  test "an address nobody in Leaf has, or only somebody archived, is turned away", context do
+    {:ok, archived} = People.archive_person(context.person, nil)
 
-    conn = get(recycle(context.conn), ~p"/sign-in/callback")
+    for email <- ["stranger@example.test", archived.email] do
+      expect(Google, :callback, fn _config, _params ->
+        {:ok, %{user: %{"email" => email, "email_verified" => true}}}
+      end)
 
-    assert redirected_to(conn) == "/sign-in"
-    assert conn.assigns.flash["error"] == "Nobody in Leaf has the address stranger@example.test."
-    refute get_session(conn, "person_id")
+      conn = get(recycle(context.conn), ~p"/sign-in/callback")
+
+      assert redirected_to(conn) == "/sign-in"
+      assert conn.assigns.flash["error"] == "Nobody in Leaf has the address #{email}."
+      refute get_session(conn, "person_id")
+    end
   end
 
   test "somebody outside their employment dates is turned away without a session", context do

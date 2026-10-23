@@ -8,6 +8,9 @@ defmodule Leaf.People.Person do
   `email` is who they sign in as: whoever the identity provider vouches for at that address.
 
   `employee_number` is who they are to the payroll system, which is how its export names them.
+
+  `archived_at` is set only by `Leaf.People.archive_person/2`, so it is never cast. Both `email` and
+  `employee_number` are unique only among people not archived.
   """
 
   use Leaf.Schema
@@ -40,6 +43,7 @@ defmodule Leaf.People.Person do
     field :employment_end_date, :date
     field :birth_date, :date
     field :employee_number, :string
+    field :archived_at, :utc_datetime
 
     belongs_to :organisation, Organisation
     belongs_to :manager, __MODULE__

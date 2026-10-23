@@ -174,12 +174,17 @@ defmodule Leaf.PeopleTest do
     end
   end
 
-  test "the last administrator cannot step down", %{organisation: organisation} do
+  test "the last administrator not archived can neither step down nor be archived",
+       %{organisation: organisation} do
     kit = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
     Fixtures.person(%{organisation_id: Fixtures.organisation().id, role: :admin})
+    archived = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+    {:ok, _archived} = People.archive_person(archived, nil)
 
     assert {:error, changeset} = People.update_person(kit, nil, %{role: :member})
     assert errors_on(changeset).role == ["nobody else administers the organisation"]
+    assert {:error, changeset} = People.archive_person(kit, nil)
+    assert errors_on(changeset).archived_at == ["nobody else administers the organisation"]
 
     Fixtures.person(%{organisation_id: organisation.id, role: :admin})
     assert {:ok, %{role: :member}} = People.update_person(kit, nil, %{role: :member})
@@ -217,6 +222,72 @@ defmodule Leaf.PeopleTest do
 
     assert {:ok, _left} =
              People.update_person(person, nil, %{employment_end_date: ~D[2027-02-02]})
+  end
+
+  test "an archived person is on no list but everybody, and their email and number are free again",
+       context do
+    %{organisation: organisation, person: rae} = context
+    {:ok, rae} = People.update_person(rae, nil, %{employee_number: "1001"})
+
+    assert {:ok, archived} = People.archive_person(rae, nil)
+    assert {:ok, ^archived} = People.archive_person(rae, nil)
+    assert archived.archived_at
+    assert People.people(organisation.id) == []
+    assert People.employed(organisation.id, Date.range(~D[2026-01-01], ~D[2026-12-31])) == []
+    assert [%{name: "Rae Halloran"}] = People.everybody(organisation.id)
+    assert People.fetch_person_by_email(rae.email) == :error
+    assert People.fetch_unarchived_person(rae.id) == :error
+    assert {:ok, %{archived_at: %DateTime{}}} = People.fetch_person(rae.id)
+
+    wren = Fixtures.person(%{organisation_id: organisation.id, email: rae.email})
+    assert {:error, changeset} = People.unarchive_person(archived, nil)
+    assert errors_on(changeset) == %{email: ["has already been taken"]}
+
+    {:ok, _wren} = People.archive_person(wren, nil)
+    bo = Fixtures.person(%{organisation_id: organisation.id, employee_number: "1001"})
+    assert {:error, changeset} = People.unarchive_person(archived, nil)
+    assert errors_on(changeset) == %{employee_number: ["has already been taken"]}
+
+    {:ok, _bo} = People.archive_person(bo, nil)
+    assert {:ok, %{archived_at: nil}} = People.unarchive_person(archived, nil)
+
+    assert ["person.archived", "person.unarchived", "person.updated"] =
+             Repo.all(from entry in Entry, where: entry.subject_person_id == ^rae.id)
+             |> Enum.map(& &1.action)
+             |> Enum.sort()
+  end
+
+  test "archiving is refused while leave is pending or still to come, or anybody current reports to them",
+       %{person: rae} do
+    leave_type = Fixtures.leave_type(%{organisation_id: rae.organisation_id})
+
+    for {status, date} <- [
+          pending: ~D[2025-01-06],
+          approved: ~D[2025-02-03],
+          approved: ~D[2030-01-14],
+          declined: ~D[2030-03-04]
+        ] do
+      days = [%{leave_type_id: leave_type.id, date: date, amount: "8", unit: :hours}]
+      Fixtures.leave_request(%{person_id: rae.id, status: status, days: days})
+    end
+
+    Fixtures.person(%{organisation_id: rae.organisation_id, name: "Bo Ngata", manager_id: rae.id})
+
+    ada =
+      Fixtures.person(%{
+        organisation_id: rae.organisation_id,
+        name: "Ada Lindqvist",
+        manager_id: rae.id
+      })
+
+    {:ok, _ada} = People.archive_person(ada, nil)
+
+    assert {:error, changeset} = People.archive_person(rae, nil)
+
+    assert errors_on(changeset).archived_at == [
+             "they have pending leave on 6 January 2025, approved leave on 14 January 2030",
+             "they manage Bo Ngata"
+           ]
   end
 
   defp policy_ids(person, range) do
