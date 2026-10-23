@@ -179,7 +179,10 @@ defmodule LeafWeb.PeopleLiveTest do
 
   test "an archived person is listed only behind Show archived, and is nobody's manager to pick",
        context do
-    {:ok, _archived} = People.archive_person(context.person, nil)
+    {:ok, person} =
+      People.update_person(context.person, nil, %{employment_end_date: ~D[2026-01-30]})
+
+    {:ok, _archived} = People.archive_person(person, nil)
 
     {:ok, live, html} = live(context.conn, ~p"/people")
     refute html =~ "Rae Halloran"
@@ -216,9 +219,10 @@ defmodule LeafWeb.PeopleLiveTest do
     {:ok, live, _html} = live(context.conn, ~p"/people/#{person}")
 
     assert live |> element("button[phx-click=archive]") |> render_click() =~
-             "Rae Halloran can&#39;t be archived: they manage Bo Ngata."
+             "Rae Halloran can&#39;t be archived: their employment has not ended; they manage Bo Ngata."
 
     {:ok, _report} = People.update_person(report, nil, %{manager_id: nil})
+    {:ok, _person} = People.update_person(person, nil, %{employment_end_date: ~D[2026-01-30]})
     html = live |> element("button[phx-click=archive]") |> render_click()
 
     assert html =~ "Rae Halloran is archived."
@@ -227,7 +231,12 @@ defmodule LeafWeb.PeopleLiveTest do
     assert html =~ "Carried over"
     refute html =~ "Impersonate"
 
-    clash = Fixtures.person(%{organisation_id: person.organisation_id, email: person.email})
+    clash =
+      Fixtures.person(%{
+        organisation_id: person.organisation_id,
+        email: person.email,
+        employment_end_date: ~D[2026-01-30]
+      })
 
     assert live |> element("button[phx-click=unarchive]") |> render_click() =~
              "Rae Halloran can&#39;t be unarchived: their email has already been taken."

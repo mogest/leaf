@@ -570,9 +570,12 @@ defmodule Leaf.Leave do
   Whether `actor` may amend or cancel `request` as it stands.
 
   Its person must be loaded. This is the rule §5.4 states, asked rather than repeated: a page
-  showing an amend or a cancel asks here whether to show it, and the write checks it again.
+  showing an amend or a cancel asks here whether to show it, and the write checks it again. Nobody
+  may once its person is archived.
   """
   @spec revisable?(Request.t(), Person.t()) :: boolean()
+  def revisable?(%{person: %{archived_at: %DateTime{}}}, _actor), do: false
+
   def revisable?(%{status: :pending} = request, actor) do
     actor.id in [request.person_id, request.submitted_by_id] or approver?(request.person, actor)
   end

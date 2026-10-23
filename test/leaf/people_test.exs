@@ -3,7 +3,10 @@ defmodule Leaf.PeopleTest do
 
   alias Leaf.Audit.Entry
   alias Leaf.Fixtures
+  alias Leaf.Leave
   alias Leaf.People
+
+  @left ~D[2026-01-30]
 
   setup do
     organisation = Fixtures.organisation()
@@ -174,17 +177,58 @@ defmodule Leaf.PeopleTest do
     end
   end
 
+  test "nobody reports to somebody archived, so nobody is brought back to report to them",
+       %{organisation: organisation, person: rae} do
+    {:ok, rae} = People.update_person(rae, nil, %{employment_end_date: @left})
+
+    bo =
+      Fixtures.person(%{
+        organisation_id: organisation.id,
+        manager_id: rae.id,
+        employment_end_date: @left
+      })
+
+    {:ok, bo} = People.archive_person(bo, nil)
+    {:ok, _rae} = People.archive_person(rae, nil)
+
+    assert {:error, changeset} = People.unarchive_person(bo, nil)
+    assert errors_on(changeset).archived_at == ["their manager is archived"]
+
+    attrs = %{
+      name: "Ada Lindqvist",
+      email: "ada@example.test",
+      role: :member,
+      employment_start_date: ~D[2026-01-05]
+    }
+
+    assert {:error, changeset} =
+             People.create_person(organisation, nil, Map.put(attrs, :manager_id, rae.id))
+
+    assert errors_on(changeset).manager_id == ["is archived"]
+
+    {:ok, ada} = People.create_person(organisation, nil, attrs)
+    assert {:error, changeset} = People.update_person(ada, nil, %{manager_id: rae.id})
+    assert errors_on(changeset).manager_id == ["is archived"]
+  end
+
   test "the last administrator not archived can neither step down nor be archived",
        %{organisation: organisation} do
     kit = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
     Fixtures.person(%{organisation_id: Fixtures.organisation().id, role: :admin})
-    archived = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+
+    archived =
+      Fixtures.person(%{
+        organisation_id: organisation.id,
+        role: :admin,
+        employment_end_date: @left
+      })
+
     {:ok, _archived} = People.archive_person(archived, nil)
 
     assert {:error, changeset} = People.update_person(kit, nil, %{role: :member})
     assert errors_on(changeset).role == ["nobody else administers the organisation"]
     assert {:error, changeset} = People.archive_person(kit, nil)
-    assert errors_on(changeset).archived_at == ["nobody else administers the organisation"]
+    assert "nobody else administers the organisation" in errors_on(changeset).archived_at
 
     Fixtures.person(%{organisation_id: organisation.id, role: :admin})
     assert {:ok, %{role: :member}} = People.update_person(kit, nil, %{role: :member})
@@ -224,27 +268,52 @@ defmodule Leaf.PeopleTest do
              People.update_person(person, nil, %{employment_end_date: ~D[2027-02-02]})
   end
 
-  test "an archived person is on no list but everybody, and their email and number are free again",
+  test "an archived person is on no list but everybody, their leave is beyond reach, and their email and number are free again",
        context do
     %{organisation: organisation, person: rae} = context
-    {:ok, rae} = People.update_person(rae, nil, %{employee_number: "1001"})
+
+    {:ok, rae} =
+      People.update_person(rae, nil, %{employee_number: "1001", employment_end_date: @left})
+
+    admin = Fixtures.person(%{organisation_id: organisation.id, name: "Kit Moana", role: :admin})
+    leave_type = Fixtures.leave_type(%{organisation_id: organisation.id})
+    days = [%{leave_type_id: leave_type.id, date: ~D[2026-01-12], amount: "8", unit: :hours}]
+    request = Fixtures.leave_request(%{person_id: rae.id, days: days})
 
     assert {:ok, archived} = People.archive_person(rae, nil)
     assert {:ok, ^archived} = People.archive_person(rae, nil)
     assert archived.archived_at
-    assert People.people(organisation.id) == []
-    assert People.employed(organisation.id, Date.range(~D[2026-01-01], ~D[2026-12-31])) == []
-    assert [%{name: "Rae Halloran"}] = People.everybody(organisation.id)
+    assert [%{name: "Kit Moana"}] = People.people(organisation.id)
+
+    assert [%{name: "Kit Moana"}] =
+             People.employed(organisation.id, Date.range(~D[2026-01-01], ~D[2026-01-30]))
+
+    assert [%{name: "Kit Moana"}, %{name: "Rae Halloran"}] = People.everybody(organisation.id)
     assert People.fetch_person_by_email(rae.email) == :error
     assert People.fetch_unarchived_person(rae.id) == :error
     assert {:ok, %{archived_at: %DateTime{}}} = People.fetch_person(rae.id)
+    {:ok, request} = Leave.fetch_request(request.id)
+    refute Leave.revisable?(request, admin)
 
-    wren = Fixtures.person(%{organisation_id: organisation.id, email: rae.email})
+    wren =
+      Fixtures.person(%{
+        organisation_id: organisation.id,
+        email: rae.email,
+        employment_end_date: @left
+      })
+
     assert {:error, changeset} = People.unarchive_person(archived, nil)
     assert errors_on(changeset) == %{email: ["has already been taken"]}
 
     {:ok, _wren} = People.archive_person(wren, nil)
-    bo = Fixtures.person(%{organisation_id: organisation.id, employee_number: "1001"})
+
+    bo =
+      Fixtures.person(%{
+        organisation_id: organisation.id,
+        employee_number: "1001",
+        employment_end_date: @left
+      })
+
     assert {:error, changeset} = People.unarchive_person(archived, nil)
     assert errors_on(changeset) == %{employee_number: ["has already been taken"]}
 
@@ -257,7 +326,7 @@ defmodule Leaf.PeopleTest do
              |> Enum.sort()
   end
 
-  test "archiving is refused while leave is pending or still to come, or anybody current reports to them",
+  test "archiving is refused until they have left, while leave is pending or still to come, or anybody current reports to them",
        %{person: rae} do
     leave_type = Fixtures.leave_type(%{organisation_id: rae.organisation_id})
 
@@ -277,7 +346,8 @@ defmodule Leaf.PeopleTest do
       Fixtures.person(%{
         organisation_id: rae.organisation_id,
         name: "Ada Lindqvist",
-        manager_id: rae.id
+        manager_id: rae.id,
+        employment_end_date: @left
       })
 
     {:ok, _ada} = People.archive_person(ada, nil)
@@ -285,6 +355,7 @@ defmodule Leaf.PeopleTest do
     assert {:error, changeset} = People.archive_person(rae, nil)
 
     assert errors_on(changeset).archived_at == [
+             "their employment has not ended",
              "they have pending leave on 6 January 2025, approved leave on 14 January 2030",
              "they manage Bo Ngata"
            ]

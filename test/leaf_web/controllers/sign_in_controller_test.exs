@@ -35,7 +35,10 @@ defmodule LeafWeb.SignInControllerTest do
   end
 
   test "an address nobody in Leaf has, or only somebody archived, is turned away", context do
-    {:ok, archived} = People.archive_person(context.person, nil)
+    {:ok, person} =
+      People.update_person(context.person, nil, %{employment_end_date: ~D[2026-01-30]})
+
+    {:ok, archived} = People.archive_person(person, nil)
 
     for email <- ["stranger@example.test", archived.email] do
       expect(Google, :callback, fn _config, _params ->

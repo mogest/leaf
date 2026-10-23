@@ -100,7 +100,7 @@ defmodule LeafWeb.PersonLive do
           class="button"
           data-tone="quiet"
           phx-click="archive"
-          data-confirm="Archive them? They will be on no list but People's archived, and unable to sign in."
+          data-confirm="Archive them? They'll be hidden everywhere except People's archived view, and won't be able to sign in."
         >
           Archive
         </button>

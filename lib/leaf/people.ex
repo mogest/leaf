@@ -50,9 +50,14 @@ defmodule Leaf.People do
   @doc "Creates a person."
   @spec create_person(Organisation.t(), Person.t() | nil, map()) :: Audit.written(Person.t())
   def create_person(organisation, actor, attrs) do
-    %Person{organisation_id: organisation.id}
-    |> Person.changeset(attrs)
-    |> Audit.write("person.created", actor)
+    Repo.transact(fn ->
+      lock_organisation(organisation.id)
+
+      %Person{organisation_id: organisation.id}
+      |> Person.changeset(attrs)
+      |> validate_reporting_line()
+      |> Audit.write("person.created", actor)
+    end)
   end
 
   @doc "The changeset a new person's form binds to."
@@ -113,8 +118,9 @@ defmodule Leaf.People do
   @doc """
   Archives a person, leaving them off every current list but the administrators' People list.
 
-  Refused, naming what is in the way, while they have leave pending or still to come, while anybody
-  not archived reports to them, or while they are the organisation's last administrator.
+  Refused, naming what is in the way, until their employment has ended, while they have leave
+  pending or still to come, while anybody not archived reports to them, or while they are the
+  organisation's last administrator.
   """
   @spec archive_person(Person.t(), Person.t() | nil) :: Audit.written(Person.t())
   def archive_person(person, actor) do
@@ -135,13 +141,17 @@ defmodule Leaf.People do
   @doc """
   Brings an archived person back.
 
-  Refused on `email` or `employee_number` while somebody not archived has the same.
+  Refused on `email` or `employee_number` while somebody not archived has the same, or while their
+  manager is archived.
   """
   @spec unarchive_person(Person.t(), Person.t() | nil) :: Audit.written(Person.t())
   def unarchive_person(person, actor) do
     {:ok, person} = fetch_person(person.id)
 
-    person |> archived(nil) |> Audit.write("person.unarchived", actor, person.id)
+    person
+    |> archived(nil)
+    |> validate_managed()
+    |> Audit.write("person.unarchived", actor, person.id)
   end
 
   @doc "The person, archived or not, or `:error` where no such person exists."
@@ -551,11 +561,26 @@ defmodule Leaf.People do
   end
 
   defp validate_reporting_line(changeset) do
-    case above?(changeset.data, Changeset.get_change(changeset, :manager_id)) do
-      true -> Changeset.add_error(changeset, :manager_id, "already reports to them")
-      false -> changeset
+    Changeset.validate_change(changeset, :manager_id, &reporting_line(changeset.data, &1, &2))
+  end
+
+  defp reporting_line(person, field, manager_id) do
+    case {current?(manager_id), above?(person, manager_id)} do
+      {false, _above?} -> [{field, "is archived"}]
+      {true, true} -> [{field, "already reports to them"}]
+      {true, false} -> []
     end
   end
+
+  defp validate_managed(changeset) do
+    case current?(changeset.data.manager_id) do
+      true -> changeset
+      false -> Changeset.add_error(changeset, :archived_at, "their manager is archived")
+    end
+  end
+
+  defp current?(nil), do: true
+  defp current?(id), do: Repo.exists?(from person in unarchived(), where: person.id == ^id)
 
   defp above?(_person, nil), do: false
   defp above?(%{id: id}, id), do: true
@@ -603,7 +628,15 @@ defmodule Leaf.People do
     do: person |> Person.changeset(%{}) |> Changeset.put_change(:archived_at, at)
 
   defp in_the_way(person, field, _at) do
-    booked(person, field) ++ managing(person, field) ++ administered(person, field, :member)
+    left(person, field) ++
+      booked(person, field) ++ managing(person, field) ++ administered(person, field, :member)
+  end
+
+  defp left(person, field) do
+    case Date.before?(person.employment_end_date || @forever, today(person)) do
+      true -> []
+      false -> [{field, "their employment has not ended"}]
+    end
   end
 
   defp booked(person, field) do

@@ -120,6 +120,7 @@ defmodule Leaf.ReportsTest do
   test "an archived person's past leave stays in the iPayroll export and leave taken", context do
     %{manager: manager, person: person, leave_type: leave_type} = context
     take(person, leave_type, [{~D[2026-09-29], "8", :hours}])
+    {:ok, person} = People.update_person(person, nil, %{employment_end_date: ~D[2026-09-30]})
     {:ok, _archived} = People.archive_person(person, nil)
 
     assert {@heading <> "1001,Rae Halloran,AL,29/09/2026,29/09/2026,8.00,,\r\n", []} =

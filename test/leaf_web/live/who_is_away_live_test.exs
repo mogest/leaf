@@ -60,11 +60,17 @@ defmodule LeafWeb.WhoIsAwayLiveTest do
   end
 
   test "an archived person is not on the month", context do
-    wren = Fixtures.person(%{organisation_id: context.organisation.id, name: "Wren Okafor"})
+    wren =
+      Fixtures.person(%{
+        organisation_id: context.organisation.id,
+        name: "Wren Okafor",
+        employment_end_date: ~D[2026-01-30]
+      })
+
     Fixtures.work_pattern(%{person_id: wren.id})
     {:ok, _wren} = People.archive_person(wren, nil)
 
-    {:ok, _live, html} = live(context.conn, ~p"/away?month=2030-03")
+    {:ok, _live, html} = live(context.conn, ~p"/away?month=2026-01")
 
     assert html =~ "Rae Halloran"
     refute html =~ "Wren Okafor"

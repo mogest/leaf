@@ -24,7 +24,13 @@ defmodule LeafWeb.SignInTest do
     leaver =
       Fixtures.person(%{organisation_id: organisation.id, employment_end_date: ~D[2026-01-30]})
 
-    archived = Fixtures.person(%{organisation_id: organisation.id, role: :admin})
+    archived =
+      Fixtures.person(%{
+        organisation_id: organisation.id,
+        role: :admin,
+        employment_end_date: ~D[2026-01-30]
+      })
+
     {:ok, _archived} = People.archive_person(archived, nil)
     now = System.os_time(:second)
 
