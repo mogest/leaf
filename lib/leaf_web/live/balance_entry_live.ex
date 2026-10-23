@@ -111,7 +111,7 @@ defmodule LeafWeb.BalanceEntryLive do
 
   defp saved(socket, {:ok, _entry}) do
     socket
-    |> put_flash(:info, "It is on the record.")
+    |> put_flash(:info, "Balance entry added.")
     |> push_navigate(to: ~p"/people/#{socket.assigns.person}")
   end
 

@@ -133,11 +133,14 @@ defmodule LeafWeb.PersonFormLive do
 
   defp saved(socket, {:ok, person}) do
     socket
-    |> put_flash(:info, "#{person.name} is on record.")
+    |> put_flash(:info, "#{person.name} #{done(socket.assigns.person)}.")
     |> push_navigate(to: ~p"/people/#{person}")
   end
 
   defp saved(socket, {:error, changeset}) do
     assign(socket, :form, to_form(changeset, action: :validate))
   end
+
+  defp done(nil), do: "added"
+  defp done(_person), do: "updated"
 end

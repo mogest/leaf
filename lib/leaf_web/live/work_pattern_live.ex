@@ -181,11 +181,14 @@ defmodule LeafWeb.WorkPatternLive do
 
   defp saved(socket, {:ok, _pattern}) do
     socket
-    |> put_flash(:info, "The work pattern is on record.")
+    |> put_flash(:info, "Work pattern #{done(socket.assigns.pattern)}.")
     |> push_navigate(to: ~p"/people/#{socket.assigns.person}")
   end
 
   defp saved(socket, {:error, changeset}) do
     assign(socket, :form, to_form(changeset, action: :validate))
   end
+
+  defp done(nil), do: "added"
+  defp done(_pattern), do: "updated"
 end

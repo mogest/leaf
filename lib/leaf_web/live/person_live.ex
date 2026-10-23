@@ -100,7 +100,7 @@ defmodule LeafWeb.PersonLive do
           class="button"
           data-tone="quiet"
           phx-click="archive"
-          data-confirm="Archive them? They'll be hidden everywhere except People's archived view, and won't be able to sign in."
+          data-confirm={"Archive #{@person.name}? They won't be able to sign in, and will only be listed under People → Show archived. Their past leave stays in reports."}
         >
           Archive
         </button>
@@ -355,8 +355,8 @@ defmodule LeafWeb.PersonLive do
   defp archived_on(%{archived_at: nil}, _zone), do: nil
 
   defp archived_on(person, zone) do
-    "Archived #{Wording.date(person.archived_at, zone)}, so on no list but People's archived, " <>
-      "and unable to sign in."
+    "Archived #{Wording.date(person.archived_at, zone)}. They can't sign in, and are only listed " <>
+      "under People → Show archived."
   end
 
   defp role(%{role: :admin}), do: "Administrator"
