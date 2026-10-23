@@ -42,6 +42,19 @@ defmodule LeafWeb.YourRequestsLiveTest do
     assert [%{status: :cancelled}] = Leave.requests(context.person)
   end
 
+  test "a request decided after the page loaded is not cancelled", context do
+    request = file(context)
+
+    {:ok, live, _html} = live(context.conn, ~p"/leave")
+
+    {:ok, _approved} = Leave.approve(request, context.manager)
+
+    assert live |> element("button", "Cancel") |> render_click() =~
+             "That request was already approved."
+
+    assert [%{status: :approved}] = Leave.requests(context.person)
+  end
+
   test "a request over a day already spoken for is still the person's to cancel", context do
     days = [%{leave_type_id: context.leave_type.id, date: @date, amount: "8", unit: :hours}]
     both = %{person_id: context.person.id, status: :pending, days: days}

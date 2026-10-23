@@ -42,11 +42,11 @@ defmodule LeafWeb.YourRequestsLive do
     person = socket.assigns.current_person
     today = People.today(person)
     manager = People.manager_name(person)
+    requests = Leave.requests(person)
 
-    assign(
-      socket,
-      :requests,
-      Enum.map(Leave.requests(person), &shown(&1, person, today, socket.assigns.zone, manager))
+    assign(socket,
+      requests: Enum.map(requests, &shown(&1, person, today, socket.assigns.zone, manager)),
+      requests_by_id: Map.new(requests, &{&1.id, &1})
     )
   end
 

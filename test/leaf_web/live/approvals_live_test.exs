@@ -159,6 +159,25 @@ defmodule LeafWeb.ApprovalsLiveTest do
     assert [%{status: :pending}] = Leave.requests(context.person)
   end
 
+  test "a request amended after the page loaded is not decided, and shows as it now stands",
+       context do
+    {:ok, live, _html} = live(sign_in(context.conn, context.manager), ~p"/approvals")
+
+    [request] = Leave.requests(context.person)
+    day = %{leave_type_id: context.leave_type.id, amount: "8", unit: :hours}
+    days = [Map.put(day, :date, @date), Map.put(day, :date, Date.add(@date, 1))]
+    {:ok, _amended} = Leave.amend(request, context.person, %{days: days})
+
+    html = live |> element("main form") |> render_submit(%{"decision" => "approve"})
+
+    assert html =~ "That request changed after you opened it, so it was not decided."
+    assert html =~ "Monday 4 – Tuesday 5 March"
+    assert [%{status: :pending}] = Leave.requests(context.person)
+
+    assert live |> element("main form") |> render_submit(%{"decision" => "approve"}) =~
+             "The request is approved."
+  end
+
   test "the comment is a labelled textarea, so pressing Enter in it cannot decide", context do
     {:ok, live, _html} = live(sign_in(context.conn, context.manager), ~p"/approvals")
 

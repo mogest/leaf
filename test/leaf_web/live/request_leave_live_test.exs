@@ -457,6 +457,25 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     end
   end
 
+  test "a request cancelled after its amendment was opened is not saved", context do
+    {:ok, live, _html} = live(context.conn, ~p"/leave/new")
+    live |> form("#request", request: asking(context, %{})) |> render_submit()
+    [request] = Leave.requests(context.person)
+
+    {:ok, amend, _html} = live(context.conn, ~p"/leave/#{request}/amend")
+    {:ok, _cancelled} = Leave.cancel(request, context.person)
+
+    {:ok, _live, html} =
+      amend
+      |> form("#request", request: asking(context, %{"to" => to_string(@friday)}))
+      |> render_submit()
+      |> follow_redirect(context.conn, ~p"/leave")
+
+    assert html =~ "That request was already cancelled."
+
+    assert [%{status: :cancelled}] = Leave.requests(context.person)
+  end
+
   test "amending replaces the days a pending request asks for", context do
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
     live |> form("#request", request: asking(context, %{})) |> render_submit()

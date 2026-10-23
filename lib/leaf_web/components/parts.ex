@@ -230,14 +230,15 @@ defmodule LeafWeb.Parts do
   end
 
   @doc """
-  Cancels the request `id` names as whoever is signed in, and says how that went.
+  Cancels the request `id` names, as the page holds it in `requests_by_id`, as whoever is signed in.
 
-  Whether they may is `Leaf.Leave`'s to decide; the page reloads what it shows afterwards.
+  Whether they may is `Leaf.Leave`'s to decide, and it refuses a request that has changed since the
+  page read it. The page reloads what it shows afterwards.
   """
   @spec cancel_request(Phoenix.LiveView.Socket.t(), String.t()) :: Phoenix.LiveView.Socket.t()
   def cancel_request(socket, id) do
     written =
-      with {:ok, request} <- Leave.fetch_request(id),
+      with {:ok, request} <- Map.fetch(socket.assigns.requests_by_id, id),
            do: Leave.cancel(request, socket.assigns.current_person)
 
     cancelled(socket, written)
@@ -258,6 +259,9 @@ defmodule LeafWeb.Parts do
 
   defp cancelled(socket, {:ok, _request}),
     do: put_flash(socket, :info, "The request is cancelled.")
+
+  defp cancelled(socket, {:error, {:stale, since}}),
+    do: put_flash(socket, :error, Wording.stale(since, "cancelled"))
 
   defp cancelled(socket, refused) when refused in [:error, {:error, :forbidden}] do
     put_flash(socket, :error, "That is not yours to cancel.")

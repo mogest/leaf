@@ -78,12 +78,11 @@ defmodule LeafWeb.ApprovalsLive do
   end
 
   defp queued(socket) do
-    assign(
-      socket,
-      :waiting,
-      socket.assigns.current_person
-      |> Leave.awaiting()
-      |> Enum.map(&shown(&1, socket.assigns.zone))
+    awaiting = Leave.awaiting(socket.assigns.current_person)
+
+    assign(socket,
+      waiting: Enum.map(awaiting, &shown(&1, socket.assigns.zone)),
+      requests_by_id: Map.new(awaiting, &{&1.id, &1})
     )
   end
 
@@ -107,7 +106,7 @@ defmodule LeafWeb.ApprovalsLive do
   # Both decisions submit the same form, so either of them carries whatever comment was typed.
   defp decide(socket, decision, id, comment) do
     written =
-      with {:ok, request} <- Leave.fetch_request(id),
+      with {:ok, request} <- Map.fetch(socket.assigns.requests_by_id, id),
            do: decided_by(decision).(request, socket.assigns.current_person, comment)
 
     decided(socket, written)
@@ -118,6 +117,10 @@ defmodule LeafWeb.ApprovalsLive do
 
   defp decided(socket, {:ok, request}) do
     put_flash(socket, :info, "The request is #{request.status}.")
+  end
+
+  defp decided(socket, {:error, {:stale, since}}) do
+    put_flash(socket, :error, Wording.stale(since, "decided"))
   end
 
   defp decided(socket, refused) when refused in [:error, {:error, :forbidden}] do

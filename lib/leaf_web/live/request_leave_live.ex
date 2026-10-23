@@ -461,6 +461,12 @@ defmodule LeafWeb.RequestLeaveLive do
     socket |> put_flash(:info, socket.assigns.done) |> push_navigate(to: socket.assigns.back)
   end
 
+  defp saved(socket, {:error, {:stale, since}}) do
+    socket
+    |> put_flash(:error, Wording.stale(since, "saved"))
+    |> push_navigate(to: socket.assigns.back)
+  end
+
   defp saved(socket, {:error, :forbidden}) do
     put_flash(socket, :error, "That is not yours to change.")
   end

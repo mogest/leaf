@@ -11,8 +11,9 @@ defmodule Leaf.Leave do
   administrator may, so that nobody can quietly remove leave they have already taken — unless it
   was approved as it was filed, which leaves it the person's own. Where a person has no manager, an
   administrator stands in. A refusal comes back as `{:error, :forbidden}` rather than a changeset —
-  nothing about it is a matter of what was filled in — and a write that goes through records itself
-  in the audit log. Once it has, `Leaf.Leave.Notice` tells whoever has to hear about it.
+  nothing about it is a matter of what was filled in — or as `{:error, {:stale, since}}` where the
+  request has changed since whoever is acting read it. A write that goes through records itself in the
+  audit log. Once it has, `Leaf.Leave.Notice` tells whoever has to hear about it.
 
   Every write against one person's leave happens one at a time, and reads what it is about inside
   that: two of them cannot each find the same day free, nor each decide a request the other has
@@ -54,6 +55,9 @@ defmodule Leaf.Leave do
 
   @typedoc "A change to a request that payroll has to hear about."
   @type revision :: :requested | :amended | :approved | :cancelled
+
+  @typedoc "What a request has become since whoever is acting read it."
+  @type since :: :amended | :approved | :declined | :cancelled
 
   @typedoc """
   One line of a request: an amount of one leave type on one date, in whichever unit was asked for.
@@ -107,7 +111,7 @@ defmodule Leaf.Leave do
   The days given are the whole of it, so amending is how a request is shortened as well as changed.
   """
   @spec amend(Request.t(), Person.t(), map()) ::
-          {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden}
+          {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden | {:stale, since()}}
   def amend(request, actor, attrs) do
     as_it_stands(request, fn request ->
       with :ok <- permit(revisable?(request, actor)),
@@ -126,12 +130,12 @@ defmodule Leaf.Leave do
 
   @doc "Approves a pending request."
   @spec approve(Request.t(), Person.t(), String.t() | nil) ::
-          {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden}
+          {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden | {:stale, since()}}
   def approve(request, actor, comment \\ nil), do: decide(request, actor, :approved, comment)
 
   @doc "Declines a pending request."
   @spec decline(Request.t(), Person.t(), String.t() | nil) ::
-          {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden}
+          {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden | {:stale, since()}}
   def decline(request, actor, comment \\ nil), do: decide(request, actor, :declined, comment)
 
   @doc """
@@ -141,7 +145,7 @@ defmodule Leaf.Leave do
   approved it. The approval it replaced is in the audit log.
   """
   @spec cancel(Request.t(), Person.t()) ::
-          {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden}
+          {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden | {:stale, since()}}
   def cancel(request, actor) do
     as_it_stands(request, fn request ->
       with :ok <- permit(revisable?(request, actor)) do
@@ -645,18 +649,21 @@ defmodule Leaf.Leave do
     |> notify(&Notice.decided/1)
   end
 
-  # A request is decided or amended from a struct somebody has been holding, which by then may say
-  # a status that is no longer true: two approvals, or an approval racing a cancellation, would
-  # each be checked against a state the other is about to leave behind, and the audit entry would
-  # record a before-value that never was. Reading it again inside the lock is what makes the check
-  # and the entry about the row as it stands.
-  defp as_it_stands(request, fun) do
+  # A request is written from a struct somebody has been holding, which by then may no longer be
+  # the request: a manager approving one amended since they read it would approve what they never
+  # saw. Reading it again inside the lock is what makes the check and the audit entry about the row
+  # as it stands.
+  defp as_it_stands(%{lock_version: version} = request, fun) do
     serialised([request.person_id], fn ->
-      {:ok, request} = fetch_request(request.id)
-
-      fun.(request)
+      case fetch_request(request.id) do
+        {:ok, %{lock_version: ^version} = standing} -> fun.(standing)
+        {:ok, standing} -> {:error, {:stale, since(request, standing)}}
+      end
     end)
   end
+
+  defp since(%{status: status}, %{status: status}), do: :amended
+  defp since(_request, standing), do: standing.status
 
   defp locked(person_ids) do
     from person in Person,

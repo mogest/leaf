@@ -610,14 +610,18 @@ defmodule Leaf.LeaveTest do
     assert Leave.approve(request, context.manager) == {:error, :forbidden}
   end
 
-  test "a request cannot be decided from a struct somebody has since decided", context do
-    {:ok, pending} = file(context, [@thursday])
-    stale = reload(pending)
+  test "a request is not written from a struct that has since changed, which says what it became",
+       context do
+    {:ok, stale} = file(context, [@thursday])
+    shortened = %{days: [entry(context.leave_type, @thursday, %{amount: "4"})]}
 
-    assert {:ok, %{status: :cancelled}} = Leave.cancel(stale, context.manager)
+    assert {:ok, amended} = Leave.amend(stale, context.person, shortened)
 
-    assert Leave.approve(stale, context.manager) == {:error, :forbidden}
-    assert reload(stale).status == :cancelled
+    assert Leave.approve(stale, context.manager) == {:error, {:stale, :amended}}
+    assert Leave.amend(stale, context.person, shortened) == {:error, {:stale, :amended}}
+    assert Leave.cancel(stale, context.person) == {:error, {:stale, :amended}}
+    assert {:ok, %{status: :cancelled}} = Leave.cancel(amended, context.manager)
+    assert Leave.approve(amended, context.manager) == {:error, {:stale, :cancelled}}
     refute Enum.any?(Repo.all(Entry), &(&1.action == "leave_request.approved"))
   end
 

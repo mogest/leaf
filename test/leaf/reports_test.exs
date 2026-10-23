@@ -195,8 +195,8 @@ defmodule Leaf.ReportsTest do
     moved = filed.(~D[2026-10-07])
     cancelled = filed.(~D[2026-10-08])
     declined = filed.(~D[2026-10-09])
-    {:ok, _approved} = Leave.approve(moved, manager)
-    {:ok, _approved} = Leave.approve(cancelled, manager)
+    {:ok, moved} = Leave.approve(moved, manager)
+    {:ok, cancelled} = Leave.approve(cancelled, manager)
 
     # Midnight in Auckland, where the reader is, is 11:00 the day before in UTC.
     Repo.update_all(Entry, set: [inserted_at: ~U[2026-09-30 10:59:00.000000Z]])

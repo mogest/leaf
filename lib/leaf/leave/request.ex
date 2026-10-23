@@ -11,6 +11,8 @@ defmodule Leaf.Leave.Request do
   had to approve it, and cleared by an amendment giving it a day that needs approval. It is what
   keeps the leave its requester's to revise, whatever its types say later. Which decisions may
   follow which is `Leaf.Leave`'s to say — it turns on who is acting, which a changeset cannot see.
+  Every change moves `lock_version` on, so whoever holds an older one is holding a request that has
+  since changed.
   """
 
   use Leaf.Schema
@@ -31,6 +33,7 @@ defmodule Leaf.Leave.Request do
     field :reviewed_at, :utc_datetime
     field :review_comment, :string
     field :approved_on_filing, :boolean, default: false
+    field :lock_version, :integer, default: 1
 
     belongs_to :person, Person
     belongs_to :submitted_by, Person
@@ -49,6 +52,7 @@ defmodule Leaf.Leave.Request do
     |> cast_assoc(:days, required: true)
     |> assoc_constraint(:person)
     |> assoc_constraint(:submitted_by)
+    |> optimistic_lock(:lock_version)
   end
 
   @doc """
@@ -75,5 +79,6 @@ defmodule Leaf.Leave.Request do
     |> validate_required([:status, :reviewed_by_id, :reviewed_at])
     |> validate_inclusion(:status, @decided)
     |> assoc_constraint(:reviewed_by)
+    |> optimistic_lock(:lock_version)
   end
 end

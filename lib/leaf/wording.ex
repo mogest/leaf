@@ -51,6 +51,17 @@ defmodule Leaf.Wording do
     }
   end
 
+  @doc """
+  Why a request somebody had open was not `done`: what it became in the meantime.
+
+  `since` is the one `Leaf.Leave` refused with, and `done` the past tense of what was asked.
+  """
+  @spec stale(Leaf.Leave.since(), String.t()) :: String.t()
+  def stale(:amended, done),
+    do: "That request changed after you opened it, so it was not #{done}."
+
+  def stale(since, _done), do: "That request was already #{since}."
+
   @typedoc "A balance as a page shows it."
   @type held :: %{
           name: String.t(),

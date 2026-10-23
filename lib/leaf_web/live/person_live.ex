@@ -276,6 +276,7 @@ defmodule LeafWeb.PersonLive do
     today = People.today(socket.assigns.current_person)
     {:ok, organisation} = Org.fetch_organisation(person.organisation_id)
     leave_types = Map.new(Policies.leave_types(organisation.id), &{&1.id, &1})
+    requests = Leave.requests(person)
 
     socket
     |> assign(:admin?, socket.assigns.current_person.role == :admin)
@@ -296,8 +297,9 @@ defmodule LeafWeb.PersonLive do
     |> assign(:entries, entries(person, leave_types))
     |> assign(
       :requests,
-      Enum.map(Leave.requests(person), &filed(&1, actor(socket), today, socket.assigns.zone))
+      Enum.map(requests, &filed(&1, actor(socket), today, socket.assigns.zone))
     )
+    |> assign(:requests_by_id, Map.new(requests, &{&1.id, &1}))
   end
 
   defp filed(request, viewer, today, zone) do
