@@ -128,7 +128,7 @@ defmodule LeafWeb.PersonLive do
             <dd>{@role}</dd>
             <dt>Employment</dt>
             <dd>{@employment}</dd>
-            <dt>Born</dt>
+            <dt>Date of birth</dt>
             <dd>{@born}</dd>
             <dt>Manager</dt>
             <dd>{@manager}</dd>
@@ -155,14 +155,14 @@ defmodule LeafWeb.PersonLive do
                   type="button"
                   phx-click="remove-work-pattern"
                   phx-value-id={pattern.id}
-                  data-confirm="Remove this work pattern? Whatever preceded it runs on."
+                  data-confirm="Remove this work pattern? The one before it will apply instead."
                 >
                   Remove
                 </button>
               </Parts.row_menu>
             </li>
           </ol>
-          <p :if={@patterns == []}>No work pattern on record, so no balance can be worked out.</p>
+          <p :if={@patterns == []}>No work pattern yet, so balances can't be calculated.</p>
         </section>
 
         <section>
@@ -185,14 +185,14 @@ defmodule LeafWeb.PersonLive do
                   type="button"
                   phx-click="remove-policy-assignment"
                   phx-value-id={assignment.id}
-                  data-confirm="Remove this assignment? Whatever preceded it runs on."
+                  data-confirm="Remove this assignment? The one before it will apply instead."
                 >
                   Remove
                 </button>
               </Parts.row_menu>
             </li>
           </ol>
-          <p :if={@policies == []}>On no policy, so nothing is granted.</p>
+          <p :if={@policies == []}>Not on a leave policy, so no leave is granted.</p>
         </section>
 
         <section>
@@ -219,19 +219,19 @@ defmodule LeafWeb.PersonLive do
                   type="button"
                   phx-click="remove-calendar-assignment"
                   phx-value-id={assignment.id}
-                  data-confirm="Remove this assignment? Whatever preceded it runs on."
+                  data-confirm="Remove this assignment? The one before it will apply instead."
                 >
                   Remove
                 </button>
               </Parts.row_menu>
             </li>
           </ol>
-          <p :if={@calendars == []}>On no calendar, so no public holidays and no time zone.</p>
+          <p :if={@calendars == []}>Not on a calendar, so no public holidays apply.</p>
         </section>
 
         <section>
           <header>
-            <h2>Balances entered by hand</h2>
+            <h2>Opening balances and adjustments</h2>
             <.link :if={@admin?} class="add" navigate={~p"/people/#{@person}/balance-entries/new"}>
               Add
             </.link>
@@ -243,7 +243,7 @@ defmodule LeafWeb.PersonLive do
                 <th scope="col">What</th>
                 <th scope="col">Leave type</th>
                 <th scope="col">Amount</th>
-                <th scope="col">Lapses</th>
+                <th scope="col">Expires</th>
                 <th :if={@reasons?} scope="col">Reason</th>
                 <td :if={@admin?}></td>
               </tr>
@@ -262,7 +262,7 @@ defmodule LeafWeb.PersonLive do
                       type="button"
                       phx-click="archive-balance-entry"
                       phx-value-id={entry.id}
-                      data-confirm="Archive this entry? It stops counting in every balance. Enter the right figure afresh if it was wrong."
+                      data-confirm="Archive this entry? It will no longer count towards any balance. If the amount was wrong, add a new entry with the right one."
                     >
                       Archive
                     </button>
@@ -271,7 +271,7 @@ defmodule LeafWeb.PersonLive do
               </tr>
             </tbody>
           </table>
-          <p :if={@entries == []}>Nothing has been entered by hand.</p>
+          <p :if={@entries == []}>No opening balances or adjustments.</p>
         </section>
 
         <Parts.requests requests={@requests} title="Requests" cancel>
@@ -302,7 +302,9 @@ defmodule LeafWeb.PersonLive do
   defp opened(socket, :error), do: refused(socket)
 
   defp refused(socket) do
-    socket |> put_flash(:error, "That record is not yours to read.") |> push_navigate(to: ~p"/")
+    socket
+    |> put_flash(:error, "You don't have access to that person.")
+    |> push_navigate(to: ~p"/")
   end
 
   defp loaded(socket) do
@@ -319,8 +321,11 @@ defmodule LeafWeb.PersonLive do
     |> assign(:archived, archived_on(person, socket.assigns.zone))
     |> assign(:role, role(person))
     |> assign(:employment, Wording.employment(person))
-    |> assign(:born, Wording.date(person.birth_date) || "not on record")
-    |> assign(:manager, People.manager_name(person) || "nobody, so an administrator decides")
+    |> assign(:born, Wording.date(person.birth_date) || "Not recorded")
+    |> assign(
+      :manager,
+      People.manager_name(person) || "None (administrators approve their leave)"
+    )
     |> assign(:balances, balances(person, today))
     |> assign(:nothing_held, Wording.no_balance(Ledger.ready?(person, today), "they"))
     |> assign(
@@ -450,7 +455,7 @@ defmodule LeafWeb.PersonLive do
     }
   end
 
-  defp kind(:opening_balance), do: "Brought in"
+  defp kind(:opening_balance), do: "Opening balance"
   defp kind(:adjustment), do: "Adjusted"
 
   defp archived(socket, {:ok, person}, done) do
@@ -480,7 +485,7 @@ defmodule LeafWeb.PersonLive do
     do: "their #{String.downcase(Phoenix.Naming.humanize(field))} #{message}"
 
   defp remove(socket, :error, _delete) do
-    put_flash(socket, :error, "That is not on their record.")
+    put_flash(socket, :error, "That record no longer exists.")
   end
 
   defp remove(socket, {:ok, record}, delete) do
@@ -490,6 +495,6 @@ defmodule LeafWeb.PersonLive do
   defp removed(socket, {:ok, _record}), do: put_flash(socket, :info, "Removed.")
 
   defp removed(socket, {:error, _changeset}) do
-    put_flash(socket, :error, "That would not come off the record.")
+    put_flash(socket, :error, "Couldn't remove that.")
   end
 end

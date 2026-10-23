@@ -65,7 +65,7 @@ defmodule LeafWeb.SignInController do
   defp sign_in_as(conn, email) do
     case People.fetch_person_by_email(email) do
       {:ok, person} -> admit(conn, person, People.admitted?(person))
-      :error -> refuse(conn, "Nobody in Leaf has the address #{email}.")
+      :error -> refuse(conn, "No one in Leaf has the email address #{email}.")
     end
   end
 

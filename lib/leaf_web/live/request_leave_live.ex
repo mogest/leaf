@@ -156,7 +156,7 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:page_title, "Request leave")
     |> assign(:title, "Request leave")
     |> assign(:action, "Send the request")
-    |> assign(:done, "Your request is filed.")
+    |> assign(:done, "Request sent.")
     |> assign(:request, nil)
     |> assign(:replaced, false)
     |> holding(person)
@@ -172,7 +172,7 @@ defmodule LeafWeb.RequestLeaveLive do
     else
       _refused ->
         socket
-        |> put_flash(:error, "That request is not yours to change.")
+        |> put_flash(:error, "You can't edit that request.")
         |> push_navigate(to: ~p"/leave")
     end
   end
@@ -184,7 +184,7 @@ defmodule LeafWeb.RequestLeaveLive do
     |> assign(:page_title, "Edit a request")
     |> assign(:title, "Edit a request")
     |> assign(:action, "Save")
-    |> assign(:done, "The request is changed.")
+    |> assign(:done, "Request updated.")
     |> assign(:request, request)
     |> assign(:replaced, replaced)
     |> holding(request.person)
@@ -208,7 +208,7 @@ defmodule LeafWeb.RequestLeaveLive do
   defp decider(%{request: %{status: :approved}}), do: nil
 
   defp decider(%{request: nil, chosen: %{needs_approval: false}, person: person} = assigns) do
-    "#{whose(person, assigns.current_person)} leave needs no approval: it is approved as it is filed"
+    "#{whose(person, assigns.current_person)} leave doesn't need approval, so it's approved as soon as it's sent"
   end
 
   defp decider(%{person: person} = assigns) do
@@ -468,7 +468,7 @@ defmodule LeafWeb.RequestLeaveLive do
   end
 
   defp saved(socket, {:error, :forbidden}) do
-    put_flash(socket, :error, "That is not yours to change.")
+    put_flash(socket, :error, "You can't edit this request.")
   end
 
   # Every refusal the write path can give about the days, this page has already said in its own
@@ -481,7 +481,7 @@ defmodule LeafWeb.RequestLeaveLive do
   end
 
   defp unexplained(%{assigns: %{problems: []}} = socket) do
-    assign(socket, :problems, ["That could not be filed. Check what it asks for and try again."])
+    assign(socket, :problems, ["The request couldn't be saved. Check the details and try again."])
   end
 
   defp unexplained(socket), do: socket

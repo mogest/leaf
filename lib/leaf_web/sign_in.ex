@@ -128,9 +128,9 @@ defmodule LeafWeb.SignIn do
 
   @doc "Why somebody outside their employment dates is turned away."
   @spec outside() :: String.t()
-  def outside, do: "Leaf is only open to you while you're employed."
+  def outside, do: "You can only use Leaf during your employment."
 
-  defp refused, do: "That page is the administrator's."
+  defp refused, do: "Only administrators can open that page."
 
   defp turned_away(socket) do
     socket |> LiveView.put_flash(:error, outside()) |> LiveView.redirect(to: "/sign-in")

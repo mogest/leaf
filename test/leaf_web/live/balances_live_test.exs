@@ -64,7 +64,7 @@ defmodule LeafWeb.BalancesLiveTest do
     assert html =~ "100 hours"
     assert html =~ "expiring 31 December 2030"
     assert html =~ "1 April 2024 – 31 March 2025"
-    assert has_element?(live, "tbody tr + tr", ~r/1 June\s*Brought in/)
+    assert has_element?(live, "tbody tr + tr", ~r/1 June\s*Opening balance/)
 
     assert has_element?(
              live,
@@ -135,7 +135,7 @@ defmodule LeafWeb.BalancesLiveTest do
     assert {:error, {:live_redirect, %{to: "/", flash: flash}}} =
              live(context.conn, ~p"/people/#{Ecto.UUID.generate()}/balances")
 
-    assert flash["error"] == "Those balances are not yours to read."
+    assert flash["error"] == "You don't have access to those balances."
   end
 
   test "a type that is offered but grants nothing is listed bare, and says it is recorded only",
@@ -150,7 +150,7 @@ defmodule LeafWeb.BalancesLiveTest do
 
     html = live |> element(link) |> render_click()
 
-    assert html =~ "Recorded as it is taken; nothing accrues."
+    assert html =~ "This leave doesn&#39;t build up. It&#39;s only recorded when taken."
     refute html =~ "<dt>Balance"
     refute html =~ "Expiry"
     refute has_element?(live, "table")
@@ -168,7 +168,7 @@ defmodule LeafWeb.BalancesLiveTest do
 
     {:ok, _live, html} = live(context.conn, ~p"/balances/#{bereavement}")
 
-    assert html =~ "Recorded as it is taken; nothing accrues."
+    assert html =~ "This leave doesn&#39;t build up. It&#39;s only recorded when taken."
     assert html =~ "1 day awaiting approval, not yet deducted"
 
     {:ok, live, html} = live(context.conn, ~p"/balances/#{bereavement}?as_at=2024-07-31")
@@ -180,7 +180,7 @@ defmodule LeafWeb.BalancesLiveTest do
 
     {:ok, _live, html} = live(context.conn, ~p"/balances/#{bereavement}?as_at=2023-06-01")
 
-    assert html =~ "Recorded as it is taken; nothing accrues."
+    assert html =~ "This leave doesn&#39;t build up. It&#39;s only recorded when taken."
   end
 
   test "a type granted by policy reads as a figure before tracking started, leave or none",
@@ -243,7 +243,7 @@ defmodule LeafWeb.BalancesLiveTest do
     {:ok, _live, html} = live(context.conn, ~p"/balances")
 
     assert html =~
-             "No balance can be worked out until you are on a work pattern and a calendar throughout."
+             "Balances can&#39;t be calculated until you have a work pattern and a calendar for every day of employment."
   end
 
   test "the date at the top is the whole page's question", context do
@@ -264,7 +264,7 @@ defmodule LeafWeb.BalancesLiveTest do
     assert {:error, {:live_redirect, %{to: "/balances?as_at=" <> _date, flash: flash}}} =
              live(context.conn, path)
 
-    assert flash["error"] == "There is no account to show for that."
+    assert flash["error"] == "No balance found for that leave type."
   end
 
   test "somebody else's balances are not there to be read", context do
@@ -273,7 +273,7 @@ defmodule LeafWeb.BalancesLiveTest do
     assert {:error, {:live_redirect, %{to: "/", flash: flash}}} =
              live(sign_in(build_conn(), other), ~p"/people/#{context.person}/balances")
 
-    assert flash["error"] == "Those balances are not yours to read."
+    assert flash["error"] == "You don't have access to those balances."
   end
 
   test "an administrator reads anybody's, from their record", context do

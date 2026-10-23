@@ -88,7 +88,7 @@ defmodule LeafWeb.LeaveTypeLive do
 
   defp unknown(socket) do
     socket
-    |> put_flash(:error, "That leave type is not on record.")
+    |> put_flash(:error, "Leave type not found.")
     |> push_navigate(to: ~p"/settings/leave-types")
   end
 
@@ -112,8 +112,8 @@ defmodule LeafWeb.LeaveTypeLive do
   end
 
   defp withdrawn(leave_type, zone) do
-    "Not offered in new configuration since #{Wording.date(leave_type.archived_at, zone)}. " <>
-      "Policies that already include it go on granting it."
+    "Withdrawn #{Wording.date(leave_type.archived_at, zone)}. It can't be added to new policies, " <>
+      "but policies that already include it keep granting it."
   end
 
   defp saved(socket, {:ok, _leave_type}) do

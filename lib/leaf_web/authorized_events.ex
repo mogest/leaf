@@ -52,8 +52,11 @@ defmodule LeafWeb.AuthorizedEvents do
 
   defp asked_for(event, _params, socket) do
     case holds?(socket.assigns.current_person, socket.view.role_for_event()[event]) do
-      true -> {:cont, socket}
-      false -> {:halt, LiveView.put_flash(socket, :error, "That is not yours to do.")}
+      true ->
+        {:cont, socket}
+
+      false ->
+        {:halt, LiveView.put_flash(socket, :error, "You don't have permission to do that.")}
     end
   end
 

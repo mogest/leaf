@@ -138,7 +138,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     dated = %{"from" => to_string(@next_monday), "to" => to_string(@next_monday)}
 
-    assert dating(live, context, dated) =~ "That leave type was not offered then."
+    assert dating(live, context, dated) =~ "That leave type isn&#39;t available on those dates."
   end
 
   test "the dates start blank, and a last day left blank asks for the first day alone", context do
@@ -355,7 +355,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
       |> asking_hours(context, %{"to" => to_string(@friday), "amount" => "4"})
       |> render_change()
 
-    assert html =~ "Part of a day can only be asked of a single day."
+    assert html =~ "Part days can only be requested for a single day."
     refute has_element?(live, ~s(input[name="request[amount]"]))
     assert Leave.requests(context.person) == []
   end
@@ -365,7 +365,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
 
     html = live |> asking_hours(context, %{"amount" => "half"}) |> render_change()
 
-    assert html =~ "The time off has to be a number."
+    assert html =~ "Enter a number."
     assert Leave.requests(context.person) == []
   end
 
@@ -421,7 +421,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
       |> form("#request", request: asking(context, %{"leave_type_id" => "", "to" => ""}))
       |> render_submit()
 
-    assert html =~ "That could not be filed. Check what it asks for and try again."
+    assert html =~ "The request couldn&#39;t be saved. Check the details and try again."
     assert Leave.requests(context.person) == []
   end
 
@@ -440,7 +440,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     {:ok, _type} = Policies.update_leave_type(context.leave_type, nil, %{needs_approval: false})
 
     assert live |> form("#request", request: asking(context, %{})) |> render_change() =~
-             "Your leave needs no approval: it is approved as it is filed"
+             "Your leave doesn&#39;t need approval, so it&#39;s approved as soon as it&#39;s sent"
   end
 
   test "a request that is no longer open to change is not there to edit", context do
@@ -453,7 +453,7 @@ defmodule LeafWeb.RequestLeaveLiveTest do
       assert {:error, {:live_redirect, %{to: "/leave", flash: flash}}} =
                live(context.conn, ~p"/leave/#{id}/amend")
 
-      assert flash["error"] == "That request is not yours to change."
+      assert flash["error"] == "You can't edit that request."
     end
   end
 

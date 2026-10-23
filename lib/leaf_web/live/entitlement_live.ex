@@ -26,7 +26,7 @@ defmodule LeafWeb.EntitlementLive do
 
   @periods [{"Month", "month"}, {"Quarter", "quarter"}, {"Year", "year"}]
 
-  @figures ["Granted in the first year", "Most held at once", "Lost over three years"]
+  @figures ["Granted in the first year", "Highest balance", "Lost over three years"]
 
   @lost_to %{expiry: "to expiry", rollover_cap: "above the cap"}
 
@@ -171,7 +171,7 @@ defmodule LeafWeb.EntitlementLive do
                 label="Grant period"
                 options={periods(@terms.grant_basis)}
                 help="The stretch of time the amount is for. It builds up across each period or lands at its
-                  start. A rollover cap, or lapsing at the end of the period, applies as each period ends."
+                  start. A rollover cap, or expiring at the end of the period, applies as each period ends."
               />
               <.input
                 field={@form[:grant_basis]}
@@ -256,7 +256,7 @@ defmodule LeafWeb.EntitlementLive do
             field={@form[:expiry_rule]}
             label="At the end of each period"
             help="What happens to an unused balance: carried over in full, carried over up to a cap, or lost.
-              Lapsing a fixed window after it lands suits leave tied to a date, such as a birthday: 14 days
+              Expiring a fixed window after it's granted suits leave tied to a date, such as a birthday: 14 days
               means birthday leave must be taken within two weeks of the birthday."
           >
             <:option value="never" label="Rolls over indefinitely" />
@@ -268,14 +268,14 @@ defmodule LeafWeb.EntitlementLive do
                 unit={unit(@types[@terms.leave_type_id])}
               />
             </:option>
-            <:option value="grant_period_end" label="Lapses at the end of its period" />
-            <:option value="window" label="Lapses within">
+            <:option value="grant_period_end" label="Expires at the end of its period" />
+            <:option value="window" label="Expires within">
               <.input
                 field={@form[:expiry_window_days]}
                 type="number"
                 phx-debounce="500"
-                aria-label="Lapses within"
-                unit="days of landing"
+                aria-label="Expires within"
+                unit="days of being granted"
               />
             </:option>
           </.radios>
@@ -283,10 +283,10 @@ defmodule LeafWeb.EntitlementLive do
 
         <section :if={@unfunded != []}>
           <header>
-            <h2>Leave already booked would go unpaid for</h2>
+            <h2>Booked leave this change would leave unfunded</h2>
           </header>
           <p>
-            What these days draw on lapses before them. Saving anyway leaves each person's balance
+            What these days draw on expires before them. Saving anyway leaves each person's balance
             negative by what they take.
           </p>
           <ul>
@@ -307,11 +307,11 @@ defmodule LeafWeb.EntitlementLive do
 
       <aside :if={@rehearsing or @refused or @rehearsals != []} aria-busy={to_string(@rehearsing)}>
         <header>
-          <h2>How it plays out</h2>
-          <p :if={@refused} role="status">Fix the errors to see how it plays out.</p>
+          <h2>Preview</h2>
+          <p :if={@refused} role="status">Fix the errors to see the preview.</p>
           <p :if={@drawn_on}>
-            Leave has been taken against this entitlement, so changes to its terms can't be saved.
-            To change them, stop it granting and add another.
+            Leave has been taken under this entitlement, so changes to its terms can't be saved.
+            To change them, set "Stops granting after" and add a new entitlement.
           </p>
         </header>
         <p>
@@ -414,13 +414,13 @@ defmodule LeafWeb.EntitlementLive do
 
   defp opened(socket, policy, :error) do
     socket
-    |> put_flash(:error, "That entitlement is not on this policy.")
+    |> put_flash(:error, "Entitlement not found.")
     |> push_navigate(to: ~p"/settings/policies/#{policy}")
   end
 
   defp unknown(socket) do
     socket
-    |> put_flash(:error, "That policy is not on record.")
+    |> put_flash(:error, "Policy not found.")
     |> push_navigate(to: ~p"/settings/policies")
   end
 
@@ -570,9 +570,9 @@ defmodule LeafWeb.EntitlementLive do
     put_flash(
       socket,
       :error,
-      "Leave has been taken against this entitlement, so only when it stops granting and being " <>
-        "spendable can change, or its unpaid leave allowance go up. To change its terms, stop it " <>
-        "granting and add another."
+      "Leave has already been taken under this entitlement. Only its end dates can be changed, and " <>
+        "its unpaid leave allowance can only go up. To change anything else, set \"Stops granting " <>
+        "after\" and add a new entitlement."
     )
   end
 

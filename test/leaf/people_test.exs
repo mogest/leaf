@@ -226,9 +226,9 @@ defmodule Leaf.PeopleTest do
     {:ok, _archived} = People.archive_person(archived, nil)
 
     assert {:error, changeset} = People.update_person(kit, nil, %{role: :member})
-    assert errors_on(changeset).role == ["nobody else administers the organisation"]
+    assert errors_on(changeset).role == ["they're the only administrator"]
     assert {:error, changeset} = People.archive_person(kit, nil)
-    assert "nobody else administers the organisation" in errors_on(changeset).archived_at
+    assert "they're the only administrator" in errors_on(changeset).archived_at
 
     Fixtures.person(%{organisation_id: organisation.id, role: :admin})
     assert {:ok, %{role: :member}} = People.update_person(kit, nil, %{role: :member})

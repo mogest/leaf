@@ -186,7 +186,7 @@ defmodule LeafWeb.Parts do
               <th scope="col">When</th>
               <th scope="col">Leave</th>
               <th scope="col">Amount</th>
-              <th scope="col">Standing</th>
+              <th scope="col">Status</th>
               <th scope="col">Who and when</th>
               <td :if={@cancel}></td>
             </tr>
@@ -213,7 +213,7 @@ defmodule LeafWeb.Parts do
                     type="button"
                     phx-click="cancel-request"
                     phx-value-id={request.id}
-                    data-confirm="Cancel this leave? The request is cancelled and what it drew returned."
+                    data-confirm="Cancel this request? Any leave it used goes back into the balance."
                   >
                     Cancel
                   </button>
@@ -258,17 +258,17 @@ defmodule LeafWeb.Parts do
   end
 
   defp cancelled(socket, {:ok, _request}),
-    do: put_flash(socket, :info, "The request is cancelled.")
+    do: put_flash(socket, :info, "Request cancelled.")
 
   defp cancelled(socket, {:error, {:stale, since}}),
     do: put_flash(socket, :error, Wording.stale(since, "cancelled"))
 
   defp cancelled(socket, refused) when refused in [:error, {:error, :forbidden}] do
-    put_flash(socket, :error, "That is not yours to cancel.")
+    put_flash(socket, :error, "You can't cancel this request.")
   end
 
   defp cancelled(socket, {:error, _changeset}) do
-    put_flash(socket, :error, "The request would not cancel.")
+    put_flash(socket, :error, "Couldn't cancel the request.")
   end
 
   # Leave that was given back or refused is over, and the row it is on reads as the past.
@@ -324,7 +324,7 @@ defmodule LeafWeb.Parts do
       </div>
       <ul class="legend">
         <li data-leave="approved">Approved</li>
-        <li data-leave="pending">Waiting</li>
+        <li data-leave="pending">Pending</li>
         <li data-leave="approved" data-part>Part of the day</li>
         <li data-holiday>Public holiday</li>
         <li data-today>Today</li>

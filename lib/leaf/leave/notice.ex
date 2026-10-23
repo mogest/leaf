@@ -150,7 +150,7 @@ defmodule Leaf.Leave.Notice do
   defp filing(request), do: asked(request)
 
   defp cancelling(%{approved_on_filing: true} = request),
-    do: "#{request.person.name} was to be away for #{leave(request)}."
+    do: "#{request.person.name}'s leave for #{leave(request)}."
 
   defp cancelling(request), do: asked(request)
 

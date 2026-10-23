@@ -24,14 +24,14 @@ defmodule LeafWeb.BalancesLive do
   alias LeafWeb.Chart
 
   @kinds %{
-    opening_balance: "Brought in",
+    opening_balance: "Opening balance",
     adjustment: "Adjusted",
     grant: "Granted",
     accrual: "Earned",
     taken: "Taken",
     booked: "Booked",
-    expiry: "Lapsed",
-    rollover_cap: "Over the cap",
+    expiry: "Expired",
+    rollover_cap: "Over rollover cap",
     started: "Started",
     left: "Left"
   }
@@ -95,7 +95,9 @@ defmodule LeafWeb.BalancesLive do
             <% end %>
             <dd :if={@account.awaiting} data-awaiting>{@account.awaiting}</dd>
           </dl>
-          <p :if={@account.figures == []}>Recorded as it is taken; nothing accrues.</p>
+          <p :if={@account.figures == []}>
+            This leave doesn't build up. It's only recorded when taken.
+          </p>
           <p :if={@account.figures == [] && @account.awaiting} data-awaiting>{@account.awaiting}</p>
         </section>
 
@@ -230,7 +232,7 @@ defmodule LeafWeb.BalancesLive do
 
   defp refused(socket) do
     socket
-    |> put_flash(:error, "Those balances are not yours to read.")
+    |> put_flash(:error, "You don't have access to those balances.")
     |> push_navigate(to: ~p"/")
   end
 
@@ -253,7 +255,7 @@ defmodule LeafWeb.BalancesLive do
 
   defp missing(socket, person, mine?, as_at) do
     socket
-    |> put_flash(:error, "There is no account to show for that.")
+    |> put_flash(:error, "No balance found for that leave type.")
     |> push_navigate(to: path(person, mine?, nil, to_string(as_at)))
   end
 
@@ -411,7 +413,7 @@ defmodule LeafWeb.BalancesLive do
     do: path(reading.person, reading.mine?, leave_type.id, reading.as_at, year)
 
   defp opening(nil), do: "Brought forward"
-  defp opening(date), do: "Brought in, #{Wording.date(date)}"
+  defp opening(date), do: "Opening balance, #{Wording.date(date)}"
 
   defp earned(true), do: "Granted"
   defp earned(false), do: "Earned"

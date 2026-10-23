@@ -68,7 +68,7 @@ defmodule LeafWeb.PeopleLiveTest do
     assert {:error, {:live_redirect, %{to: "/", flash: flash}}} =
              live(sign_in(context.conn, other), ~p"/people/#{context.person}")
 
-    assert flash["error"] == "That record is not yours to read."
+    assert flash["error"] == "You don't have access to that person."
   end
 
   test "a record that is not there reads as one that is not theirs", context do
@@ -76,7 +76,7 @@ defmodule LeafWeb.PeopleLiveTest do
       assert {:error, {:live_redirect, %{to: "/", flash: flash}}} =
                live(context.conn, ~p"/people/#{id}")
 
-      assert flash["error"] == "That record is not yours to read."
+      assert flash["error"] == "You don't have access to that person."
     end
   end
 
@@ -99,13 +99,13 @@ defmodule LeafWeb.PeopleLiveTest do
     refute html =~ "Remove"
 
     assert render_click(live, "remove-work-pattern", %{"id" => pattern.id}) =~
-             "That is not yours to do."
+             "You don&#39;t have permission to do that."
 
     assert render_click(live, "remove-policy-assignment", %{"id" => assigned_policy.id}) =~
-             "That is not yours to do."
+             "You don&#39;t have permission to do that."
 
     assert render_click(live, "remove-calendar-assignment", %{"id" => assigned_calendar.id}) =~
-             "That is not yours to do."
+             "You don&#39;t have permission to do that."
 
     assert People.work_patterns(context.person) == [pattern]
     assert [^assigned_policy] = People.policy_assignments(context.person)
@@ -120,7 +120,7 @@ defmodule LeafWeb.PeopleLiveTest do
     {:ok, _demoted} = People.update_person(context.admin, nil, %{role: :member})
 
     assert render_click(live, "remove-work-pattern", %{"id" => pattern.id}) =~
-             "That is not yours to do."
+             "You don&#39;t have permission to do that."
 
     assert People.work_patterns(context.person) == [pattern]
   end
@@ -129,7 +129,7 @@ defmodule LeafWeb.PeopleLiveTest do
     assert {:error, {:redirect, %{to: "/", flash: flash}}} =
              live(sign_in(context.conn, context.person), ~p"/people/#{context.person}/edit")
 
-    assert flash["error"] == "That page is the administrator's."
+    assert flash["error"] == "Only administrators can open that page."
 
     {:ok, live, _html} = live(context.conn, ~p"/people/#{context.person}/edit")
 
@@ -171,10 +171,10 @@ defmodule LeafWeb.PeopleLiveTest do
 
     assert html =~ "Rae Halloran"
     assert html =~ "from 4 March 2024"
-    assert html =~ "nobody, so an administrator decides"
+    assert html =~ "None (administrators approve their leave)"
     assert html =~ "Mon–Fri 8"
     assert html =~ "40 h/wk, 1 FTE"
-    assert html =~ "On no policy, so nothing is granted."
+    assert html =~ "Not on a leave policy, so no leave is granted."
   end
 
   test "an archived person is listed only behind Show archived, and is nobody's manager to pick",
@@ -259,7 +259,7 @@ defmodule LeafWeb.PeopleLiveTest do
 
     html = live |> element("button", "Cancel") |> render_click()
 
-    assert html =~ "The request is cancelled."
+    assert html =~ "Request cancelled."
     assert {:ok, %{status: :cancelled}} = Leave.fetch_request(request.id)
   end
 
@@ -358,13 +358,13 @@ defmodule LeafWeb.PeopleLiveTest do
     {:ok, live, _html} = live(context.conn, ~p"/people/#{context.person}")
 
     assert render_click(live, "remove-work-pattern", %{"id" => pattern.id}) =~
-             "That is not on their record."
+             "That record no longer exists."
 
     assert render_click(live, "remove-policy-assignment", %{"id" => assigned_policy.id}) =~
-             "That is not on their record."
+             "That record no longer exists."
 
     assert render_click(live, "remove-calendar-assignment", %{"id" => assigned_calendar.id}) =~
-             "That is not on their record."
+             "That record no longer exists."
 
     assert Enum.map(People.work_patterns(other), & &1.id) == [pattern.id]
     assert Enum.map(People.policy_assignments(other), & &1.id) == [assigned_policy.id]
@@ -379,7 +379,7 @@ defmodule LeafWeb.PeopleLiveTest do
              live(context.conn, ~p"/people/#{context.person}/work-patterns/#{pattern}")
 
     assert to == "/people/#{context.person.id}"
-    assert flash["error"] == "That work pattern is not theirs."
+    assert flash["error"] == "Work pattern not found."
   end
 
   test "a balance can be entered by hand", context do
@@ -440,7 +440,7 @@ defmodule LeafWeb.PeopleLiveTest do
     html = live |> element("button[phx-value-id='#{entry.id}']", "Archive") |> render_click()
 
     refute html =~ "Keyed in twice"
-    assert html =~ "Nothing has been entered by hand."
+    assert html =~ "No opening balances or adjustments."
     assert Leave.balance_entries(context.person) == []
   end
 

@@ -42,7 +42,7 @@ defmodule LeafWeb.PolicyLive do
 
       <section>
         <header>
-          <h2>What it grants</h2>
+          <h2>Entitlements</h2>
           <.link class="add" navigate={~p"/settings/policies/#{@policy}/entitlements/new"}>
             Add
           </.link>
@@ -79,7 +79,7 @@ defmodule LeafWeb.PolicyLive do
                       type="button"
                       phx-click="remove"
                       phx-value-id={entitlement.id}
-                      data-confirm="Remove this outright? One that ran and is over should be closed with an end date instead."
+                      data-confirm="Remove this entitlement? If it has been in use, set an end date instead so its history is kept."
                     >
                       Remove
                     </button>
@@ -104,7 +104,7 @@ defmodule LeafWeb.PolicyLive do
 
   defp unknown(socket) do
     socket
-    |> put_flash(:error, "That policy is not on record.")
+    |> put_flash(:error, "Policy not found.")
     |> push_navigate(to: ~p"/settings/policies")
   end
 
@@ -141,13 +141,13 @@ defmodule LeafWeb.PolicyLive do
   end
 
   defp taken_after(nil), do: nil
-  defp taken_after(months), do: "taken after #{months(months)}"
+  defp taken_after(months), do: "can be taken after #{months(months)}"
 
   defp granting_to(nil), do: nil
-  defp granting_to(date), do: "granting until #{Wording.date(date)}"
+  defp granting_to(date), do: "stops granting after #{Wording.date(date)}"
 
   defp until(nil), do: nil
-  defp until(date), do: "spendable until #{Wording.date(date)}"
+  defp until(date), do: "stops being spendable after #{Wording.date(date)}"
 
   defp months(months), do: Wording.figure(Decimal.new(months), :months)
 
@@ -192,18 +192,18 @@ defmodule LeafWeb.PolicyLive do
   defp unused(%{expiry_rule: :cap} = entitlement),
     do: "Rolls over up to #{figure(entitlement, entitlement.rollover_cap)}"
 
-  defp unused(%{expiry_rule: :grant_period_end}), do: "Lapses at period end"
+  defp unused(%{expiry_rule: :grant_period_end}), do: "Expires at period end"
 
   defp unused(%{expiry_rule: :window} = entitlement),
-    do: "Lapses #{entitlement.expiry_window_days} days after landing"
+    do: "Expires #{entitlement.expiry_window_days} days after it's granted"
 
   defp withdrawn(policy, zone) do
     "Withdrawn #{Wording.date(policy.archived_at, zone)}. " <>
-      "Nobody new goes on it; whoever is already on it stays, and goes on being granted what it says."
+      "It can't be assigned to anyone new. People already on it keep it."
   end
 
   defp remove(socket, :error) do
-    put_flash(socket, :error, "That entitlement is not on this policy.")
+    put_flash(socket, :error, "Entitlement not found.")
   end
 
   defp remove(socket, {:ok, entitlement}) do
@@ -218,11 +218,12 @@ defmodule LeafWeb.PolicyLive do
     put_flash(
       socket,
       :error,
-      "Leave has been taken against that entitlement. Stop it granting instead of removing it."
+      "Leave has been taken under this entitlement, so it can't be removed. " <>
+        "Set \"Stops granting after\" instead."
     )
   end
 
   defp removed(socket, {:error, _changeset}) do
-    put_flash(socket, :error, "That would not come off the policy.")
+    put_flash(socket, :error, "Couldn't remove that.")
   end
 end

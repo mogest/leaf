@@ -1064,13 +1064,12 @@ defmodule Leaf.LeaveTest do
 
     test "part of a day is refused of a stretch, and of anything that is not a figure", context do
       assert said(asking(context, %{"to" => to_string(@friday), "amount" => "4"})) ==
-               ["Part of a day can only be asked of a single day."]
+               ["Part days can only be requested for a single day."]
 
-      assert said(asking(context, %{"amount" => "half"})) ==
-               ["The time off has to be a number."]
+      assert said(asking(context, %{"amount" => "half"})) == ["Enter a number."]
 
       assert said(asking(context, %{"amount" => "0"})) ==
-               ["The time off has to be more than nothing."]
+               ["Enter an amount greater than zero."]
     end
 
     test "a last day before the first is refused, and draws on nothing", context do
@@ -1083,7 +1082,7 @@ defmodule Leaf.LeaveTest do
     test "a stretch longer than two years is refused, and spans nothing", context do
       changeset = asking(context, %{"to" => "9999-12-31"})
 
-      assert said(changeset) == ["Leave can be asked for at most two years at a time."]
+      assert said(changeset) == ["A request can cover at most two years."]
       assert Ecto.Changeset.apply_changes(changeset).span == nil
       assert said(asking(context, %{"to" => to_string(Date.shift(@thursday, year: 2))})) == []
     end
@@ -1094,7 +1093,7 @@ defmodule Leaf.LeaveTest do
 
       changeset = asking(context, %{"from" => to_string(@friday)})
 
-      assert said(changeset) == ["That leave type was not offered then."]
+      assert said(changeset) == ["That leave type isn't available on those dates."]
       assert Leave.days_for(context.person, changeset) == []
     end
 

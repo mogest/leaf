@@ -126,7 +126,7 @@ defmodule LeafWeb.ApprovalsLiveTest do
 
     html = live |> element("main form") |> render_submit(%{"decision" => "approve"})
 
-    assert html =~ "The request is approved."
+    assert html =~ "Request approved."
     assert html =~ "Nothing is waiting on you."
     assert [%{status: :approved}] = Leave.requests(context.person)
   end
@@ -141,7 +141,7 @@ defmodule LeafWeb.ApprovalsLiveTest do
     {:ok, _demoted} = People.update_person(admin, nil, %{role: :member})
 
     assert live |> element("main form") |> render_submit(%{"decision" => "approve"}) =~
-             "That is not yours to decide."
+             "You can&#39;t approve or decline this request."
 
     assert [%{status: :pending}] = Leave.requests(context.person)
   end
@@ -155,7 +155,7 @@ defmodule LeafWeb.ApprovalsLiveTest do
       })
 
     assert live |> element("main form") |> render_submit(%{"decision" => "approve"}) =~
-             "That leave is no longer on offer on its dates, or falls outside their employment."
+             "the leave type isn&#39;t available on those dates, or the dates fall outside their employment."
 
     assert [%{status: :pending}] = Leave.requests(context.person)
   end
@@ -176,7 +176,7 @@ defmodule LeafWeb.ApprovalsLiveTest do
     assert [%{status: :pending}] = Leave.requests(context.person)
 
     assert live |> element("main form") |> render_submit(%{"decision" => "approve"}) =~
-             "The request is approved."
+             "Request approved."
   end
 
   test "the comment is a labelled textarea, so pressing Enter in it cannot decide", context do

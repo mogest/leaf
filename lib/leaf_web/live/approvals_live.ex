@@ -116,7 +116,7 @@ defmodule LeafWeb.ApprovalsLive do
   defp decided_by("decline"), do: &Leave.decline/3
 
   defp decided(socket, {:ok, request}) do
-    put_flash(socket, :info, "The request is #{request.status}.")
+    put_flash(socket, :info, "Request #{request.status}.")
   end
 
   defp decided(socket, {:error, {:stale, since}}) do
@@ -124,18 +124,19 @@ defmodule LeafWeb.ApprovalsLive do
   end
 
   defp decided(socket, refused) when refused in [:error, {:error, :forbidden}] do
-    put_flash(socket, :error, "That is not yours to decide.")
+    put_flash(socket, :error, "You can't approve or decline this request.")
   end
 
   defp decided(socket, {:error, %{errors: [days: _]}}) do
     put_flash(
       socket,
       :error,
-      "That leave is no longer on offer on its dates, or falls outside their employment."
+      "This request can't be approved: the leave type isn't available on those dates, or the " <>
+        "dates fall outside their employment."
     )
   end
 
   defp decided(socket, {:error, _changeset}) do
-    put_flash(socket, :error, "The decision would not save.")
+    put_flash(socket, :error, "Couldn't save the decision.")
   end
 end

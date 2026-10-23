@@ -18,17 +18,15 @@ defmodule LeafWeb.AssignmentLive do
   @kinds %{
     policy: %{
       title: "Assign a leave policy",
-      heading: "What they are entitled to, and from when",
       label: "Leave policy",
       field: :leave_policy_id,
-      confirmation: "They are on that policy."
+      confirmation: "Leave policy assigned."
     },
     calendar: %{
       title: "Assign a calendar",
-      heading: "Where they are, and from when",
       label: "Calendar",
       field: :calendar_id,
-      confirmation: "They are on that calendar."
+      confirmation: "Calendar assigned."
     }
   }
 
@@ -67,9 +65,6 @@ defmodule LeafWeb.AssignmentLive do
 
       <.form id={"#{@live_action}-assignment"} for={@form} phx-change="validate" phx-submit="save">
         <section>
-          <header>
-            <h2>{@kind.heading}</h2>
-          </header>
           <.input
             field={@form[@kind.field]}
             type="select"
@@ -103,7 +98,7 @@ defmodule LeafWeb.AssignmentLive do
   end
 
   defp unknown(socket) do
-    socket |> put_flash(:error, "That person is not on record.") |> push_navigate(to: ~p"/people")
+    socket |> put_flash(:error, "Person not found.") |> push_navigate(to: ~p"/people")
   end
 
   defp options(:policy, person) do

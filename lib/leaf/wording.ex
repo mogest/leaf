@@ -149,11 +149,12 @@ defmodule Leaf.Wording do
   holding none.
   """
   @spec no_balance(boolean(), String.t()) :: String.t()
-  def no_balance(true, who), do: "#{String.capitalize(who)} hold no balance in anything."
+  def no_balance(true, who), do: "#{String.capitalize(who)} don't have any leave balances."
 
   def no_balance(false, who),
     do:
-      "No balance can be worked out until #{who} are on a work pattern and a calendar throughout."
+      "Balances can't be calculated until #{who} have a work pattern and a calendar for every " <>
+        "day of employment."
 
   @doc "Whether approving would take any balance it draws on under nothing."
   @spec overdrawn?([Statement.t()]) :: boolean()

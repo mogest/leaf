@@ -53,14 +53,11 @@ defmodule LeafWeb.BalanceEntryLive do
           <.link navigate={~p"/people"}>People</.link>
           <.link navigate={~p"/people/#{@person}"}>{@person.name}</.link>
         </nav>
-        <h1>Record a balance</h1>
+        <h1>Add a balance entry</h1>
       </header>
 
       <.form id="balance-entry" for={@form} phx-change="validate" phx-submit="save">
         <section>
-          <header>
-            <h2>An opening balance, or an adjustment</h2>
-          </header>
           <.input field={@form[:kind]} type="select" label="What it is" options={@kinds} />
           <.input
             field={@form[:leave_type_id]}
@@ -69,17 +66,17 @@ defmodule LeafWeb.BalanceEntryLive do
             prompt="Choose one"
             options={@leave_types}
           />
-          <.input field={@form[:date]} type="date" label="Dated" />
-          <.input field={@form[:amount]} type="text" label="Amount, negative to take away" />
-          <.input field={@form[:expires_on]} type="date" label="Lapses on, if it lapses" />
+          <.input field={@form[:date]} type="date" label="Date" />
+          <.input field={@form[:amount]} type="text" label="Amount (negative to deduct)" />
+          <.input field={@form[:expires_on]} type="date" label="Expires on (optional)" />
           <p>
-            A rollover cap does not trim a figure with a lapse date of its own.
+            Rollover caps don't apply to entries with their own expiry date.
           </p>
           <.input field={@form[:reason]} type="textarea" label="Reason" />
         </section>
 
         <footer>
-          <button class="button" type="submit">Record it</button>
+          <button class="button" type="submit">Add entry</button>
           <.link navigate={~p"/people/#{@person}"}>Cancel</.link>
         </footer>
       </.form>
@@ -92,7 +89,7 @@ defmodule LeafWeb.BalanceEntryLive do
     opening = %{"kind" => "opening_balance", "date" => to_string(today)}
 
     socket
-    |> assign(:page_title, "Record a balance")
+    |> assign(:page_title, "Add a balance entry")
     |> assign(:person, person)
     |> assign(:kinds, @kinds)
     |> assign(:leave_types, leave_types(person))
@@ -100,7 +97,7 @@ defmodule LeafWeb.BalanceEntryLive do
   end
 
   defp unknown(socket) do
-    socket |> put_flash(:error, "That person is not on record.") |> push_navigate(to: ~p"/people")
+    socket |> put_flash(:error, "Person not found.") |> push_navigate(to: ~p"/people")
   end
 
   defp leave_types(person) do

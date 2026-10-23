@@ -286,10 +286,10 @@ defmodule Leaf.ReportsTest do
 
     # 3 March is 30 days on.
     assert csv(person, Map.put(expiring, "within", "29")) ==
-             {"Person,Leave type,Amount,Unit,Lapses on\r\n", unready}
+             {"Person,Leave type,Amount,Unit,Expires on\r\n", unready}
 
     assert csv(person, Map.put(expiring, "within", "30")) ==
-             {"Person,Leave type,Amount,Unit,Lapses on\r\n" <>
+             {"Person,Leave type,Amount,Unit,Expires on\r\n" <>
                 "Rae Halloran,Sick leave,9.00,days,03/03/2026\r\n", unready}
   end
 

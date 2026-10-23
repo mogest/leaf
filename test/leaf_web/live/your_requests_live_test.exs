@@ -38,7 +38,7 @@ defmodule LeafWeb.YourRequestsLiveTest do
 
     html = live |> element("button", "Cancel") |> render_click()
 
-    assert html =~ "The request is cancelled."
+    assert html =~ "Request cancelled."
     assert [%{status: :cancelled}] = Leave.requests(context.person)
   end
 
@@ -65,7 +65,7 @@ defmodule LeafWeb.YourRequestsLiveTest do
 
     html = live |> element("button[phx-value-id='#{over.id}']") |> render_click()
 
-    assert html =~ "The request is cancelled."
+    assert html =~ "Request cancelled."
     assert {:ok, %{status: :cancelled}} = Leave.fetch_request(over.id)
   end
 

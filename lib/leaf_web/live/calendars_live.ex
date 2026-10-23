@@ -29,9 +29,6 @@ defmodule LeafWeb.CalendarsLive do
       <Parts.settings_nav here="calendars" />
 
       <section>
-        <header>
-          <h2>Where people are, and whose holidays they observe</h2>
-        </header>
         <table>
           <thead>
             <tr>

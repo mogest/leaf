@@ -69,7 +69,7 @@ defmodule LeafWeb.OrganisationLive do
       <.form id="organisation" for={@form} phx-change="validate" phx-submit="save">
         <section>
           <header>
-            <h2>The organisation</h2>
+            <h2>Organisation</h2>
           </header>
           <.input field={@form[:name]} type="text" label="Name" />
           <.input
@@ -90,11 +90,11 @@ defmodule LeafWeb.OrganisationLive do
           <header>
             <h2>Tracking</h2>
           </header>
-          <.input field={@form[:tracked_from]} type="date" label="Leave has been tracked here from" />
+          <.input field={@form[:tracked_from]} type="date" label="Tracking start date" />
           <p>
-            Nothing accrues, is granted or lapses before that date — the opening balances account
-            for everything up to it. Leave dated earlier still counts, and draws down what was
-            brought in. Moving the date re-works every balance at once.
+            Nothing accrues, is granted or expires before that date — the opening balances account
+            for everything up to it. Leave dated earlier still counts, and draws down the opening
+            balances. Moving the date recalculates every balance.
           </p>
         </section>
 

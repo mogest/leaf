@@ -63,8 +63,11 @@ defmodule Leaf.Leave.Offer do
 
   defp chosen(changeset, id, span, person) do
     case Enum.any?(types(person, span), &(&1.id == id)) do
-      true -> changeset
-      false -> add_error(changeset, :leave_type_id, "That leave type was not offered then.")
+      true ->
+        changeset
+
+      false ->
+        add_error(changeset, :leave_type_id, "That leave type isn't available on those dates.")
     end
   end
 

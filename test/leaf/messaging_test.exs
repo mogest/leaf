@@ -167,7 +167,7 @@ defmodule Leaf.MessagingTest do
       {:ok, _cancelled} = settled(Leave.cancel(reload(request), context.person))
 
       cancelled =
-        "Rae Halloran was to be away for Annual leave, Friday 21 August (8 hours). " <>
+        "Rae Halloran's leave for Annual leave, Friday 21 August (8 hours). " <>
           "Cancelled by Rae Halloran."
 
       assert_received {:updated, "D-" <> ^manager, ^cancelled}

@@ -617,7 +617,7 @@ defmodule Leaf.People do
 
     case Repo.exists?(others) do
       true -> []
-      false -> [{field, "nobody else administers the organisation"}]
+      false -> [{field, "they're the only administrator"}]
     end
   end
 

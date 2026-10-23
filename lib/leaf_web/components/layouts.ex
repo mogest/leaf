@@ -142,7 +142,7 @@ defmodule LeafWeb.Layouts do
       <.flash
         id="client-error"
         kind={:error}
-        title="We can't find the internet"
+        title="Connection lost"
         phx-disconnected={JS.remove_attribute("hidden", to: ".phx-client-error #client-error")}
         phx-connected={JS.set_attribute({"hidden", ""})}
         hidden
@@ -153,7 +153,7 @@ defmodule LeafWeb.Layouts do
       <.flash
         id="server-error"
         kind={:error}
-        title="Something went wrong!"
+        title="Something went wrong"
         phx-disconnected={JS.remove_attribute("hidden", to: ".phx-server-error #server-error")}
         phx-connected={JS.set_attribute({"hidden", ""})}
         hidden

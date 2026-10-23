@@ -86,14 +86,14 @@ defmodule LeafWeb.SignInTest do
 
       assert {:halt, socket} = SignIn.on_mount(:current_person, %{}, session, mounting)
       assert {:redirect, %{to: "/sign-in"}} = socket.redirected
-      assert socket.assigns.flash["error"] == "Leaf is only open to you while you're employed."
+      assert socket.assigns.flash["error"] == "You can only use Leaf during your employment."
 
       signed_in = Plug.Test.init_test_session(conn, session)
       turned_away = get(signed_in, ~p"/")
       assert redirected_to(turned_away) == "/sign-in"
 
       assert turned_away.assigns.flash["error"] ==
-               "Leaf is only open to you while you're employed."
+               "You can only use Leaf during your employment."
 
       refute get(signed_in, ~p"/sign-in").assigns.flash["error"]
     end

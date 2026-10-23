@@ -49,9 +49,6 @@ defmodule LeafWeb.RegionLive do
 
       <.form id="region" for={@form} phx-change="validate" phx-submit="save">
         <section>
-          <header>
-            <h2>Where it is</h2>
-          </header>
           <.input field={@form[:name]} type="text" label="Name" />
           <.input
             field={@form[:time_zone]}
@@ -80,13 +77,13 @@ defmodule LeafWeb.RegionLive do
 
   defp unknown(socket) do
     socket
-    |> put_flash(:error, "That is not a country's calendar.")
+    |> put_flash(:error, "Regions can only be added to a country.")
     |> push_navigate(to: ~p"/settings/calendars")
   end
 
   defp saved(socket, {:ok, region}) do
     socket
-    |> put_flash(:info, "#{region.name} is a region of #{socket.assigns.country.name}.")
+    |> put_flash(:info, "Region #{region.name} added to #{socket.assigns.country.name}.")
     |> push_navigate(to: ~p"/settings/calendars/#{region}")
   end
 

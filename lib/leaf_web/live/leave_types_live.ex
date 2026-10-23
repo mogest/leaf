@@ -38,9 +38,6 @@ defmodule LeafWeb.LeaveTypesLive do
       <Parts.settings_nav here="leave-types" />
 
       <section>
-        <header>
-          <h2>What the organisation offers</h2>
-        </header>
         <div :if={@leave_types != []}>
           <table>
             <thead>
@@ -48,7 +45,7 @@ defmodule LeafWeb.LeaveTypesLive do
                 <th scope="col">Order</th>
                 <th scope="col">Name</th>
                 <th scope="col">Counted in</th>
-                <th scope="col">Standing</th>
+                <th scope="col">Status</th>
                 <td></td>
               </tr>
             </thead>
@@ -94,27 +91,27 @@ defmodule LeafWeb.LeaveTypesLive do
     }
   end
 
-  defp action(%{archived_at: nil}), do: "Stop offering"
-  defp action(_leave_type), do: "Offer again"
+  defp action(%{archived_at: nil}), do: "Withdraw"
+  defp action(_leave_type), do: "Restore"
 
   defp offer(socket, {:ok, leave_type}) do
     offered(socket, toggled(leave_type, socket.assigns.current_person))
   end
 
   defp offer(socket, :error),
-    do: put_flash(socket, :error, "That leave type is not on record.")
+    do: put_flash(socket, :error, "Leave type not found.")
 
   defp toggled(%{archived_at: nil} = leave_type, actor), do: Policies.withdraw(leave_type, actor)
   defp toggled(leave_type, actor), do: Policies.reoffer(leave_type, actor)
 
   defp offered(socket, {:ok, %{archived_at: nil} = leave_type}) do
-    socket |> put_flash(:info, "#{leave_type.name} is offered again.") |> listed()
+    socket |> put_flash(:info, "#{leave_type.name} restored.") |> listed()
   end
 
   defp offered(socket, {:ok, leave_type}) do
-    socket |> put_flash(:info, "#{leave_type.name} is no longer offered.") |> listed()
+    socket |> put_flash(:info, "#{leave_type.name} withdrawn.") |> listed()
   end
 
   defp offered(socket, {:error, _changeset}),
-    do: put_flash(socket, :error, "That would not save.")
+    do: put_flash(socket, :error, "Couldn't save that.")
 end

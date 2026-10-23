@@ -52,7 +52,7 @@ defmodule LeafWeb.PersonFormLive do
       <.form id="person" for={@form} phx-change="validate" phx-submit="save">
         <section>
           <header>
-            <h2>Who they are</h2>
+            <h2>Details</h2>
           </header>
           <.input field={@form[:name]} type="text" label="Name" />
           <.input field={@form[:email]} type="email" label="Email" />
@@ -61,7 +61,7 @@ defmodule LeafWeb.PersonFormLive do
             field={@form[:manager_id]}
             type="select"
             label="Manager"
-            prompt="Nobody, so an administrator decides"
+            prompt="None (administrators approve their leave)"
             options={@managers}
           />
           <.input field={@form[:employee_number]} type="text" label="Employee number" />
@@ -69,11 +69,11 @@ defmodule LeafWeb.PersonFormLive do
 
         <section>
           <header>
-            <h2>Their dates</h2>
+            <h2>Dates</h2>
           </header>
-          <.input field={@form[:employment_start_date]} type="date" label="Employment starts" />
-          <.input field={@form[:employment_end_date]} type="date" label="Employment ends" />
-          <.input field={@form[:birth_date]} type="date" label="Born" />
+          <.input field={@form[:employment_start_date]} type="date" label="Start date" />
+          <.input field={@form[:employment_end_date]} type="date" label="End date" />
+          <.input field={@form[:birth_date]} type="date" label="Date of birth" />
         </section>
 
         <footer>
@@ -92,8 +92,8 @@ defmodule LeafWeb.PersonFormLive do
     {:ok, organisation} = Org.fetch_organisation(socket.assigns.current_person.organisation_id)
 
     socket
-    |> assign(:page_title, title(socket.assigns.live_action))
-    |> assign(:title, title(socket.assigns.live_action))
+    |> assign(:page_title, title(person))
+    |> assign(:title, title(person))
     |> assign(:person, person)
     |> assign(:organisation, organisation)
     |> assign(:back, back(person))
@@ -103,11 +103,11 @@ defmodule LeafWeb.PersonFormLive do
   end
 
   defp unknown(socket) do
-    socket |> put_flash(:error, "That person is not on record.") |> push_navigate(to: ~p"/people")
+    socket |> put_flash(:error, "Person not found.") |> push_navigate(to: ~p"/people")
   end
 
-  defp title(:new), do: "Add somebody"
-  defp title(:edit), do: "Edit somebody"
+  defp title(nil), do: "Add a person"
+  defp title(person), do: "Edit #{person.name}"
 
   defp back(nil), do: ~p"/people"
   defp back(person), do: ~p"/people/#{person}"

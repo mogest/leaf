@@ -11,7 +11,7 @@ defmodule Leaf.Reports.Expiring do
   alias Leaf.People
   alias Leaf.Reports.Table
 
-  @columns ["Person", "Leave type", "Amount", "Unit", "Lapses on"]
+  @columns ["Person", "Leave type", "Amount", "Unit", "Expires on"]
 
   @doc "What everyone employed on `as_at` holds that lapses within `within` days of it."
   @spec table(Ecto.UUID.t(), Date.t(), pos_integer()) :: Table.t()

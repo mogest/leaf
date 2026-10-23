@@ -35,16 +35,13 @@ defmodule LeafWeb.PoliciesLive do
       <Parts.settings_nav here="policies" />
 
       <section>
-        <header>
-          <h2>What people can be put on</h2>
-        </header>
         <div :if={@policies != []}>
           <table>
             <thead>
               <tr>
                 <th scope="col">Name</th>
                 <th scope="col">Entitlements</th>
-                <th scope="col">Standing</th>
+                <th scope="col">Status</th>
                 <td></td>
               </tr>
             </thead>
@@ -89,29 +86,29 @@ defmodule LeafWeb.PoliciesLive do
   end
 
   defp action(%{archived_at: nil}), do: "Withdraw"
-  defp action(_policy), do: "Use again"
+  defp action(_policy), do: "Restore"
 
   defp offer(socket, {:ok, policy}) do
     offered(socket, toggled(policy, socket.assigns.current_person))
   end
 
-  defp offer(socket, :error), do: put_flash(socket, :error, "That policy is not on record.")
+  defp offer(socket, :error), do: put_flash(socket, :error, "Policy not found.")
 
   defp toggled(%{archived_at: nil} = policy, actor), do: Policies.withdraw(policy, actor)
   defp toggled(policy, actor), do: Policies.reoffer(policy, actor)
 
   defp offered(socket, {:ok, %{archived_at: nil} = policy}) do
-    socket |> put_flash(:info, "#{policy.name} is in use again.") |> listed()
+    socket |> put_flash(:info, "#{policy.name} restored.") |> listed()
   end
 
   defp offered(socket, {:ok, policy}) do
     socket
-    |> put_flash(:info, "#{policy.name} is withdrawn. Whoever is already on it stays on it.")
+    |> put_flash(:info, "#{policy.name} withdrawn. People already on it keep it.")
     |> listed()
   end
 
   defp offered(socket, {:error, _changeset}),
-    do: put_flash(socket, :error, "That would not save.")
+    do: put_flash(socket, :error, "Couldn't save that.")
 
   defp counted(entitlements) do
     named(length(Enum.uniq_by(entitlements, & &1.leave_type_id)))

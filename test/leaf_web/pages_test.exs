@@ -134,7 +134,7 @@ defmodule LeafWeb.PagesTest do
 
     Enum.each(the_administrators(context), fn path ->
       assert {:error, {:redirect, %{to: "/", flash: flash}}} = live(conn, path)
-      assert flash == %{"error" => "That page is the administrator's."}
+      assert flash == %{"error" => "Only administrators can open that page."}
     end)
   end
 
@@ -199,18 +199,20 @@ defmodule LeafWeb.PagesTest do
     {:ok, live, _html} = live(context.conn, ~p"/leave")
 
     assert render_click(live, "cancel-request", %{"id" => nothing}) =~
-             "That is not yours to cancel."
+             "You can&#39;t cancel this request."
 
     {:ok, live, _html} = live(context.conn, ~p"/approvals")
 
     decision = %{"request_id" => nothing, "decision" => "approve", "review" => %{"comment" => ""}}
-    assert render_submit(live, "decide", decision) =~ "That is not yours to decide."
+
+    assert render_submit(live, "decide", decision) =~
+             "You can&#39;t approve or decline this request."
 
     {:ok, live, _html} = live(context.conn, ~p"/settings/leave-types")
-    assert render_click(live, "offer", %{"id" => nothing}) =~ "That leave type is not on record."
+    assert render_click(live, "offer", %{"id" => nothing}) =~ "Leave type not found."
 
     {:ok, live, _html} = live(context.conn, ~p"/settings/policies")
-    assert render_click(live, "offer", %{"id" => nothing}) =~ "That policy is not on record."
+    assert render_click(live, "offer", %{"id" => nothing}) =~ "Policy not found."
   end
 
   test "the specimen sheet renders every part the pages are built from", context do

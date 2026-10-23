@@ -123,12 +123,12 @@ defmodule LeafWeb.WorkPatternLive do
 
   defp opened(socket, person, :error) do
     socket
-    |> put_flash(:error, "That work pattern is not theirs.")
+    |> put_flash(:error, "Work pattern not found.")
     |> push_navigate(to: ~p"/people/#{person}")
   end
 
   defp unknown(socket) do
-    socket |> put_flash(:error, "That person is not on record.") |> push_navigate(to: ~p"/people")
+    socket |> put_flash(:error, "Person not found.") |> push_navigate(to: ~p"/people")
   end
 
   defp title(:new), do: "Add a work pattern"

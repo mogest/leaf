@@ -24,11 +24,11 @@ defmodule LeafWeb.ReportsLive do
      [:from, :to, :cut_off]},
     {"Balances", "balances", "What everyone employed holds, each leave type in its own unit.",
      [:as_at]},
-    {"Expiring soon", "expiring", "Leave that lapses within so many days unless it is taken.",
-     [:as_at, :within]},
+    {"Expiring soon", "expiring",
+     "Leave that expires within the given number of days unless it's taken.", [:as_at, :within]},
     {"Over limit", "over_limit",
-     "Everyone's balances against a limit of so many weeks, a week being their own working " <>
-       "week, those over it highlighted.", [:as_at, :leave_type_id, :weeks]},
+     "Each person's balances compared with a limit in weeks, where a week is their own working " <>
+       "week. Anyone over the limit is highlighted.", [:as_at, :leave_type_id, :weeks]},
     {"iPayroll export", "ipayroll",
      "Approved requests whose first day falls in the period, each whole, as iPayroll's Leave " <>
        "Requests upload takes them.", [:from, :to]}
@@ -177,7 +177,7 @@ defmodule LeafWeb.ReportsLive do
   end
 
   defp unknown(socket) do
-    socket |> put_flash(:error, "There is no such report.") |> push_navigate(to: ~p"/reports")
+    socket |> put_flash(:error, "Report not found.") |> push_navigate(to: ~p"/reports")
   end
 
   defp said({:ok, table}, zone) do

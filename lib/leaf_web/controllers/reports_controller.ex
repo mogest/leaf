@@ -21,7 +21,7 @@ defmodule LeafWeb.ReportsController do
         )
 
       {:error, _changeset} ->
-        send_resp(conn, 400, "That report cannot be run as asked.")
+        send_resp(conn, 400, "Couldn't run that report. Check its options.")
     end
   end
 end

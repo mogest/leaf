@@ -71,7 +71,7 @@ defmodule LeafWeb.PolicyFormLive do
 
   defp unknown(socket) do
     socket
-    |> put_flash(:error, "That policy is not on record.")
+    |> put_flash(:error, "Policy not found.")
     |> push_navigate(to: ~p"/settings/policies")
   end
 

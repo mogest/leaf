@@ -29,9 +29,9 @@ defmodule Leaf.Leave.Order do
 
   @invalid %{
     leave_type_id: "Choose a leave type.",
-    from: "Give a first day.",
-    to: "Give a last day.",
-    amount: "The time off has to be a number."
+    from: "Enter a first day.",
+    to: "Enter a last day.",
+    amount: "Enter a number."
   }
 
   @primary_key false
@@ -54,7 +54,7 @@ defmodule Leaf.Leave.Order do
     |> within_reach()
     |> spanning()
     |> measured()
-    |> as_stored(:amount, greater_than: 0, message: "The time off has to be more than nothing.")
+    |> as_stored(:amount, greater_than: 0, message: "Enter an amount greater than zero.")
     |> one_day()
   end
 
@@ -66,7 +66,7 @@ defmodule Leaf.Leave.Order do
 
   defp reach(changeset, %Date{} = from, %Date{} = to) do
     case Date.after?(to, Date.shift(from, year: 2)) do
-      true -> add_error(changeset, :to, "Leave can be asked for at most two years at a time.")
+      true -> add_error(changeset, :to, "A request can cover at most two years.")
       false -> changeset
     end
   end
@@ -98,7 +98,7 @@ defmodule Leaf.Leave.Order do
   defp asked_of(changeset, _amount, %Date.Range{first: date, last: date}), do: changeset
 
   defp asked_of(changeset, _amount, %Date.Range{}) do
-    add_error(changeset, :amount, "Part of a day can only be asked of a single day.")
+    add_error(changeset, :amount, "Part days can only be requested for a single day.")
   end
 
   defp asked_of(changeset, _amount, _span), do: changeset

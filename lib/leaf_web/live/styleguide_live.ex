@@ -250,7 +250,7 @@ defmodule LeafWeb.StyleguideLive do
             <tr>
               <th scope="col">Name</th>
               <th scope="col">Counted in</th>
-              <th scope="col">Standing</th>
+              <th scope="col">Status</th>
               <td></td>
             </tr>
           </thead>

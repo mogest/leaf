@@ -66,7 +66,7 @@ defmodule LeafWeb.CalendarFormLive do
 
         <footer>
           <p :if={@calendar && @calendar.regions != []}>
-            Changing the time zone here leaves its regions' zones as they are.
+            Changing this time zone doesn't change its regions' time zones.
           </p>
           <button class="button" type="submit">Save</button>
           <.link navigate={back(@calendar)}>Cancel</.link>
@@ -93,7 +93,7 @@ defmodule LeafWeb.CalendarFormLive do
 
   defp unknown(socket) do
     socket
-    |> put_flash(:error, "That calendar is not on record.")
+    |> put_flash(:error, "Calendar not found.")
     |> push_navigate(to: ~p"/settings/calendars")
   end
 

@@ -84,7 +84,7 @@ defmodule LeafWeb.CalendarLive do
                     type="button"
                     phx-click="remove"
                     phx-value-id={holiday.id}
-                    data-confirm="Remove this holiday? Every allowance drawn from this calendar is recounted."
+                    data-confirm="Remove this holiday? Public holiday allowances based on this calendar will be recalculated."
                   >
                     Remove
                   </button>
@@ -150,7 +150,7 @@ defmodule LeafWeb.CalendarLive do
 
   defp unknown(socket) do
     socket
-    |> put_flash(:error, "That calendar is not on record.")
+    |> put_flash(:error, "Calendar not found.")
     |> push_navigate(to: ~p"/settings/calendars")
   end
 
@@ -181,7 +181,7 @@ defmodule LeafWeb.CalendarLive do
   defp moves_to(date), do: Wording.date(date)
 
   defp added(socket, {:ok, holiday}) do
-    socket |> put_flash(:info, "#{holiday.name} is on the calendar.") |> blank() |> listed()
+    socket |> put_flash(:info, "#{holiday.name} added.") |> blank() |> listed()
   end
 
   defp added(socket, {:error, changeset}) do
@@ -189,7 +189,7 @@ defmodule LeafWeb.CalendarLive do
   end
 
   defp remove(socket, :error) do
-    put_flash(socket, :error, "That holiday is not on this calendar.")
+    put_flash(socket, :error, "Holiday not found.")
   end
 
   defp remove(socket, {:ok, holiday}) do
@@ -201,6 +201,6 @@ defmodule LeafWeb.CalendarLive do
   defp removed(socket, {:ok, _holiday}), do: put_flash(socket, :info, "Removed.")
 
   defp removed(socket, {:error, _changeset}) do
-    put_flash(socket, :error, "That would not come off the calendar.")
+    put_flash(socket, :error, "Couldn't remove that.")
   end
 end

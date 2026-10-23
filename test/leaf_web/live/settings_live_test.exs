@@ -63,17 +63,16 @@ defmodule LeafWeb.SettingsLiveTest do
     {:ok, live, html} = live(context.conn, ~p"/settings/leave-types")
     assert html =~ "Study"
 
-    assert live |> element("button", "Stop offering") |> render_click() =~
-             "Study is no longer offered."
+    assert live |> element("button", "Withdraw") |> render_click() =~ "Study withdrawn."
 
     {:ok, archived} = Policies.fetch_leave_type(leave_type.id)
     assert archived.archived_at
     assert archived.suspends_accrual
 
     {:ok, _page, html} = live(context.conn, ~p"/settings/leave-types/#{leave_type}")
-    assert html =~ "Not offered in new configuration since"
+    assert html =~ "It can&#39;t be added to new policies"
 
-    assert live |> element("button", "Offer again") |> render_click() =~ "Study is offered again."
+    assert live |> element("button", "Restore") |> render_click() =~ "Study restored."
     assert {:ok, %{archived_at: nil}} = Policies.fetch_leave_type(leave_type.id)
   end
 
@@ -148,9 +147,9 @@ defmodule LeafWeb.SettingsLiveTest do
     assert {:ok, %{archived_at: %DateTime{}}} = Policies.fetch_leave_policy(policy.id)
 
     {:ok, _page, html} = live(context.conn, ~p"/settings/policies/#{policy}")
-    assert html =~ "Nobody new goes on it"
+    assert html =~ "It can&#39;t be assigned to anyone new"
 
-    live |> element("button", "Use again") |> render_click()
+    live |> element("button", "Restore") |> render_click()
     assert {:ok, %{archived_at: nil}} = Policies.fetch_leave_policy(policy.id)
 
     {:ok, live, _html} = live(context.conn, ~p"/settings/policies/#{policy}/edit")
@@ -323,7 +322,7 @@ defmodule LeafWeb.SettingsLiveTest do
       |> render_submit()
       |> follow_redirect(context.conn)
 
-    assert html =~ "Auckland is a region of New Zealand."
+    assert html =~ "Region Auckland added to New Zealand."
 
     assert [held, region] = Org.calendars(context.organisation.id)
     assert held.id == country.id
@@ -337,7 +336,7 @@ defmodule LeafWeb.SettingsLiveTest do
     assert {:error, {:live_redirect, %{to: "/settings/calendars", flash: flash}}} =
              live(context.conn, ~p"/settings/calendars/#{region}/regions/new")
 
-    assert flash["error"] == "That is not a country's calendar."
+    assert flash["error"] == "Regions can only be added to a country."
 
     html =
       live
@@ -367,7 +366,7 @@ defmodule LeafWeb.SettingsLiveTest do
       live(context.conn, ~p"/settings/policies/#{policy}/entitlements/#{entitlement}")
 
     html = render_async(live, 2000)
-    assert html =~ "How it plays out"
+    assert html =~ "<h2>Preview</h2>"
     assert html =~ "Granted in the first year"
     refute html =~ "above the cap"
 
@@ -384,7 +383,7 @@ defmodule LeafWeb.SettingsLiveTest do
     # A year's 365 trimmed to 40, then 40 and the next year's 365 trimmed to 40, twice.
     assert live |> element("dl") |> render() ==
              "<dl><div><dt>Granted in the first year</dt><dd>365 hours</dd></div>" <>
-               "<div><dt>Most held at once</dt><dd>405 hours</dd></div>" <>
+               "<div><dt>Highest balance</dt><dd>405 hours</dd></div>" <>
                "<div><dt>Lost over three years</dt><dd>1055 hours</dd></div></dl>"
 
     assert live |> element("button", "Three days a week") |> render_click() =~
@@ -393,7 +392,7 @@ defmodule LeafWeb.SettingsLiveTest do
     live |> form("#entitlement", policy_entitlement: %{"grant_amount" => "-1"}) |> render_change()
 
     html = render_async(live, 2000)
-    assert html =~ "Fix the errors to see how it plays out."
+    assert html =~ "Fix the errors to see the preview."
     assert html =~ "Loses 179 hours above the cap on 3 March 2025"
   end
 
@@ -402,7 +401,7 @@ defmodule LeafWeb.SettingsLiveTest do
     policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
 
     {:ok, live, html} = live(context.conn, ~p"/settings/policies/#{policy}/entitlements/new")
-    refute html =~ "How it plays out"
+    refute html =~ "<h2>Preview</h2>"
 
     live
     |> form("#entitlement",
@@ -412,7 +411,7 @@ defmodule LeafWeb.SettingsLiveTest do
 
     live |> form("#entitlement", policy_entitlement: %{"leave_type_id" => ""}) |> render_change()
 
-    refute render_async(live, 2000) =~ "How it plays out"
+    refute render_async(live, 2000) =~ "<h2>Preview</h2>"
   end
 
   test "a policy will not act on another policy's entitlement", context do
@@ -426,7 +425,7 @@ defmodule LeafWeb.SettingsLiveTest do
     {:ok, live, _html} = live(context.conn, ~p"/settings/policies/#{policy}")
 
     assert render_click(live, "remove", %{"id" => entitlement.id}) =~
-             "That entitlement is not on this policy."
+             "Entitlement not found."
 
     assert [%{id: id}] = Policies.entitlements(other.id)
     assert id == entitlement.id
@@ -444,7 +443,7 @@ defmodule LeafWeb.SettingsLiveTest do
              live(context.conn, ~p"/settings/policies/#{policy}/entitlements/#{entitlement}")
 
     assert to == "/settings/policies/#{policy.id}"
-    assert flash["error"] == "That entitlement is not on this policy."
+    assert flash["error"] == "Entitlement not found."
   end
 
   test "an entitlement leave has been taken against closes, and says why nothing else changes",
@@ -470,7 +469,7 @@ defmodule LeafWeb.SettingsLiveTest do
 
     assert live
            |> form("#entitlement", policy_entitlement: %{"grant_amount" => "200"})
-           |> render_submit() =~ "Leave has been taken against this entitlement"
+           |> render_submit() =~ "Leave has already been taken under this entitlement"
 
     {:ok, live, _html} =
       live(context.conn, ~p"/settings/policies/#{policy}/entitlements/#{entitlement}")
@@ -532,7 +531,7 @@ defmodule LeafWeb.SettingsLiveTest do
     {:ok, live, _html} = live(context.conn, ~p"/settings/calendars/#{calendar}")
 
     assert render_click(live, "remove", %{"id" => holiday.id}) =~
-             "That holiday is not on this calendar."
+             "Holiday not found."
 
     assert [^holiday] = Org.public_holidays(other.id)
   end

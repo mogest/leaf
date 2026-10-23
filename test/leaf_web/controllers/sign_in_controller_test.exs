@@ -48,7 +48,7 @@ defmodule LeafWeb.SignInControllerTest do
       conn = get(recycle(context.conn), ~p"/sign-in/callback")
 
       assert redirected_to(conn) == "/sign-in"
-      assert conn.assigns.flash["error"] == "Nobody in Leaf has the address #{email}."
+      assert conn.assigns.flash["error"] == "No one in Leaf has the email address #{email}."
       refute get_session(conn, "person_id")
     end
   end
@@ -66,7 +66,7 @@ defmodule LeafWeb.SignInControllerTest do
     conn = get(recycle(context.conn), ~p"/sign-in/callback")
 
     assert redirected_to(conn) == "/sign-in"
-    assert conn.assigns.flash["error"] == "Leaf is only open to you while you're employed."
+    assert conn.assigns.flash["error"] == "You can only use Leaf during your employment."
     refute get_session(conn, "person_id")
   end
 
