@@ -293,7 +293,7 @@ defmodule Leaf.PeopleTest do
     assert People.fetch_unarchived_person(rae.id) == :error
     assert {:ok, %{archived_at: %DateTime{}}} = People.fetch_person(rae.id)
     {:ok, request} = Leave.fetch_request(request.id)
-    refute Leave.revisable?(request, admin)
+    assert Leave.cancel(request, admin) == {:error, :forbidden}
 
     wren =
       Fixtures.person(%{

@@ -50,13 +50,10 @@ defmodule Leaf.People do
   @doc "Creates a person."
   @spec create_person(Organisation.t(), Person.t() | nil, map()) :: Audit.written(Person.t())
   def create_person(organisation, actor, attrs) do
-    Repo.transact(fn ->
-      lock_organisation(organisation.id)
+    changeset = Person.changeset(%Person{organisation_id: organisation.id}, attrs)
 
-      %Person{organisation_id: organisation.id}
-      |> Person.changeset(attrs)
-      |> validate_reporting_line()
-      |> Audit.write("person.created", actor)
+    Leave.serialised(List.wrap(Changeset.get_change(changeset, :manager_id)), fn ->
+      changeset |> validate_reporting_line() |> Audit.write("person.created", actor)
     end)
   end
 
@@ -148,10 +145,12 @@ defmodule Leaf.People do
   def unarchive_person(person, actor) do
     {:ok, person} = fetch_person(person.id)
 
-    person
-    |> archived(nil)
-    |> validate_managed()
-    |> Audit.write("person.unarchived", actor, person.id)
+    Leave.serialised(List.wrap(person.manager_id), fn ->
+      person
+      |> archived(nil)
+      |> validate_managed()
+      |> Audit.write("person.unarchived", actor, person.id)
+    end)
   end
 
   @doc "The person, archived or not, or `:error` where no such person exists."
