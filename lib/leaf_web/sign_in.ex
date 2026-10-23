@@ -4,9 +4,10 @@ defmodule LeafWeb.SignIn do
 
   Who that is gets settled by `LeafWeb.SignInController`, in development by
   `LeafWeb.SignInPickerController`, or by an administrator impersonating them through
-  `LeafWeb.ImpersonationController`; from then on the session holds only their id, and while
-  impersonating, the administrator's. An impersonation lasts an hour, after which the session names
-  nobody.
+  `LeafWeb.ImpersonationController`; from then on the session holds only their id, when it was
+  signed in, and while impersonating, the administrator's id. A session lasts a week from signing in
+  and an impersonation an hour, after which the session names nobody. Neither is renewed by use, so
+  a copied cookie runs out with the rest.
 
   Each signing in names a socket id of its own, and signing in again or out disconnects whatever the
   last one had open, so no page goes on acting as somebody the session no longer names.
@@ -22,9 +23,11 @@ defmodule LeafWeb.SignIn do
   alias Phoenix.LiveView
 
   @named "person_id"
+  @signed_in_at "signed_in_at"
   @impersonation "impersonation"
   @socket "live_socket_id"
   @impersonation_lasts 60 * 60
+  @session_lasts 7 * 24 * 60 * 60
 
   @doc "Puts whoever the session names on the connection."
   @spec fetch_current_person(Plug.Conn.t(), keyword()) :: Plug.Conn.t()
@@ -40,8 +43,8 @@ defmodule LeafWeb.SignIn do
   given. `:zone` is their time zone, which every stored instant is shown in. Each event reads
   `:current_person` afresh, so a role changed since mount counts on a page already open, and then
   goes through `LeafWeb.AuthorizedEvents`, since a page a member may open can still carry an
-  administrator's buttons. The `Viewer` keeps what mount saw. An impersonated page sends itself to sign in when the
-  hour is up, rather than waiting for the next mount to find it over.
+  administrator's buttons. The `Viewer` keeps what mount saw. A page sends itself to sign in when
+  the session or its impersonation runs out, rather than waiting for the next mount to find it over.
 
   A session naming nobody is sent to sign in, the same as `require_person/2` sends the dead render.
   The requirement is not a hook of its own: every live session needs `:current_person`, so a page
@@ -54,7 +57,7 @@ defmodule LeafWeb.SignIn do
   def on_mount(:current_person, _params, session, socket) do
     case signed_in(session) do
       nil -> {:halt, LiveView.redirect(socket, to: "/sign-in")}
-      person -> {:cont, viewing(socket, person, session[@impersonation])}
+      person -> {:cont, viewing(socket, person, session)}
     end
   end
 
@@ -66,18 +69,20 @@ defmodule LeafWeb.SignIn do
     {:halt, socket |> LiveView.put_flash(:error, refused()) |> LiveView.redirect(to: "/")}
   end
 
-  @doc "Names `person` in the session, ending any impersonation and disconnecting open pages."
+  @doc "Names `person` for a week, ending any impersonation and disconnecting open pages."
   @spec sign_in(Plug.Conn.t(), People.Person.t()) :: Plug.Conn.t()
-  def sign_in(conn, person), do: name(conn, person.id)
+  def sign_in(conn, person) do
+    conn |> name(person.id) |> put_session(@signed_in_at, System.os_time(:second))
+  end
 
-  @doc "Names `person` until the impersonation's hour is up, remembering who started it."
+  @doc "Names `person` for an hour, or until the session runs out, remembering who started it."
   @spec impersonate(Plug.Conn.t(), People.Person.t()) :: Plug.Conn.t()
   def impersonate(conn, person) do
     impersonation =
       get_session(conn, @impersonation) ||
         {conn.assigns.current_person.id, System.os_time(:second) + @impersonation_lasts}
 
-    conn |> sign_in(person) |> put_session(@impersonation, impersonation)
+    conn |> name(person.id) |> put_session(@impersonation, impersonation)
   end
 
   @doc "Names whoever was impersonating in the session again."
@@ -129,24 +134,29 @@ defmodule LeafWeb.SignIn do
     conn
   end
 
-  defp signed_in(%{@named => id, @impersonation => {_impersonator, until}}) do
-    case System.os_time(:second) < until do
+  defp signed_in(%{@named => id, @signed_in_at => signed_in_at} = session) do
+    case System.os_time(:second) < ends(signed_in_at, session[@impersonation]) do
       true -> named(id)
       false -> nil
     end
   end
 
-  defp signed_in(%{@named => id}), do: named(id)
   defp signed_in(_session), do: nil
 
-  defp viewing(socket, person, impersonation) do
+  defp ends(signed_in_at, nil), do: signed_in_at + @session_lasts
+  defp ends(signed_in_at, {_impersonator, until}), do: min(signed_in_at + @session_lasts, until)
+
+  defp viewing(socket, person, session) do
     socket
     |> Component.assign(:current_person, person)
-    |> Component.assign(:viewer, Viewer.new(person, impersonation != nil))
+    |> Component.assign(:viewer, Viewer.new(person, session[@impersonation] != nil))
     |> Component.assign(:zone, People.time_zone(person))
     |> LiveView.attach_hook(:current_person, :handle_event, &current/3)
     |> AuthorizedEvents.enforce()
-    |> expiring(impersonation, LiveView.connected?(socket))
+    |> expiring(
+      ends(session[@signed_in_at], session[@impersonation]),
+      LiveView.connected?(socket)
+    )
   end
 
   defp current(_event, _params, socket) do
@@ -156,19 +166,15 @@ defmodule LeafWeb.SignIn do
     end
   end
 
-  defp expiring(socket, {_impersonator, until}, true) do
-    Process.send_after(
-      self(),
-      :impersonation_over,
-      max(until - System.os_time(:second), 0) * 1000
-    )
+  defp expiring(socket, ends, true) do
+    Process.send_after(self(), :session_over, max(ends - System.os_time(:second), 0) * 1000)
 
-    LiveView.attach_hook(socket, :impersonation_over, :handle_info, &over/2)
+    LiveView.attach_hook(socket, :session_over, :handle_info, &over/2)
   end
 
-  defp expiring(socket, _impersonation, _connected?), do: socket
+  defp expiring(socket, _ends, false), do: socket
 
-  defp over(:impersonation_over, socket), do: {:halt, LiveView.redirect(socket, to: "/sign-in")}
+  defp over(:session_over, socket), do: {:halt, LiveView.redirect(socket, to: "/sign-in")}
   defp over(_message, socket), do: {:cont, socket}
 
   defp named(id) do

@@ -34,7 +34,7 @@ defmodule LeafWeb.ImpersonationControllerTest do
 
     {:ok, live, _html} = live(recycle(conn), ~p"/")
     assert has_element?(live, "aside", "Impersonating Rae Halloran.")
-    send(live.pid, :impersonation_over)
+    send(live.pid, :session_over)
     assert_redirect(live, "/sign-in")
 
     impersonating = get_session(conn, "live_socket_id")
@@ -94,6 +94,7 @@ defmodule LeafWeb.ImpersonationControllerTest do
       build_conn()
       |> Plug.Test.init_test_session(%{
         "person_id" => context.person.id,
+        "signed_in_at" => System.os_time(:second),
         "impersonation" => impersonation
       })
       |> delete(~p"/impersonate")

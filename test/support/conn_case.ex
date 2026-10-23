@@ -35,8 +35,8 @@ defmodule LeafWeb.ConnCase do
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
 
-  @doc "Names `person` in the session, as signing in does."
+  @doc "Names `person` in the session by signing them in."
   def sign_in(conn, person) do
-    conn |> Plug.Test.init_test_session(%{}) |> Plug.Conn.put_session("person_id", person.id)
+    conn |> Plug.Test.init_test_session(%{}) |> LeafWeb.SignIn.sign_in(person)
   end
 end
