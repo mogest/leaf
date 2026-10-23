@@ -278,7 +278,7 @@ defmodule Leaf.Wording do
 
   @doc "Whether a leave type or a policy is still offered, and when it stopped being."
   @spec offering(LeavePolicy.t() | LeaveType.t(), String.t()) :: String.t()
-  def offering(%{archived_at: nil}, _zone), do: "offered"
+  def offering(%{archived_at: nil}, _zone), do: "active"
   def offering(record, zone), do: "withdrawn #{date(record.archived_at, zone)}"
 
   @doc "The tone a withdrawn leave type or policy is read in, and none while it is still offered."

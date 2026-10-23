@@ -258,7 +258,7 @@ defmodule LeafWeb.StyleguideLive do
             <tr>
               <th scope="row"><.link navigate={@here}>Annual leave</.link></th>
               <td>hours</td>
-              <td>offered</td>
+              <td>active</td>
               <td>
                 <Parts.row_menu id="specimen-annual" label="Annual leave">
                   <button type="button">Withdraw</button>

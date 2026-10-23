@@ -1182,7 +1182,7 @@ main.person section:not(.balance-sheet) > dl {
       flex-basis: 100%;
 
       &::before {
-        content: "lapses ";
+        content: "expires ";
       }
     }
 
@@ -1226,6 +1226,7 @@ main.policy table {
   & small {
     display: block;
     font-size: var(--size-sm);
+    white-space: normal;
   }
 
   & td[colspan] {
