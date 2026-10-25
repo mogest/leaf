@@ -412,7 +412,7 @@ defmodule LeafWeb.BalancesLive do
   defp step(year, leave_type, reading),
     do: path(reading.person, reading.mine?, leave_type.id, reading.as_at, year)
 
-  defp opening(nil), do: "Brought forward"
+  defp opening(nil), do: "Carried forward"
   defp opening(date), do: "Opening balance, #{Wording.date(date)}"
 
   defp earned(true), do: "Granted"

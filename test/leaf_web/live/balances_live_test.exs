@@ -176,7 +176,7 @@ defmodule LeafWeb.BalancesLiveTest do
     # Leave counted in days says how many in its figure, so the line does not count them again.
     assert has_element?(live, "tbody tr + tr", ~r/^\s*1 July\s*Taken\s*-0.5\s*$/)
     refute has_element?(live, "figure")
-    refute html =~ "Brought forward"
+    refute html =~ "Carried forward"
 
     {:ok, _live, html} = live(context.conn, ~p"/balances/#{bereavement}?as_at=2023-06-01")
 

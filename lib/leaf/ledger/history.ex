@@ -118,7 +118,7 @@ defmodule Leaf.Ledger.History do
   outside them reads as the nearer end.
 
   An opening balance dated where the ledger starts is what the person held before it, so it is
-  brought forward into the first year, and `brought_in` is its date.
+  brought forward into the first year. `brought_in` is where the ledger starts, in the year it does.
 
   `granted?` is whether the type is granted whole at a period's start rather than earned as it
   goes, by `timings`, the grant timing of each entitlement the person holds in it.
@@ -129,15 +129,15 @@ defmodule Leaf.Ledger.History do
     %{organisation: organisation} = person
     %{year_start_month: start_month} = organisation
     [starts | _] = tracked = tracked(person, organisation, as_at)
-    eve = start_month |> opening(year_of(starts, start_month)) |> Date.add(-1)
+    %{first: opens} = starts |> Dates.year_of(start_month) |> Dates.year(start_month)
+    eve = Date.add(opens, -1)
     events = events(statement, starts, eve)
     moved = for %{dates: dates} <- events, dates.last != eve, do: dates.last
     {first, last} = years(tracked ++ moved, start_month)
-    year = (year || year_of(as_at, start_month)) |> max(first) |> min(last)
-    opens = opening(start_month, year)
-    dates = Date.range(opens, opens |> Date.shift(year: 1) |> Date.add(-1))
+    year = (year || Dates.year_of(as_at, start_month)) |> max(first) |> min(last)
+    dates = Dates.year(year, start_month)
     months = Dates.months(dates)
-    totals = totals(events, [Date.add(opens, -1) | Enum.map(months, & &1.last)])
+    totals = totals(events, [Date.add(dates.first, -1) | Enum.map(months, & &1.last)])
     in_year = Enum.filter(events, &(&1.dates.last in dates))
 
     %__MODULE__{
@@ -146,7 +146,7 @@ defmodule Leaf.Ledger.History do
       previous: within(year - 1, first, last),
       next: within(year + 1, first, last),
       brought_forward: Decimal.round(hd(totals), 2),
-      brought_in: brought_in(statement, starts, dates),
+      brought_in: if(starts in dates, do: starts),
       granted?: Enum.uniq(timings) == [:period_start],
       months: months(months, totals, in_year ++ employment(person, dates), as_at),
       chart: chart(events, dates, as_at)
@@ -158,14 +158,6 @@ defmodule Leaf.Ledger.History do
       {:ok, range} -> [range.first, range.last]
       :error -> [as_at]
     end
-  end
-
-  defp opening(start_month, year), do: Date.new!(year, start_month, 1)
-
-  defp brought_in(statement, starts, dates) do
-    Enum.find_value(statement.movements, fn movement ->
-      if brought?(movement, starts) and movement.date in dates, do: movement.date
-    end)
   end
 
   # Only an opening balance from where the ledger starts is what the person brought into it; one
@@ -207,10 +199,7 @@ defmodule Leaf.Ledger.History do
   defp on(date), do: Date.range(date, date)
 
   defp years(dates, start_month),
-    do: dates |> Enum.map(&year_of(&1, start_month)) |> Enum.min_max()
-
-  defp year_of(date, start_month) when date.month >= start_month, do: date.year
-  defp year_of(date, _start_month), do: date.year - 1
+    do: dates |> Enum.map(&Dates.year_of(&1, start_month)) |> Enum.min_max()
 
   defp within(year, first, last) when year in first..last//1, do: year
   defp within(_year, _first, _last), do: nil

@@ -281,6 +281,25 @@ defmodule LeafWeb.EntitlementLive do
           </.radios>
         </section>
 
+        <section :if={@terms.amount_source != :none}>
+          <header>
+            <h2>Leave the balance doesn't cover</h2>
+          </header>
+          <.radios
+            field={@form[:balance_check]}
+            label="Needs an administrator to approve it"
+            help="Today's balance is what the person has now, after all their approved leave is taken off,
+              including leave booked for later. The second option also counts the leave they'll build up before
+              the last day they've asked for. Either way, they can still make the request, but only an
+              administrator can approve it, not their manager, and leave that's usually approved automatically
+              will wait for one."
+          >
+            <:option value="off" label="Never" />
+            <:option value="today" label="If today's balance doesn't cover it" />
+            <:option value="projected" label="If the balance won't cover it by the time it's taken" />
+          </.radios>
+        </section>
+
         <section :if={@unfunded != []}>
           <header>
             <h2>Booked leave this change would leave unfunded</h2>

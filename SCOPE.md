@@ -365,7 +365,8 @@ configurable delegate in v1.
 - Multi-day requests span only working days per the person's pattern.
 - Optional note/reason.
 - Shows the projected balance if approved, including if it goes negative — warns but does not
-  block where the policy allows.
+  block. Where the entitlement checks the balance (§5.3), it says only an administrator can approve
+  it, and warns where the person's other pending requests would take it under too.
 - **Retrospective entry** is supported: sick leave in particular is often recorded after the
   fact.
 
@@ -373,6 +374,11 @@ configurable delegate in v1.
 - Request goes to the person's manager, or to an administrator where there isn't one
   available.
 - Manager approves or declines, with an optional comment.
+- An entitlement may **check the balance**: leave that would take it under zero is then an
+  administrator's to approve, judged on the balance today or projected to the leave's last day.
+  Leave of a type needing no approval waits for an administrator instead of being approved as filed.
+  Approved leave amended further short of the balance is refused, unless an administrator amends
+  it; leave approved as it was filed goes back to waiting for an administrator instead.
 - A request whose days are all of types that need no approval (§4.6) is approved as it is filed,
   by whoever filed it. Its approvers are told of it, and of each change to it, rather than asked.
 - Pending requests are visible to the approver as a queue and appear on calendars as
@@ -457,7 +463,8 @@ not an afterthought.
    type is day-based (sick, birthday, longevity). A balance is shown in its own unit (§5.2).
 4. **Arbitrary fractions of an hour are valid**, and one day can be covered by several leave
    types.
-5. **Negative balances are allowed, not blocked.** Advance leave is a real thing.
+5. **Negative balances are allowed, not blocked.** Advance leave is a real thing. An entitlement
+   may ask that an administrator approve it (§5.3), but nobody is stopped from asking.
 6. **The system never talks about money.**
 7. **History is editable.** Corrections are expected and the system recalculates rather than
    forcing admins into a spreadsheet. A balance is always worked out from the record rather than

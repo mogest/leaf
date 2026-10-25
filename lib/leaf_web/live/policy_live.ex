@@ -129,6 +129,7 @@ defmodule LeafWeb.PolicyLive do
     [
       starting(entitlement.effective_from, today),
       taken_after(entitlement.takeable_after_months),
+      checked(entitlement.balance_check),
       granting_to(entitlement.granted_to),
       until(entitlement.effective_to)
     ]
@@ -142,6 +143,10 @@ defmodule LeafWeb.PolicyLive do
 
   defp taken_after(nil), do: nil
   defp taken_after(months), do: "can be taken after #{months(months)}"
+
+  defp checked(:off), do: nil
+  defp checked(:today), do: "an administrator approves leave today's balance doesn't cover"
+  defp checked(:projected), do: "an administrator approves leave the balance won't cover by then"
 
   defp granting_to(nil), do: nil
   defp granting_to(date), do: "stops granting after #{Wording.date(date)}"

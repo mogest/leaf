@@ -1639,7 +1639,7 @@ defmodule Leaf.LedgerTest do
 
     started = Ledger.history(person, statement, 2023)
 
-    assert {started.previous, started.next} == {nil, 2024}
+    assert {started.previous, started.next, started.brought_in} == {nil, 2024, ~D[2024-03-04]}
     assert [march] = started.months
 
     assert lines(march) == [

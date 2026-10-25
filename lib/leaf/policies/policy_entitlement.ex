@@ -17,6 +17,10 @@ defmodule Leaf.Policies.PolicyEntitlement do
   of the type may be taken at all, so NZ bereavement leave waits six months, and sick leave may or
   may not be taken in advance of its first grant as the organisation chooses.
 
+  `balance_check` is whether leave that takes the balance under nothing needs an administrator to
+  approve it, and which balance says so: the one `:today`, or the one `:projected` to the last day
+  taken, with what accrues by then. A type that grants nothing has no balance to check.
+
   Two grant windows for one leave type under one policy may not overlap: the balance would be
   granted twice over. Changing the terms therefore means closing the old row with `granted_to` and
   opening the next the day after — their lives may overlap, and it is closing with `effective_to`
@@ -35,6 +39,7 @@ defmodule Leaf.Policies.PolicyEntitlement do
   @grant_periods [:month, :quarter, :year]
   @grant_timings [:daily, :period_start]
   @expiry_rules [:never, :cap, :grant_period_end, :window]
+  @balance_checks [:off, :today, :projected]
 
   @grant_fields [:grant_amount, :grant_basis, :grant_period, :grant_timing]
 
@@ -49,7 +54,8 @@ defmodule Leaf.Policies.PolicyEntitlement do
     :expiry_window_days,
     :suspension_allowance_weeks,
     :qualifying_months,
-    :takeable_after_months | @grant_fields
+    :takeable_after_months,
+    :balance_check | @grant_fields
   ]
 
   schema "policy_entitlements" do
@@ -68,6 +74,7 @@ defmodule Leaf.Policies.PolicyEntitlement do
     field :suspension_allowance_weeks, :decimal
     field :qualifying_months, :integer
     field :takeable_after_months, :integer
+    field :balance_check, Ecto.Enum, values: @balance_checks, default: :off
 
     belongs_to :leave_policy, LeavePolicy
     belongs_to :leave_type, LeaveType
@@ -86,7 +93,8 @@ defmodule Leaf.Policies.PolicyEntitlement do
       :effective_from,
       :amount_source,
       :pro_rated_by_fte,
-      :expiry_rule
+      :expiry_rule,
+      :balance_check
     ])
     |> validate_amount_source()
     |> validate_expiry_rule()
@@ -124,6 +132,7 @@ defmodule Leaf.Policies.PolicyEntitlement do
     |> clear(@grant_fields)
     |> put_change(:pro_rated_by_fte, false)
     |> put_change(:expiry_rule, :never)
+    |> put_change(:balance_check, :off)
   end
 
   defp settle_source(changeset, :public_holidays), do: clear(changeset, [:grant_amount])

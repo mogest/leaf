@@ -123,7 +123,8 @@ defmodule Leaf.Policies do
   raised unpaid leave allowance and the service before it may be taken. The allowance applies to
   every period the entitlement has covered, not just from now, and so only adds to what that leave
   drew on; the service decides only what may be filed, not what anything drew on, though leave
-  already filed inside a raised wait can then be decided or cancelled but not amended. Anything else
+  already filed inside a raised wait can then be decided or cancelled but not amended. The balance
+  check decides only who may approve what is still to be decided, so it may change too. Anything else
   is refused with `{:error, :drawn_on}`, since it would rewrite what the leave already taken drew on.
   """
   @spec update_entitlement(PolicyEntitlement.t(), Person.t() | nil, map()) ::
@@ -148,7 +149,8 @@ defmodule Leaf.Policies do
   end
 
   defp allowed_once_drawn?(changeset) do
-    case Map.keys(changeset.changes) -- [:granted_to, :effective_to, :takeable_after_months] do
+    case Map.keys(changeset.changes) --
+           [:granted_to, :effective_to, :takeable_after_months, :balance_check] do
       [] -> true
       [:suspension_allowance_weeks] -> raised?(changeset)
       _terms -> false

@@ -170,6 +170,7 @@ defmodule LeafWeb.Parts do
 
   attr :cancel, :boolean, default: false, doc: "whether the page answers `\"cancel-request\"`"
 
+  slot :steps, doc: "`steps/1` beside the title, to move between the lists it names"
   slot :empty, required: true, doc: "what to say where there are none"
   slot :footer, doc: "anything to say under the list"
 
@@ -178,6 +179,7 @@ defmodule LeafWeb.Parts do
     <section class="requests">
       <header :if={@title}>
         <h2>{@title}</h2>
+        {render_slot(@steps)}
       </header>
       <div :if={@requests != []}>
         <table>

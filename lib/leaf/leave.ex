@@ -12,15 +12,17 @@ defmodule Leaf.Leave do
   was approved as it was filed, which leaves it the person's own. Where a person has no manager, an
   administrator stands in. A refusal comes back as `{:error, :forbidden}` rather than a changeset —
   nothing about it is a matter of what was filled in — or as `{:error, {:stale, since}}` where the
-  request has changed since whoever is acting read it. A write that goes through records itself in the
-  audit log. Once it has, `Leaf.Leave.Notice` tells whoever has to hear about it.
+  request has changed since whoever is acting read it, or as `{:error, :short}` where approving or
+  amending approved leave would take a balance its entitlement checks under nothing, which only an
+  administrator may do. A write that goes through records itself in the audit log. Once it has,
+  `Leaf.Leave.Notice` tells whoever has to hear about it.
 
   Every write against one person's leave happens one at a time, and reads what it is about inside
   that: two of them cannot each find the same day free, nor each decide a request the other has
   already decided.
   """
 
-  import Ecto.Changeset, only: [apply_changes: 1, change: 2]
+  import Ecto.Changeset, only: [apply_changes: 1, change: 2, get_field: 2]
   import Ecto.Query
 
   alias Leaf.Audit
@@ -30,13 +32,16 @@ defmodule Leaf.Leave do
   alias Leaf.Leave.Booked
   alias Leaf.Leave.Day
   alias Leaf.Leave.Diary
+  alias Leaf.Leave.Filed
   alias Leaf.Leave.Month
   alias Leaf.Leave.Notice
   alias Leaf.Leave.Offer
   alias Leaf.Leave.Order
   alias Leaf.Leave.Request
   alias Leaf.Leave.WorkingDay
+  alias Leaf.Ledger
   alias Leaf.Messaging
+  alias Leaf.Org
   alias Leaf.People
   alias Leaf.People.Person
   alias Leaf.Policies.LeaveType
@@ -83,7 +88,8 @@ defmodule Leaf.Leave do
   @doc """
   Files a request for `person`, pending a decision.
 
-  Leave of types that need no approval is approved as it is filed, by whoever filed it.
+  Leave of types that need no approval is approved as it is filed, by whoever filed it, unless it is
+  short of a checked balance and they are not an administrator: then it waits for one.
 
   `attrs` carries a `:days` list of `t:entry/0` and an optional `:note`.
   """
@@ -98,7 +104,7 @@ defmodule Leaf.Leave do
         |> Request.changeset(measured(person, attrs))
         |> Offer.validate(person)
         |> Booked.validate(person)
-        |> filed_by(actor)
+        |> filed_by(person, actor)
         |> Audit.write("leave_request.requested", actor, person.id)
       end
     end)
@@ -109,9 +115,14 @@ defmodule Leaf.Leave do
   Replaces what a request asks for, leaving its status alone.
 
   The days given are the whole of it, so amending is how a request is shortened as well as changed.
+
+  Approved leave may not be left any shorter of a checked balance than it was, except by an
+  administrator. Leave approved as it was filed, amended so by its requester, goes back to waiting
+  for one instead.
   """
   @spec amend(Request.t(), Person.t(), map()) ::
-          {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden | {:stale, since()}}
+          {:ok, Request.t()}
+          | {:error, Ecto.Changeset.t() | :forbidden | :short | {:stale, since()}}
   def amend(request, actor, attrs) do
     as_it_stands(request, fn request ->
       with :ok <- permit(revisable?(request, actor)),
@@ -121,7 +132,8 @@ defmodule Leaf.Leave do
              |> Offer.validate(request.person)
              |> Booked.validate(request.person)
              |> refiled(request, actor),
-           :ok <- permit(revisable?(apply_changes(changeset), actor)) do
+           :ok <- permit(revisable?(apply_changes(changeset), actor)),
+           :ok <- afforded(changeset, request, actor) do
         Audit.write(changeset, "leave_request.amended", actor, request.person_id)
       end
     end)
@@ -130,7 +142,8 @@ defmodule Leaf.Leave do
 
   @doc "Approves a pending request."
   @spec approve(Request.t(), Person.t(), String.t() | nil) ::
-          {:ok, Request.t()} | {:error, Ecto.Changeset.t() | :forbidden | {:stale, since()}}
+          {:ok, Request.t()}
+          | {:error, Ecto.Changeset.t() | :forbidden | :short | {:stale, since()}}
   def approve(request, actor, comment \\ nil), do: decide(request, actor, :approved, comment)
 
   @doc "Declines a pending request."
@@ -322,6 +335,24 @@ defmodule Leaf.Leave do
         group_by: request.id,
         order_by: [desc: min(day.date)],
         preload: [:person, :reviewed_by, days: :leave_type]
+    )
+  end
+
+  @doc """
+  A person's requests over one financial year, of one leave type or all, as `Leaf.Leave.Filed`.
+
+  A nil `year` is the one holding today, and a nil `leave_type_id` is every type.
+  """
+  @spec filed(Person.t(), integer() | nil, Ecto.UUID.t() | nil) :: Filed.t()
+  def filed(person, year, leave_type_id) do
+    {:ok, organisation} = Org.fetch_organisation(person.organisation_id)
+
+    Filed.new(
+      requests(person),
+      organisation.year_start_month,
+      People.today(person),
+      year,
+      leave_type_id
     )
   end
 
@@ -587,6 +618,15 @@ defmodule Leaf.Leave do
 
   def revisable?(_request, _actor), do: false
 
+  @doc """
+  Whether `actor` may approve `request` for what it would leave of the balances it draws on.
+
+  Leave short of a balance its entitlement checks is an administrator's to approve and nobody
+  else's. Whether they may decide it at all is a question for deciding it.
+  """
+  @spec approvable?(Request.t(), Person.t()) :: boolean()
+  def approvable?(request, actor), do: not short?(request.person, request.days, request.id, actor)
+
   @doc "One of a person's balance entries, unless it has been archived."
   @spec fetch_balance_entry(Person.t(), Ecto.UUID.t()) :: {:ok, BalanceEntry.t()} | :error
   def fetch_balance_entry(person, id), do: Repo.fetch(entered(person), id)
@@ -613,10 +653,10 @@ defmodule Leaf.Leave do
 
   defp overseen(approver), do: dynamic([_request, person], person.manager_id == ^approver.id)
 
-  defp filed_by(%{valid?: false} = changeset, _actor), do: changeset
+  defp filed_by(%{valid?: false} = changeset, _person, _actor), do: changeset
 
-  defp filed_by(changeset, actor) do
-    case needs_approval?(changeset) do
+  defp filed_by(changeset, person, actor) do
+    case needs_approval?(changeset) or short?(person, Request.filing(changeset), nil, actor) do
       true ->
         changeset
 
@@ -631,8 +671,9 @@ defmodule Leaf.Leave do
   end
 
   # Leave stays its requester's only while none of it needs approval, and nothing makes it theirs
-  # again. Whoever amends it into leave that does is the one approving it.
-  defp refiled(%{valid?: true} = changeset, %{approved_on_filing: true}, actor) do
+  # again. Whoever amends it into leave that does is the one approving it. Its requester amending it
+  # shorter of a checked balance has it wait for an administrator, as it would have been filed.
+  defp refiled(%{valid?: true} = changeset, %{approved_on_filing: true} = request, actor) do
     case needs_approval?(changeset) do
       true ->
         change(changeset,
@@ -642,11 +683,28 @@ defmodule Leaf.Leave do
         )
 
       false ->
-        changeset
+        waiting_if_worse(changeset, request, actor)
     end
   end
 
   defp refiled(changeset, _request, _actor), do: changeset
+
+  defp waiting_if_worse(changeset, %{person_id: id} = request, %{id: id} = actor) do
+    case worse?(changeset, request, actor) do
+      true ->
+        change(changeset,
+          status: :pending,
+          approved_on_filing: false,
+          reviewed_by_id: nil,
+          reviewed_at: nil
+        )
+
+      false ->
+        changeset
+    end
+  end
+
+  defp waiting_if_worse(changeset, _request, _actor), do: changeset
 
   defp needs_approval?(changeset) do
     changeset
@@ -657,9 +715,37 @@ defmodule Leaf.Leave do
 
   defp now, do: DateTime.truncate(DateTime.utc_now(), :second)
 
+  # Approved leave amended stays approved, so it may not leave a checked balance any shorter.
+  defp afforded(changeset, request, actor) do
+    affordable(get_field(changeset, :status) == :approved and worse?(changeset, request, actor))
+  end
+
+  # What the request holds now is what the amendment replaces, so it is the shortfall to beat.
+  defp worse?(%{valid?: false}, _request, _actor), do: false
+  defp worse?(_changeset, _request, %{role: :admin}), do: false
+
+  defp worse?(changeset, request, _actor) do
+    %{person: person, days: days, id: id} = request
+    before = Map.new(Ledger.short(person, days, id), &{&1.leave_type.id, &1.balance})
+
+    person
+    |> Ledger.short(Request.filing(changeset), id)
+    |> Enum.any?(&Decimal.lt?(&1.balance, Map.get(before, &1.leave_type.id, 0)))
+  end
+
+  defp approvable(:approved, request, actor), do: affordable(not approvable?(request, actor))
+  defp approvable(_status, _request, _actor), do: :ok
+
+  defp affordable(false), do: :ok
+  defp affordable(true), do: {:error, :short}
+
+  defp short?(_person, _days, _request_id, %{role: :admin}), do: false
+  defp short?(person, days, request_id, _actor), do: Ledger.short(person, days, request_id) != []
+
   defp decide(request, actor, status, comment) do
     as_it_stands(request, fn request ->
-      with :ok <- permit(request.status == :pending and approver?(request.person, actor)) do
+      with :ok <- permit(request.status == :pending and approver?(request.person, actor)),
+           :ok <- approvable(status, request, actor) do
         review(request, actor, status, comment)
       end
     end)

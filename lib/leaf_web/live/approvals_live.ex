@@ -10,6 +10,7 @@ defmodule LeafWeb.ApprovalsLive do
 
   alias Leaf.Leave
   alias Leaf.Ledger
+  alias Leaf.People
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
@@ -53,7 +54,10 @@ defmodule LeafWeb.ApprovalsLive do
             </span>
           </p>
           <blockquote :if={request.note}>“{request.note}”</blockquote>
-          <p :if={request.overdrawn} data-tone="wrong">
+          <p :if={request.short} data-tone="wrong">
+            {request.short} Only an administrator can approve it.
+          </p>
+          <p :if={request.overdrawn && !request.short} data-tone="wrong">
             Taking leave in advance. It can still be approved.
           </p>
           <.form
@@ -67,7 +71,15 @@ defmodule LeafWeb.ApprovalsLive do
           >
             <input type="hidden" name="request_id" value={request.id} />
             <.input field={form[:comment]} type="textarea" label="Comment (optional)" />
-            <button class="button" type="submit" name="decision" value="approve">Approve</button>
+            <button
+              disabled={!request.approvable?}
+              class="button"
+              type="submit"
+              name="decision"
+              value="approve"
+            >
+              Approve
+            </button>
             <button type="submit" name="decision" value="decline">Decline</button>
           </.form>
         </li>
@@ -81,12 +93,12 @@ defmodule LeafWeb.ApprovalsLive do
     awaiting = Leave.awaiting(socket.assigns.current_person)
 
     assign(socket,
-      waiting: Enum.map(awaiting, &shown(&1, socket.assigns.zone)),
+      waiting: Enum.map(awaiting, &shown(&1, socket.assigns.current_person, socket.assigns.zone)),
       requests_by_id: Map.new(awaiting, &{&1.id, &1})
     )
   end
 
-  defp shown(request, zone) do
+  defp shown(request, viewer, zone) do
     projected = Ledger.projected(request.person, request.days)
 
     %{
@@ -99,7 +111,12 @@ defmodule LeafWeb.ApprovalsLive do
         "#{Wording.types(request)} · requested on #{Wording.day_and_month(request.inserted_at, zone)}",
       note: request.note,
       remaining: Wording.remaining(projected),
-      overdrawn: Wording.overdrawn?(projected)
+      overdrawn: Wording.overdrawn?(projected),
+      short:
+        request.person
+        |> Ledger.short(request.days, request.id)
+        |> Wording.short(People.today(request.person)),
+      approvable?: Leave.approvable?(request, viewer)
     }
   end
 
@@ -121,6 +138,14 @@ defmodule LeafWeb.ApprovalsLive do
 
   defp decided(socket, {:error, {:stale, since}}) do
     put_flash(socket, :error, Wording.stale(since, "decided"))
+  end
+
+  defp decided(socket, {:error, :short}) do
+    put_flash(
+      socket,
+      :error,
+      "The balance doesn't cover this, so only an administrator can approve it."
+    )
   end
 
   defp decided(socket, refused) when refused in [:error, {:error, :forbidden}] do

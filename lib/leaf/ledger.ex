@@ -55,17 +55,20 @@ defmodule Leaf.Ledger do
   def statements(person, as_at, days \\ []) do
     as_at = Enum.reduce(days, as_at, &Enum.max([&1.date, &2], Date))
 
+    read(person, as_at, Leave.days(person, :approved) ++ days)
+  end
+
+  defp read(person, as_at, taken) do
     case ready?(person, as_at) do
-      true -> worked_out(person, as_at, days)
+      true -> worked_out(person, as_at, taken)
       false -> []
     end
   end
 
-  defp worked_out(person, as_at, days) do
+  defp worked_out(person, as_at, taken) do
     %{organisation: organisation} = person = People.dated(person)
     spans = Span.all(person, organisation, as_at)
     leave_types = Policies.leave_types(organisation.id)
-    taken = Leave.days(person, :approved) ++ days
     hours = hours_taken_against(person, taken)
 
     context = %{
@@ -187,8 +190,8 @@ defmodule Leaf.Ledger do
   Only the leave types those days draw on, out of `balances/3`: what approving a request comes to
   is a question about what it draws and not about everything the person holds, and a type that is
   recorded only has no balance to come out under. A balance that comes out under nothing is an
-  answer rather than a refusal — leave may be taken in advance (§5.2), so nothing here blocks
-  anybody.
+  answer rather than a refusal — leave may be taken in advance (§5.2). Whether an administrator
+  has to approve it is `short/3`'s to say.
   """
   @spec projected(Person.t(), [Day.t()]) :: [Statement.t()]
   def projected(person, days) do
@@ -198,6 +201,63 @@ defmodule Leaf.Ledger do
     |> balances(People.today(person), days)
     |> Enum.filter(&MapSet.member?(drawn, &1.leave_type.id))
   end
+
+  @doc """
+  The accounts `days` would take under nothing, where the entitlement they are taken under checks.
+
+  `days` count on top of the approved leave, less the days of the request `request_id` names, which
+  they replace. Each type is checked as the entitlement in force on the last day taken of it says
+  (`Leaf.Policies.PolicyEntitlement`): `:today` reads the balance today, with all approved leave
+  counted whenever it falls, and `:projected` reads it on that last day, with what accrues by then.
+  A type with no check, or nothing granting it, is never short.
+  """
+  @spec short(Person.t(), [Day.t()], Ecto.UUID.t() | nil) :: [Statement.t()]
+  def short(person, days, request_id) do
+    today = People.today(person)
+    approved = Enum.reject(Leave.days(person, :approved), &(&1.leave_request_id == request_id))
+    checked = person |> checked(days, today) |> Enum.group_by(&elem(&1, 1), &elem(&1, 0))
+
+    for {as_at, leave_type_ids} <- checked,
+        statement <- read(person, as_at, approved ++ days),
+        statement.leave_type.id in leave_type_ids,
+        Decimal.negative?(Decimal.round(statement.balance, 2)),
+        do: statement
+  end
+
+  @doc """
+  The accounts `short/3` gives with the person's other undecided leave counted as approved too.
+
+  Only the types `days` draw on: what else is waiting is somebody else's question.
+  """
+  @spec short_with_pending(Person.t(), [Day.t()], Ecto.UUID.t() | nil) :: [Statement.t()]
+  def short_with_pending(person, days, request_id) do
+    drawn = MapSet.new(days, & &1.leave_type_id)
+    pending = Enum.reject(Leave.days(person, :pending), &(&1.leave_request_id == request_id))
+
+    person
+    |> short(days ++ pending, request_id)
+    |> Enum.filter(&MapSet.member?(drawn, &1.leave_type.id))
+  end
+
+  defp checked(person, days, today) do
+    lives = lives(person)
+
+    for {leave_type_id, of_type} <- Enum.group_by(days, & &1.leave_type_id),
+        last = of_type |> Enum.map(& &1.date) |> Enum.max(Date),
+        check = check(lives, leave_type_id, last),
+        check != :off,
+        do: {leave_type_id, read_on(check, today, last)}
+  end
+
+  defp check(lives, leave_type_id, date) do
+    case for({life, held} <- lives, held.leave_type_id == leave_type_id, date in life, do: held) do
+      [] -> :off
+      covering -> Enum.max_by(covering, & &1.effective_from, Date).balance_check
+    end
+  end
+
+  defp read_on(:today, today, _last), do: today
+  defp read_on(:projected, today, last), do: Enum.max([today, last], Date)
 
   @doc """
   Each account `projected/2` gives, beside its balance on the same date without `days`.

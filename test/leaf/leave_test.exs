@@ -845,6 +845,83 @@ defmodule Leaf.LeaveTest do
            ) == ["Oren Castellan", "Pita Marsh", "Rae Halloran"]
   end
 
+  test "leave short of a checked balance is an administrator's to approve", context do
+    training = Fixtures.leave_type(%{organisation_id: context.organisation.id, position: 2})
+
+    entitlement =
+      Fixtures.policy_entitlement(%{
+        leave_policy_id: context.entitlement.leave_policy_id,
+        leave_type_id: training.id,
+        grant_amount: "8",
+        grant_basis: :calendar_year,
+        grant_period: :month,
+        grant_timing: :period_start,
+        pro_rated_by_fte: false,
+        balance_check: :today
+      })
+
+    # Spent down to nothing today, with a month's grant landing before the leave.
+    today = People.today(context.person)
+
+    [held] =
+      context.person |> Ledger.balances(today) |> Enum.filter(&(&1.leave_type.id == training.id))
+
+    Fixtures.balance_entry(%{
+      person_id: context.person.id,
+      leave_type_id: training.id,
+      date: today,
+      kind: :adjustment,
+      amount: Decimal.negate(held.balance),
+      reason: "Spent elsewhere"
+    })
+
+    monday = today |> Date.add(70) |> Date.beginning_of_week()
+    tuesday = Date.add(monday, 1)
+
+    {:ok, request} =
+      Leave.request(context.person, context.person, %{days: [entry(training, monday)]})
+
+    assert {:error, :short} = Leave.approve(reload(request), context.manager)
+
+    {:ok, entitlement} =
+      Policies.update_entitlement(entitlement, nil, %{balance_check: :projected})
+
+    assert {:ok, approved} = Leave.approve(reload(request), context.manager)
+
+    {:ok, entitlement} = Policies.update_entitlement(entitlement, nil, %{balance_check: :today})
+
+    assert {:ok, moved} =
+             Leave.amend(reload(approved), context.manager, %{days: [entry(training, tuesday)]})
+
+    longer = %{days: [entry(training, monday), entry(training, tuesday)]}
+
+    assert {:error, :short} = Leave.amend(reload(moved), context.manager, longer)
+    assert {:ok, _longer} = Leave.amend(reload(moved), context.admin, longer)
+
+    {:ok, _unapproved} = Policies.update_leave_type(training, nil, %{needs_approval: false})
+
+    wednesday = %{days: [entry(training, Date.add(monday, 2))]}
+
+    assert {:ok, %{status: :pending} = waiting} =
+             Leave.request(context.person, context.person, wednesday)
+
+    assert {:ok, %{status: :approved}} = Leave.approve(reload(waiting), context.admin)
+
+    {:ok, entitlement} = Policies.update_entitlement(entitlement, nil, %{balance_check: :off})
+    thursday = entry(training, Date.add(monday, 3))
+
+    assert {:ok, %{status: :approved} = filed} =
+             Leave.request(context.person, context.person, %{days: [thursday]})
+
+    {:ok, _today} = Policies.update_entitlement(entitlement, nil, %{balance_check: :today})
+    both = %{days: [thursday, entry(training, Date.add(monday, 4))]}
+
+    assert {:error, :short} = Leave.amend(reload(filed), context.manager, both)
+
+    assert {:ok, %{status: :pending, approved_on_filing: false, reviewed_by_id: nil}} =
+             Leave.amend(reload(filed), context.person, both)
+  end
+
   describe "awaiting/1" do
     defp pending(context, date, filed_at) do
       request =

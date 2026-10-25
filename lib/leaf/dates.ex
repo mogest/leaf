@@ -38,6 +38,19 @@ defmodule Leaf.Dates do
     end)
   end
 
+  @doc "The year starting in `start_month` that holds `date`, named for the calendar year it starts in."
+  @spec year_of(Date.t(), 1..12) :: integer()
+  def year_of(date, start_month) when date.month >= start_month, do: date.year
+  def year_of(date, _start_month), do: date.year - 1
+
+  @doc "The dates of the year starting in `start_month` of `year`."
+  @spec year(integer(), 1..12) :: Date.Range.t()
+  def year(year, start_month) do
+    first = Date.new!(year, start_month, 1)
+
+    Date.range(first, first |> Date.shift(year: 1) |> Date.add(-1))
+  end
+
   @doc "The instant `date` begins in `zone`."
   @spec midnight(Date.t(), String.t()) :: DateTime.t()
   def midnight(date, zone) do

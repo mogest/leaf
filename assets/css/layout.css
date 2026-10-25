@@ -1234,7 +1234,7 @@ main.policy table {
   }
 }
 
-:is(main.reports, main.audit) > form {
+:is(main.reports, main.audit, main.your-requests) > form {
   flex-flow: row wrap;
   align-items: start;
   gap: var(--step-4);

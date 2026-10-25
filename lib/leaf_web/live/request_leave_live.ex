@@ -112,7 +112,8 @@ defmodule LeafWeb.RequestLeaveLive do
               <dt>If approved</dt>
               <dd data-tone={@balance.overdrawn && "wrong"}>{@balance.left}</dd>
             </dl>
-            <p :if={@balance.overdrawn}>
+            <p :if={@balance.short}>{@balance.short}</p>
+            <p :if={@balance.overdrawn && !@balance.short}>
               That is more leave than the balance holds. It can still be approved.
             </p>
           </section>
@@ -443,10 +444,32 @@ defmodule LeafWeb.RequestLeaveLive do
 
   # One leave type is asked for, so one balance is left.
   defp projection(socket, entries) do
-    case Ledger.compared(socket.assigns.person, Leave.proposed(entries)) do
+    days = Leave.proposed(entries)
+
+    case Ledger.compared(socket.assigns.person, days) do
       [] -> nil
-      [pair | _] -> Wording.projected(pair)
+      [pair | _] -> pair |> Wording.projected() |> Map.put(:short, short(socket, days))
     end
+  end
+
+  defp short(socket, days) do
+    %{person: person, request: request} = socket.assigns
+    id = request && request.id
+
+    case Ledger.short(person, days, id) do
+      [_ | _] = short ->
+        "#{Wording.short(short, People.today(person))} It needs an administrator to approve it."
+
+      [] ->
+        short_with_pending(Ledger.short_with_pending(person, days, id))
+    end
+  end
+
+  defp short_with_pending([]), do: nil
+
+  defp short_with_pending(_short) do
+    "Counting the other requests still awaiting approval, that is more leave than the balance " <>
+      "holds, and only an administrator could approve them all."
   end
 
   defp file(%{assigns: %{request: nil}} = socket, attrs) do
@@ -469,6 +492,14 @@ defmodule LeafWeb.RequestLeaveLive do
 
   defp saved(socket, {:error, :forbidden}) do
     put_flash(socket, :error, "You can't edit this request.")
+  end
+
+  defp saved(socket, {:error, :short}) do
+    put_flash(
+      socket,
+      :error,
+      "The balance doesn't cover this, so it needs an administrator to approve it."
+    )
   end
 
   # Every refusal the write path can give about the days, this page has already said in its own

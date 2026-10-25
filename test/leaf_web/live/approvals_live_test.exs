@@ -98,6 +98,55 @@ defmodule LeafWeb.ApprovalsLiveTest do
     refute html =~ "overdrawn"
   end
 
+  test "a request short of a checked balance is only an administrator's to approve", context do
+    today = Date.utc_today()
+    organisation_id = context.organisation.id
+    manager = Fixtures.person(%{organisation_id: organisation_id, name: "Tomas Reid"})
+    admin = Fixtures.person(%{organisation_id: organisation_id, name: "Kit Rua", role: :admin})
+
+    starter =
+      Fixtures.person(%{
+        organisation_id: organisation_id,
+        manager_id: manager.id,
+        employment_start_date: today
+      })
+
+    Fixtures.work_pattern(%{person_id: starter.id, effective_from: today})
+
+    Fixtures.offering(%{
+      person_id: starter.id,
+      organisation_id: organisation_id,
+      leave_type_id: context.leave_type.id,
+      effective_from: today,
+      amount_source: :fixed,
+      grant_amount: "0",
+      grant_basis: :employment_date,
+      grant_period: :year,
+      grant_timing: :daily,
+      balance_check: :today
+    })
+
+    monday = today |> Date.add(14) |> Date.beginning_of_week()
+
+    request =
+      Fixtures.pending_request(starter, %{leave_type_id: context.leave_type.id, dates: [monday]})
+
+    {:ok, live, html} = live(sign_in(context.conn, manager), ~p"/approvals")
+
+    assert html =~
+             "Today&#39;s balance doesn&#39;t cover this. Only an administrator can approve it."
+
+    assert has_element?(live, "button[disabled]", "Approve")
+
+    assert live |> element("main form") |> render_submit(%{"decision" => "approve"}) =~
+             "only an administrator can approve it"
+
+    {:ok, live, _html} = live(sign_in(context.conn, admin), ~p"/approvals")
+
+    assert live |> element("#decide-#{request.id}") |> render_submit(%{"decision" => "approve"}) =~
+             "Request approved."
+  end
+
   test "somebody with no reports has nothing waiting on them", context do
     {:ok, _live, html} = live(sign_in(context.conn, context.person), ~p"/approvals")
 

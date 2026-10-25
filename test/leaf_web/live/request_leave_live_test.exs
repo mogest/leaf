@@ -224,6 +224,58 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert html =~ "<td>16 hours</td>"
   end
 
+  test "leave short of a checked balance says only an administrator can approve it", context do
+    training =
+      Fixtures.leave_type(%{
+        organisation_id: context.person.organisation_id,
+        name: "Training leave",
+        position: 2
+      })
+
+    Fixtures.policy_entitlement(%{
+      leave_policy_id: context.policy.id,
+      leave_type_id: training.id,
+      grant_amount: "0",
+      balance_check: :projected
+    })
+
+    Fixtures.balance_entry(%{
+      person_id: context.person.id,
+      leave_type_id: training.id,
+      amount: "8"
+    })
+
+    Fixtures.pending_request(context.person, %{leave_type_id: training.id, dates: [@monday]})
+
+    {:ok, live, _html} = live(context.conn, ~p"/leave/new")
+
+    friday =
+      asking(context, %{
+        "leave_type_id" => training.id,
+        "from" => "#{@friday}",
+        "to" => "#{@friday}"
+      })
+
+    html = live |> form("#request", request: friday) |> render_change()
+
+    assert html =~ "Counting the other requests still awaiting approval"
+    refute html =~ "It can still be approved."
+
+    week =
+      asking(context, %{
+        "leave_type_id" => training.id,
+        "from" => "#{Date.add(@monday, 1)}",
+        "to" => "#{@friday}"
+      })
+
+    html = live |> form("#request", request: week) |> render_change()
+
+    assert html =~
+             "Today&#39;s balance doesn&#39;t cover this. It needs an administrator to approve it."
+
+    refute html =~ "It can still be approved."
+  end
+
   test "one day has no rows worth reading, and still says what it would leave", context do
     {:ok, live, _html} = live(context.conn, ~p"/leave/new")
 

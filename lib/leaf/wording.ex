@@ -156,6 +156,21 @@ defmodule Leaf.Wording do
       "Balances can't be calculated until #{who} have a work pattern and a calendar for every " <>
         "day of employment."
 
+  @doc """
+  Which balance `Leaf.Ledger.short/3` found would not cover the leave, or nil where none.
+
+  A balance read on `today` is today's; one read later is the balance by the time it is taken.
+  """
+  @spec short([Statement.t()], Date.t()) :: String.t() | nil
+  def short([], _today), do: nil
+
+  def short(statements, today) do
+    case Enum.any?(statements, &(&1.as_at == today)) do
+      true -> "Today's balance doesn't cover this."
+      false -> "The balance won't cover this by the time it's taken."
+    end
+  end
+
   @doc "Whether approving would take any balance it draws on under nothing."
   @spec overdrawn?([Statement.t()]) :: boolean()
   def overdrawn?(statements), do: Enum.any?(statements, &Decimal.negative?(&1.balance))

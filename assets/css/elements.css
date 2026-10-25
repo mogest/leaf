@@ -480,6 +480,10 @@ form {
       color: var(--ink-quiet);
     }
 
+    &:is(fieldset) > [role="tooltip"] {
+      inset-block-start: auto;
+    }
+
     &:has(> :is(label, legend) button:is(:hover, [aria-expanded="true"])) > [role="tooltip"] {
       display: block;
     }
