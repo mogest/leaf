@@ -77,6 +77,9 @@ defmodule LeafWeb.BalancesLiveTest do
     {:ok, live, _html} = live(context.conn, ~p"/balances?as_at=2024-06-30&year=2023")
 
     assert has_element?(live, "tbody tr + tr", ~r/4 March\s*Started/)
+    assert has_element?(live, "figure li", "Balance")
+    refute has_element?(live, "figure text")
+    refute has_element?(live, "figure li", "Balance to")
   end
 
   test "an accruing balance reads as earned a month at a time, booked leave and all", context do
@@ -101,7 +104,9 @@ defmodule LeafWeb.BalancesLiveTest do
     assert has_element?(live, "thead th", "Earned")
     assert has_element?(live, "tbody tr + tr td", "Earned")
     assert has_element?(live, ~s(figure polyline[data-tone="spent"]))
-    assert has_element?(live, "figure li", "As at 1 January")
+    assert has_element?(live, "figure text", "1 January")
+    assert has_element?(live, "figure li", "Balance to 1 January")
+    assert has_element?(live, "figure li", "Booked after 1 January")
   end
 
   test "leave taken after the date read at reads as booked, and is out of the balance after it",
@@ -223,9 +228,10 @@ defmodule LeafWeb.BalancesLiveTest do
       ]
     })
 
-    {:ok, _live, html} = live(conn, ~p"/balances?as_at=2023-12-01")
+    {:ok, live, html} = live(conn, ~p"/balances?as_at=2023-12-01")
 
     assert html =~ "<dd>-8 hours</dd>"
+    refute has_element?(live, ".step")
     refute html =~ "nothing accrues"
   end
 

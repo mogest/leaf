@@ -187,6 +187,15 @@ defmodule LeafWeb.BalancesLive do
         <line :if={@chart.as_at} data-as-at x1={@chart.as_at.x} y1="0" x2={@chart.as_at.x} y2="200" />
         <polyline points={@chart.balance} />
         <polyline data-tone="spent" points={@chart.booked} />
+        <text
+          :if={@chart.as_at}
+          x={@chart.as_at.label_x}
+          y="12"
+          text-anchor="middle"
+          aria-hidden="true"
+        >
+          {@chart.as_at.day}
+        </text>
         <g :for={loss <- @chart.losses}>
           <circle cx={loss.x} cy={loss.y} r="7" tabindex="0" role="img" aria-label={loss.label} />
           <foreignObject x={loss.label_x} y={loss.y + 14} width="360" height="200" aria-hidden="true">
@@ -199,18 +208,15 @@ defmodule LeafWeb.BalancesLive do
       </figcaption>
       <ul>
         <li>
-          <svg width="16" height="16" aria-hidden="true"><polyline points="0,8 16,8" /></svg>Balance
+          <svg width="16" height="16" aria-hidden="true"><polyline points="0,8 16,8" /></svg>{@chart.legend.balance}
         </li>
         <li :if={@chart.booked != ""}>
           <svg width="16" height="16" aria-hidden="true">
             <polyline data-tone="spent" points="0,8 16,8" />
-          </svg>Booked
+          </svg>{@chart.legend.booked}
         </li>
         <li :if={@chart.losses != []}>
           <svg width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="5" /></svg>Lost
-        </li>
-        <li :if={@chart.as_at}>
-          <svg width="16" height="16" aria-hidden="true"><line data-as-at x1="8" y1="0" x2="8" y2="16" /></svg>{@chart.as_at.label}
         </li>
       </ul>
     </figure>
@@ -459,6 +465,7 @@ defmodule LeafWeb.BalancesLive do
     place = Chart.placing(dates.first, dates.last, figures)
     x = &elem(place.({&1, Decimal.new(0)}), 0)
     {_x, zero} = place.({dates.first, Decimal.new(0)})
+    as_at = marker(chart.as_at, x)
 
     %{
       label: "Balance from #{Wording.date(dates.first)} to #{Wording.date(dates.last)}",
@@ -467,7 +474,8 @@ defmodule LeafWeb.BalancesLive do
       balance: Chart.points(chart.balance, place),
       booked: Chart.points(chart.booked, place),
       losses: Enum.map(chart.losses, &loss(&1, place, unit)),
-      as_at: marker(chart.as_at, x),
+      as_at: as_at,
+      legend: legend(as_at),
       from: Wording.brief_date(dates.first),
       to: Wording.brief_date(dates.last)
     }
@@ -483,7 +491,15 @@ defmodule LeafWeb.BalancesLive do
   end
 
   defp marker(nil, _x), do: nil
-  defp marker(as_at, x), do: %{x: x.(as_at), label: "As at #{Wording.day_and_month(as_at)}"}
+
+  defp marker(as_at, x) do
+    x = x.(as_at)
+
+    %{x: x, label_x: Chart.day_x(x), day: Wording.day_and_month(as_at)}
+  end
+
+  defp legend(nil), do: %{balance: "Balance", booked: "Booked"}
+  defp legend(%{day: day}), do: %{balance: "Balance to #{day}", booked: "Booked after #{day}"}
 
   defp nothing([], ready?, true), do: Wording.no_balance(ready?, "you")
   defp nothing([], ready?, false), do: Wording.no_balance(ready?, "they")

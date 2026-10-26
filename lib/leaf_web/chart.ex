@@ -25,6 +25,10 @@ defmodule LeafWeb.Chart do
   @spec label_x(integer()) :: integer()
   def label_x(x), do: (x - 180) |> max(0) |> min(240)
 
+  @doc "Where a day and month centred over `x` sits, held far enough inside the box to fit."
+  @spec day_x(integer()) :: integer()
+  def day_x(x), do: x |> max(60) |> min(540)
+
   @doc "Dated figures as the points of a polyline, placed by `place`."
   @spec points([{Date.t(), Decimal.t()}], ({Date.t(), Decimal.t()} -> {integer(), integer()})) ::
           String.t()

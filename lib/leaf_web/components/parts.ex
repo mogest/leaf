@@ -338,6 +338,8 @@ defmodule LeafWeb.Parts do
   @doc """
   A step back and a step on, either side of the stretch of time being shown.
 
+  A missing one keeps its place, so the other does not shift; with neither, nothing is drawn.
+
   ## Examples
 
       <Parts.steps earlier={@earlier} later={@later} what="months" />
@@ -349,6 +351,8 @@ defmodule LeafWeb.Parts do
 
   attr :later, :string, default: nil, doc: "where the step forwards goes, nil where there is none"
   attr :what, :string, required: true, doc: "what a step moves by, for the label"
+
+  def steps(%{earlier: nil, later: nil} = assigns), do: ~H""
 
   def steps(assigns) do
     ~H"""
