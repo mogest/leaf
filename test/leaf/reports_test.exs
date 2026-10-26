@@ -115,6 +115,48 @@ defmodule Leaf.ReportsTest do
       {_csv, notes} = ipayroll(person, "2026-10-01", "2026-10-31")
       assert "2 people have no employee number, so the Id on their rows is blank." in notes
     end
+
+    test "narrows by the country and leave policy somebody is in on a request's first day",
+         context do
+      %{organisation: organisation, person: person, leave_type: leave_type} = context
+      new_zealand = Fixtures.calendar(%{organisation_id: organisation.id})
+
+      australia =
+        Fixtures.calendar(%{
+          organisation_id: organisation.id,
+          name: "Australia",
+          country_code: "AU",
+          time_zone: "Australia/Sydney"
+        })
+
+      contractor = Fixtures.leave_policy(%{organisation_id: organisation.id, name: "Contractor"})
+      other = Fixtures.person(%{organisation_id: organisation.id, name: "Wren Okafor"})
+      Fixtures.work_pattern(%{person_id: other.id})
+      Fixtures.policy_assignment(%{person_id: other.id, leave_policy_id: contractor.id})
+      Fixtures.calendar_assignment(%{person_id: person.id, calendar_id: new_zealand.id})
+      Fixtures.calendar_assignment(%{person_id: other.id, calendar_id: australia.id})
+
+      Fixtures.calendar_assignment(%{
+        person_id: person.id,
+        calendar_id: australia.id,
+        effective_from: ~D[2026-10-10]
+      })
+
+      take(person, leave_type, [{~D[2026-10-05], "8", :hours}])
+      take(other, leave_type, [{~D[2026-10-06], "8", :hours}])
+
+      october = %{"report" => "ipayroll", "from" => "2026-10-01", "to" => "2026-10-31"}
+      rae = @heading <> "1001,Rae Halloran,AL,05/10/2026,05/10/2026,8.00,,\r\n"
+      wren = @heading <> ",Wren Okafor,AL,06/10/2026,06/10/2026,8.00,,\r\n"
+
+      assert csv(person, Map.put(october, "country_id", new_zealand.id)) == {rae, []}
+
+      assert csv(person, Map.put(october, "leave_policy_id", contractor.id)) ==
+               {wren, ["Wren Okafor has no employee number, so the Id on their rows is blank."]}
+
+      both = %{"country_id" => new_zealand.id, "leave_policy_id" => contractor.id}
+      assert csv(person, Map.merge(october, both)) == {@heading, []}
+    end
   end
 
   test "an archived person's past leave stays in the iPayroll export and leave taken", context do

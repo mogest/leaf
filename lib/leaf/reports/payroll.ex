@@ -11,19 +11,26 @@ defmodule Leaf.Reports.Payroll do
   no employee number goes with a blank one, for the upload to refuse rather than for their leave to go
   missing. Leave no work pattern covers cannot be counted, so it is left out too. The notes say
   which.
+
+  Narrowed by country or leave policy, a request goes by the one its person is in on its first day,
+  and somebody in none then is left out.
   """
 
   alias Leaf.Leave
+  alias Leaf.People
   alias Leaf.Reports.Table
 
   @columns ["Id", "Name", "Leave Type", "First Day", "Last Day", "Hours", "Days", "Reason"]
 
-  @doc "The upload for the organisation's requests whose first day falls in `period`."
-  @spec table(Ecto.UUID.t(), Date.Range.t()) :: Table.t()
-  def table(organisation_id, period) do
+  @doc "The upload for the organisation's requests whose first day falls in `period`, narrowed where asked."
+  @spec table(Ecto.UUID.t(), Date.Range.t(), Ecto.UUID.t() | nil, Ecto.UUID.t() | nil) ::
+          Table.t()
+  def table(organisation_id, period, country_id, leave_policy_id) do
     {coded, uncoded} =
       organisation_id
       |> Leave.approved_starting(period)
+      |> narrow(country_id, &People.fetch_country_on/2)
+      |> narrow(leave_policy_id, &People.fetch_leave_policy_on/2)
       |> Enum.flat_map(&by_type/1)
       |> Enum.split_with(fn {_request, leave_type, _days} -> leave_type.payroll_code end)
 
@@ -44,6 +51,15 @@ defmodule Leaf.Reports.Payroll do
             for {{request, _type, _days}, :error} <- unmeasured, do: request.person
           )
     }
+  end
+
+  defp narrow(requests, nil, _fetch_on), do: requests
+
+  defp narrow(requests, id, fetch_on) do
+    Enum.filter(requests, fn request ->
+      first_day = request.days |> Enum.map(& &1.date) |> Enum.min(Date)
+      match?({:ok, %{id: ^id}}, fetch_on.(request.person, first_day))
+    end)
   end
 
   defp by_type(request) do

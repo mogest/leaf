@@ -40,7 +40,12 @@ defmodule Leaf.Reports do
   defdelegate csv(table, zone), to: Table
 
   defp table(:ipayroll, person, options) do
-    Payroll.table(person.organisation_id, Options.period(options))
+    Payroll.table(
+      person.organisation_id,
+      Options.period(options),
+      options.country_id,
+      options.leave_policy_id
+    )
   end
 
   defp table(:taken, person, options) do

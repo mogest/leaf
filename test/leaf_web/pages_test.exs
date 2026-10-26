@@ -145,9 +145,10 @@ defmodule LeafWeb.PagesTest do
     |> form("#options", options: %{from: "2026-10-01", to: "2026-10-31"})
     |> render_change()
 
-    assert_patch(live, ~p"/reports/ipayroll?from=2026-10-01&to=2026-10-31")
+    query = [country_id: "", from: "2026-10-01", leave_policy_id: "", to: "2026-10-31"]
+    assert_patch(live, ~p"/reports/ipayroll?#{query}")
 
-    path = ~p"/reports/ipayroll/download?from=2026-10-01&to=2026-10-31"
+    path = ~p"/reports/ipayroll/download?#{query}"
     assert has_element?(live, ~s(a[href="#{path}"]))
 
     conn = get(context.conn, path)

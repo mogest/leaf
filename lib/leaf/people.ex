@@ -290,6 +290,19 @@ defmodule Leaf.People do
     end
   end
 
+  @doc """
+  The leave policy a person is on `date`.
+
+  `:error` before their first policy takes effect.
+  """
+  @spec fetch_leave_policy_on(Person.t(), Date.t()) :: {:ok, LeavePolicy.t()} | :error
+  def fetch_leave_policy_on(person, date) do
+    with {:ok, assignment} <-
+           person |> succession(:policy_assignments, :leave_policy) |> Timeline.fetch(date) do
+      {:ok, assignment.leave_policy}
+    end
+  end
+
   @doc "Every work pattern a person has been on, earliest first."
   @spec work_patterns(Person.t()) :: [WorkPattern.t()]
   def work_patterns(person), do: succession(person, :work_patterns)

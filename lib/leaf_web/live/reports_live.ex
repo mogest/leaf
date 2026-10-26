@@ -31,7 +31,7 @@ defmodule LeafWeb.ReportsLive do
        "week. Anyone over the limit is highlighted.", [:as_at, :leave_type_id, :weeks]},
     {"iPayroll export", "ipayroll",
      "Approved requests whose first day falls in the period, each whole, as iPayroll's Leave " <>
-       "Requests upload takes them.", [:from, :to]}
+       "Requests upload takes them.", [:from, :to, :country_id, :leave_policy_id]}
   ]
 
   @impl Phoenix.LiveView
@@ -43,7 +43,11 @@ defmodule LeafWeb.ReportsLive do
      |> assign(:page_title, "Reports")
      |> assign(:tabs, Enum.map(@tabs, fn {label, report, _says, _fields} -> {label, report} end))
      |> assign(:countries, Enum.map(Org.countries(organisation_id), &{&1.name, &1.id}))
-     |> assign(:leave_types, Enum.map(Policies.leave_types(organisation_id), &{&1.name, &1.id}))}
+     |> assign(:leave_types, Enum.map(Policies.leave_types(organisation_id), &{&1.name, &1.id}))
+     |> assign(
+       :leave_policies,
+       Enum.map(Policies.leave_policies(organisation_id), &{&1.name, &1.id})
+     )}
   end
 
   @impl Phoenix.LiveView
@@ -109,6 +113,14 @@ defmodule LeafWeb.ReportsLive do
           label="Leave type"
           prompt="Every leave type"
           options={@leave_types}
+        />
+        <.input
+          :if={:leave_policy_id in @fields}
+          field={@form[:leave_policy_id]}
+          type="select"
+          label="Leave policy"
+          prompt="Every leave policy"
+          options={@leave_policies}
         />
         <.input :if={:as_at in @fields} field={@form[:as_at]} type="date" label="As at" />
         <.input :if={:within in @fields} field={@form[:within]} type="number" label="Days ahead" />

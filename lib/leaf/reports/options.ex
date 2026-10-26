@@ -17,7 +17,7 @@ defmodule Leaf.Reports.Options do
   @reports [:taken, :reconciliation, :balances, :expiring, :over_limit, :ipayroll]
 
   @required [:report, :from, :to, :cut_off, :as_at, :within, :weeks]
-  @fields @required ++ [:country_id, :leave_type_id]
+  @fields @required ++ [:country_id, :leave_type_id, :leave_policy_id]
 
   @primary_key false
   embedded_schema do
@@ -30,6 +30,7 @@ defmodule Leaf.Reports.Options do
     field :weeks, :decimal
     field :country_id, :binary_id
     field :leave_type_id, :binary_id
+    field :leave_policy_id, :binary_id
   end
 
   @doc "The options `params` ask for, defaulting from `today`."
