@@ -91,7 +91,16 @@ defmodule LeafWeb.BalancesLive do
           <dl :if={@account.figures != []}>
             <%= for {label, figure} <- @account.figures do %>
               <dt>{label}</dt>
-              <dd>{figure}</dd>
+              <dd>
+                {figure.amount}
+                <small
+                  :if={figure.equivalent}
+                  title="Based on the work pattern at this date"
+                  data-approximate
+                >
+                  {figure.equivalent}
+                </small>
+              </dd>
             <% end %>
             <dd :if={@account.awaiting} data-awaiting>{@account.awaiting}</dd>
           </dl>
@@ -349,7 +358,7 @@ defmodule LeafWeb.BalancesLive do
   defp listing({leave_type, statement}, granted, person, mine?, as_at, selected) do
     %{
       name: leave_type.name,
-      amount: accrued(statement, leave_type, granted, :balance),
+      amount: worded(accrued(statement, leave_type, granted, :balance), leave_type.unit),
       path: path(person, mine?, leave_type.id, to_string(as_at)),
       current?: leave_type.id == selected
     }
@@ -358,13 +367,23 @@ defmodule LeafWeb.BalancesLive do
   defp account(nil, _granted, _reading), do: nil
 
   defp account({leave_type, statement}, granted, reading) do
+    pattern = People.fetch_work_pattern_on(reading.person, reading.as_at)
+
     %{
       name: leave_type.name,
       as_at: Wording.date(reading.as_at),
       figures:
         figures(
-          accrued(statement, leave_type, granted, :to_date),
-          accrued(statement, leave_type, granted, :balance)
+          balance_figure(
+            accrued(statement, leave_type, granted, :to_date),
+            leave_type.unit,
+            pattern
+          ),
+          balance_figure(
+            accrued(statement, leave_type, granted, :balance),
+            leave_type.unit,
+            pattern
+          )
         ),
       awaiting: Wording.asked(Ledger.awaiting(reading.person)[leave_type.id], leave_type.unit),
       expiring: expiring(statement, leave_type),
@@ -372,13 +391,24 @@ defmodule LeafWeb.BalancesLive do
     }
   end
 
-  defp accrued(statement, leave_type, granted, figure) do
+  defp accrued(statement, leave_type, granted, field) do
     case {MapSet.member?(granted, leave_type.id), statement} do
       {false, _statement} -> nil
-      {true, nil} -> Wording.figure(Decimal.new(0), leave_type.unit)
-      {true, statement} -> Wording.figure(Map.fetch!(statement, figure), leave_type.unit)
+      {true, nil} -> Decimal.new(0)
+      {true, statement} -> Map.fetch!(statement, field)
     end
   end
+
+  defp worded(nil, _unit), do: nil
+  defp worded(amount, unit), do: Wording.figure(amount, unit)
+
+  defp balance_figure(nil, _unit, _pattern), do: nil
+
+  defp balance_figure(amount, unit, pattern),
+    do: %{
+      amount: Wording.figure(amount, unit),
+      equivalent: Wording.equivalent(amount, unit, pattern)
+    }
 
   defp figures(nil, nil), do: []
   defp figures(same, same), do: [{"Balance", same}]

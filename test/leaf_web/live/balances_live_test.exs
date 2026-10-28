@@ -62,6 +62,7 @@ defmodule LeafWeb.BalancesLiveTest do
     assert has_element?(live, ~s(#pages a[aria-current]), "Your balances")
     assert html =~ "Annual leave"
     assert html =~ "100 hours"
+    assert has_element?(live, ".balance-sheet dd small[data-approximate]", "≈ 12.5 days")
     assert html =~ "expiring 31 December 2030"
     assert html =~ "1 April 2024 – 31 March 2025"
     assert has_element?(live, "tbody tr + tr", ~r/1 June\s*Opening balance/)
@@ -215,10 +216,11 @@ defmodule LeafWeb.BalancesLiveTest do
     })
 
     conn = sign_in(build_conn(), person)
-    {:ok, _live, html} = live(conn, ~p"/balances?as_at=2023-12-01")
+    {:ok, live, html} = live(conn, ~p"/balances?as_at=2023-12-01")
 
     assert html =~ "Annual leave"
-    assert html =~ "<dd>0 hours</dd>"
+    assert has_element?(live, ".balance-sheet dd", "0 hours")
+    refute has_element?(live, ".balance-sheet dd small[data-approximate]")
     refute html =~ "nothing accrues"
 
     Fixtures.leave_request(%{
@@ -230,7 +232,8 @@ defmodule LeafWeb.BalancesLiveTest do
 
     {:ok, live, html} = live(conn, ~p"/balances?as_at=2023-12-01")
 
-    assert html =~ "<dd>-8 hours</dd>"
+    assert has_element?(live, ".balance-sheet dd", "-8 hours")
+    refute has_element?(live, ".balance-sheet dd small[data-approximate]")
     refute has_element?(live, ".step")
     refute html =~ "nothing accrues"
   end

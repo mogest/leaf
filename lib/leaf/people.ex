@@ -538,6 +538,10 @@ defmodule Leaf.People do
   @spec weekly_days(WorkPattern.t()) :: non_neg_integer()
   defdelegate weekly_days(work_pattern), to: WorkPattern
 
+  @doc "An hour balance in working days, or in weeks where days differ, from a day or half a week up."
+  @spec in_working_time(WorkPattern.t(), Decimal.t()) :: {Decimal.t(), :days | :weeks} | nil
+  defdelegate in_working_time(work_pattern, amount), to: WorkPattern
+
   @doc "The hours worked on `date` under a work pattern."
   @spec hours_on(WorkPattern.t(), Date.t()) :: Decimal.t()
   defdelegate hours_on(work_pattern, date), to: WorkPattern

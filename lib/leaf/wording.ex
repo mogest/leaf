@@ -11,7 +11,9 @@ defmodule Leaf.Wording do
   alias Leaf.Leave.Day
   alias Leaf.Leave.Request
   alias Leaf.Ledger.Statement
+  alias Leaf.People
   alias Leaf.People.Person
+  alias Leaf.People.WorkPattern
   alias Leaf.Policies.LeavePolicy
   alias Leaf.Policies.LeaveType
 
@@ -67,6 +69,7 @@ defmodule Leaf.Wording do
           name: String.t(),
           amount: String.t(),
           unit: String.t(),
+          equivalent: String.t() | nil,
           awaiting: String.t() | nil,
           expiry: String.t() | nil
         }
@@ -74,16 +77,19 @@ defmodule Leaf.Wording do
   @doc """
   What somebody holds in one leave type.
 
-  The figure, what is waiting on an answer, and what is about to lapse. `awaiting` is
-  `Leaf.Ledger.awaiting/1`, keyed by leave type. Nothing waiting and nothing lapsing each say
+  The figure, roughly what it comes to in working time, what is waiting on an answer, and what is
+  about to lapse. `awaiting` is `Leaf.Ledger.awaiting/1`, keyed by leave type, and `pattern` is
+  the work pattern the balance is read against. Nothing waiting and nothing lapsing each say
   nothing at all.
   """
-  @spec held(Statement.t(), %{Ecto.UUID.t() => Decimal.t()}) :: held()
-  def held(statement, awaiting) do
+  @spec held(Statement.t(), %{Ecto.UUID.t() => Decimal.t()}, {:ok, WorkPattern.t()} | :error) ::
+          held()
+  def held(statement, awaiting, pattern) do
     %{
       name: statement.leave_type.name,
       amount: number(statement.balance),
       unit: unit(statement.balance, statement.leave_type.unit),
+      equivalent: equivalent(statement.balance, statement.leave_type.unit, pattern),
       awaiting: asked(awaiting[statement.leave_type.id], statement.leave_type.unit),
       expiry: expiry(statement)
     }
@@ -275,6 +281,17 @@ defmodule Leaf.Wording do
   @doc "An amount with its unit in full: 9 hours, 1 day."
   @spec figure(Decimal.t(), Day.unit() | :weeks | :months) :: String.t()
   def figure(amount, unit), do: "#{number(amount)} #{unit(amount, unit)}"
+
+  @doc "A compact approximation of an hour balance in the person's working days or weeks."
+  @spec equivalent(Decimal.t(), Day.unit(), {:ok, WorkPattern.t()} | :error) :: String.t() | nil
+  def equivalent(amount, :hours, {:ok, pattern}) do
+    case People.in_working_time(pattern, amount) do
+      nil -> nil
+      {value, unit} -> "≈ #{figure(value, unit)}"
+    end
+  end
+
+  def equivalent(_amount, _unit, _pattern), do: nil
 
   @doc "A figure rounded where it is shown and nowhere before it, with nothing trailing: 33."
   @spec number(Decimal.t()) :: String.t()

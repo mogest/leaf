@@ -84,6 +84,7 @@ defmodule LeafWeb.StyleguideLive do
       name: "Annual leave",
       amount: "267.78",
       unit: "hours",
+      equivalent: "≈ 33.47 days",
       awaiting: nil,
       expiry: nil,
       path: @here
@@ -92,6 +93,7 @@ defmodule LeafWeb.StyleguideLive do
       name: "Sick leave",
       amount: "33",
       unit: "days",
+      equivalent: nil,
       awaiting: "9 days awaiting approval, not yet deducted",
       expiry: "13 days expire on 14 December",
       path: @here
@@ -100,6 +102,7 @@ defmodule LeafWeb.StyleguideLive do
       name: "Birthday leave",
       amount: "1",
       unit: "day",
+      equivalent: nil,
       awaiting: nil,
       expiry: "Expires 24 August",
       path: @here

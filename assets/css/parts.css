@@ -337,6 +337,14 @@ li > button[popovertarget] {
     padding-block-end: 0;
   }
 
+  & dd > small[data-approximate] {
+    display: block;
+    font-size: var(--size-sm);
+    font-weight: 400;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+
   & dd + dd {
     font-size: var(--size-sm);
     font-weight: 400;

@@ -87,18 +87,23 @@ defmodule LeafWeb.AtAGlanceLive do
   # left off.
   defp balances(person, today) do
     awaiting = Ledger.awaiting(person)
+    pattern = People.fetch_work_pattern_on(person, today)
 
     person
     |> Ledger.balances(today)
     |> Enum.reject(&nothing?(&1, awaiting))
-    |> Enum.map(&balance(&1, awaiting))
+    |> Enum.map(&balance(&1, awaiting, pattern))
   end
 
   defp nothing?(statement, awaiting) do
     Decimal.equal?(statement.balance, 0) and not Map.has_key?(awaiting, statement.leave_type.id)
   end
 
-  defp balance(statement, awaiting) do
-    Map.put(Wording.held(statement, awaiting), :path, ~p"/balances/#{statement.leave_type}")
+  defp balance(statement, awaiting, pattern) do
+    Map.put(
+      Wording.held(statement, awaiting, pattern),
+      :path,
+      ~p"/balances/#{statement.leave_type}"
+    )
   end
 end

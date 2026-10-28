@@ -369,13 +369,14 @@ defmodule LeafWeb.PersonLive do
 
   defp balances(person, today) do
     awaiting = Ledger.awaiting(person)
+    pattern = People.fetch_work_pattern_on(person, today)
 
-    person |> Ledger.balances(today) |> Enum.map(&balance(&1, person, awaiting))
+    person |> Ledger.balances(today) |> Enum.map(&balance(&1, person, awaiting, pattern))
   end
 
-  defp balance(statement, person, awaiting) do
+  defp balance(statement, person, awaiting, pattern) do
     Map.put(
-      Wording.held(statement, awaiting),
+      Wording.held(statement, awaiting, pattern),
       :path,
       ~p"/people/#{person}/balances/#{statement.leave_type}"
     )

@@ -57,8 +57,25 @@ defmodule Leaf.People.WorkPattern do
 
   @doc "The days worked in a full week under this pattern."
   @spec weekly_days(t()) :: non_neg_integer()
-  def weekly_days(pattern),
-    do: Enum.count(@hour_fields, &Decimal.positive?(Map.fetch!(pattern, &1)))
+  def weekly_days(pattern), do: pattern |> working_hours() |> length()
+
+  @doc "An hour balance in working days, or in weeks where days differ, from a day or half a week up."
+  @spec in_working_time(t(), Decimal.t()) :: {Decimal.t(), :days | :weeks} | nil
+  def in_working_time(pattern, amount) do
+    case pattern |> working_hours() |> Enum.uniq_by(&Decimal.normalize/1) do
+      [] -> nil
+      [daily] -> in_working_time(amount, daily, :days, Decimal.new(1))
+      _uneven -> in_working_time(amount, weekly_hours(pattern), :weeks, Decimal.new("0.5"))
+    end
+  end
+
+  defp in_working_time(amount, length, unit, minimum) do
+    if Decimal.compare(amount, Decimal.mult(length, minimum)) != :lt,
+      do: {Decimal.div(amount, length), unit}
+  end
+
+  defp working_hours(pattern),
+    do: @hour_fields |> Enum.map(&Map.fetch!(pattern, &1)) |> Enum.filter(&Decimal.positive?/1)
 
   @doc "The hours worked on `date` under this pattern."
   @spec hours_on(t(), Date.t()) :: Decimal.t()

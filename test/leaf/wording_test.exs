@@ -3,6 +3,35 @@ defmodule Leaf.WordingTest do
 
   alias Leaf.Wording
 
+  test "hour balances from a working day or half a week read in equal days or uneven weeks" do
+    pattern = %Leaf.People.WorkPattern{
+      monday_hours: Decimal.new(8),
+      tuesday_hours: Decimal.new("8.0"),
+      wednesday_hours: Decimal.new(0),
+      thursday_hours: Decimal.new(0),
+      friday_hours: Decimal.new(0),
+      saturday_hours: Decimal.new(0),
+      sunday_hours: Decimal.new(0)
+    }
+
+    assert Wording.equivalent(Decimal.new(76), :hours, {:ok, pattern}) == "≈ 9.5 days"
+    assert Wording.equivalent(Decimal.new(8), :hours, {:ok, pattern}) == "≈ 1 day"
+    assert Wording.equivalent(Decimal.new("7.99"), :hours, {:ok, pattern}) == nil
+    assert Wording.equivalent(Decimal.new(-8), :hours, {:ok, pattern}) == nil
+    assert Wording.equivalent(Decimal.new(0), :hours, {:ok, pattern}) == nil
+    assert Wording.equivalent(Decimal.new(76), :days, {:ok, pattern}) == nil
+    assert Wording.equivalent(Decimal.new(76), :hours, :error) == nil
+
+    uneven = %{pattern | tuesday_hours: Decimal.new(4)}
+    assert Wording.equivalent(Decimal.new(25), :hours, {:ok, uneven}) == "≈ 2.08 weeks"
+    assert Wording.equivalent(Decimal.new(12), :hours, {:ok, uneven}) == "≈ 1 week"
+    assert Wording.equivalent(Decimal.new(6), :hours, {:ok, uneven}) == "≈ 0.5 weeks"
+    assert Wording.equivalent(Decimal.new("5.99"), :hours, {:ok, uneven}) == nil
+
+    empty = %{pattern | monday_hours: Decimal.new(0), tuesday_hours: Decimal.new(0)}
+    assert Wording.equivalent(Decimal.new(76), :hours, {:ok, empty}) == nil
+  end
+
   describe "moment/2" do
     test "an instant is read where whoever is reading it is" do
       at = ~U[2026-08-21 21:00:00Z]

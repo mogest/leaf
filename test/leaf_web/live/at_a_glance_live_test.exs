@@ -47,6 +47,7 @@ defmodule LeafWeb.AtAGlanceLiveTest do
 
     assert html =~ "Annual leave"
     assert html =~ "60 <small>hours</small>"
+    assert html =~ "≈ 7.5 days"
     assert html =~ "Expires 31 December"
   end
 

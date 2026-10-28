@@ -82,7 +82,12 @@ defmodule LeafWeb.Parts do
       <dl :if={@balances != []}>
         <%= for balance <- @balances do %>
           <dt><.link navigate={balance.path}>{balance.name}</.link></dt>
-          <dd>{balance.amount} <small>{balance.unit}</small></dd>
+          <dd>
+            {balance.amount} <small>{balance.unit}</small>
+            <small :if={balance.equivalent} title="Based on the work pattern" data-approximate>
+              {balance.equivalent}
+            </small>
+          </dd>
           <dd :if={balance.awaiting} data-awaiting>{balance.awaiting}</dd>
           <dd :if={balance.expiry}>{balance.expiry}</dd>
         <% end %>
