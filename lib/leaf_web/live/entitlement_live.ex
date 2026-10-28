@@ -189,12 +189,20 @@ defmodule LeafWeb.EntitlementLive do
               field={@form[:grant_timing]}
               label="How it arrives"
               value={@terms.grant_timing}
-              help="Accrues day by day: the balance builds through the period from their first day. Lands whole:
-                the full amount arrives on the period's first day. Anyone who joins or moves onto these terms
-                part-way through a period gets nothing until the next one, including everyone if this entitlement
-                starts mid-period. A public holiday allowance lands whole only when aligned to the start date."
+              help="Accrues day by day: the balance builds through the period from their first day. Evenly over
+                the period: 160 hours a year is 0.44 hours every day, so March earns 13.59 and February 12.27.
+                Evenly over each month, for a fixed yearly amount: every month earns 13.33 hours, spread across
+                its days, so a day in February is worth more than a day in March. Lands whole: the full amount
+                arrives on the period's first day. Anyone who joins or moves onto these terms part-way through a
+                period gets nothing until the next one, including everyone if this entitlement starts
+                mid-period. A public holiday allowance lands whole only when aligned to the start date."
             >
-              <:option value="daily" label="Accrues day by day" />
+              <:option value="daily" label="Accrues day by day, evenly over the period" />
+              <:option
+                :if={@terms.amount_source == :fixed and @terms.grant_period == :year}
+                value="monthly"
+                label="Accrues day by day, evenly over each month"
+              />
               <:option
                 :if={
                   @terms.amount_source != :public_holidays or @terms.grant_basis == :employment_date
@@ -204,7 +212,7 @@ defmodule LeafWeb.EntitlementLive do
               />
             </.radios>
             <.input
-              :if={@terms.amount_source == :fixed and @terms.grant_timing == :daily}
+              :if={@terms.amount_source == :fixed and @terms.grant_timing in [:daily, :monthly]}
               field={@form[:suspension_allowance_weeks]}
               type="text"
               phx-debounce="500"

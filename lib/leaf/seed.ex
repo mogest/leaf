@@ -56,7 +56,7 @@ defmodule Leaf.Seed do
     grant_amount: "200",
     grant_basis: :employment_date,
     grant_period: :year,
-    grant_timing: :daily,
+    grant_timing: :monthly,
     pro_rated_by_fte: true,
     expiry_rule: :never
   }

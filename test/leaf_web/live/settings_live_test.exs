@@ -232,8 +232,16 @@ defmodule LeafWeb.SettingsLiveTest do
     policy = Fixtures.leave_policy(%{organisation_id: context.organisation.id})
     period = ~s(select[name="policy_entitlement[grant_period]"] option)
     period_start = ~s(input[name="policy_entitlement[grant_timing]"][value="period_start"])
+    monthly = ~s(input[name="policy_entitlement[grant_timing]"][value="monthly"])
 
     {:ok, live, _html} = live(context.conn, ~p"/settings/policies/#{policy}/entitlements/new")
+    assert has_element?(live, monthly)
+
+    live
+    |> form("#entitlement", policy_entitlement: %{"grant_period" => "quarter"})
+    |> render_change()
+
+    refute has_element?(live, monthly)
 
     live
     |> form("#entitlement", policy_entitlement: %{"grant_basis" => "birthday"})

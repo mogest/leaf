@@ -139,6 +139,18 @@ Two mechanisms, chosen per leave type in the policy.
 derives from the policy entitlement, the person's FTE and the length of the period. This is
 annual leave's model, and it is the thing that removes the parallel spreadsheet.
 
+A yearly fixed amount may instead accrue day by day **evenly over each month**: a twelfth of it
+divided by the days in the calendar month, rather than the whole of it by the days in the year, so
+every month inside one year earns the same and pay for leave is steadier month to month. A year that
+does not start on the 1st begins and ends part-way through the same calendar month; those two parts
+count as one month between them, so the year still comes to twelve months and exactly its
+entitlement. The calendar month a year turns in is therefore split between two years and earns
+about a month rather than exactly one: anniversaries in February, whose length changes year to
+year, earn a little more or less. Each month is measured on its own: a part month earns by its share
+of the month's days, as a joiner, a leaver or a change of hours does day by day, and suspended leave
+takes its share of that month's working time, so a month on unpaid leave costs that month's twelfth
+and no more.
+
 Approved leave of a type that suspends accrual (§4.6) takes its share of the person's working time
 off it: a stretch accrues `normal × (1 − suspended hours ÷ scheduled hours)`, scheduled hours being
 those of their work pattern. Measured in hours, the weekends inside a stretch of it accrue nothing
@@ -174,10 +186,10 @@ month its financial year starts. Calendar-anchored and financial-year-anchored e
 distinct even where they currently coincide: moving the organisation's financial year must not
 move a calendar-anchored grant.
 
-So annual leave is a year anchored to the employment date, accruing daily; sick and longevity
-leave the same year, granted as a block; quarterly leave a calendar quarter, granted as a block;
-birthday leave a year anchored to the birthday. Monthly accrual against a financial year, common
-in the UK, needs no new mechanism.
+So annual leave is a year anchored to the employment date, accruing evenly over each month; sick
+and longevity leave the same year, granted as a block; quarterly leave a calendar quarter, granted as a block;
+birthday leave a year anchored to the birthday. Accrual by the month against a financial year,
+common in the UK, is a financial year accruing evenly over each month.
 
 A person who joins part-way through a grant period receives no **block grant** for that period —
 their first one lands at the start of the next period (§8). Accrual is not affected: it is

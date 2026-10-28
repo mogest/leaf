@@ -8,7 +8,8 @@ defmodule Leaf.Policies.PolicyEntitlement do
   open-ended. Offering is intermittent, which is why this carries an end date rather than relying
   on a successor row.
 
-  `grant_amount` is per `grant_period`, at 1.0 FTE, in the leave type's unit.
+  `grant_amount` is per `grant_period`, at 1.0 FTE, in the leave type's unit. Accrued `:monthly`, a
+  fixed yearly amount is earned a twelfth in each month of the year, spread over its days.
 
   `qualifying_months` is service before a fixed amount grants anything. Aligned to the start date,
   its cycle runs from the date that service is reached: NZ sick leave is 10 days after six months,
@@ -37,7 +38,7 @@ defmodule Leaf.Policies.PolicyEntitlement do
   @amount_sources [:fixed, :public_holidays, :none]
   @grant_bases [:employment_date, :birthday, :calendar_year, :organisation_year]
   @grant_periods [:month, :quarter, :year]
-  @grant_timings [:daily, :period_start]
+  @grant_timings [:daily, :monthly, :period_start]
   @expiry_rules [:never, :cap, :grant_period_end, :window]
   @balance_checks [:off, :today, :projected]
 
@@ -122,6 +123,7 @@ defmodule Leaf.Policies.PolicyEntitlement do
     |> settle_source(get_field(changeset, :amount_source))
     |> settle_period()
     |> settle_timing()
+    |> settle_monthly()
     |> settle_expiry_rule()
     |> settle_suspension_allowance()
     |> settle_qualifying()
@@ -159,6 +161,15 @@ defmodule Leaf.Policies.PolicyEntitlement do
     end
   end
 
+  defp settle_monthly(changeset) do
+    case {get_field(changeset, :grant_timing), get_field(changeset, :amount_source),
+          get_field(changeset, :grant_period)} do
+      {:monthly, :fixed, :year} -> changeset
+      {:monthly, _source, _period} -> put_change(changeset, :grant_timing, :daily)
+      _terms -> changeset
+    end
+  end
+
   defp settle_expiry_rule(changeset) do
     case get_field(changeset, :expiry_rule) do
       :cap -> clear(changeset, [:expiry_window_days])
@@ -169,7 +180,7 @@ defmodule Leaf.Policies.PolicyEntitlement do
 
   defp settle_suspension_allowance(changeset) do
     case {get_field(changeset, :amount_source), get_field(changeset, :grant_timing)} do
-      {:fixed, :daily} -> changeset
+      {:fixed, timing} when timing in [:daily, :monthly] -> changeset
       _terms -> clear(changeset, [:suspension_allowance_weeks])
     end
   end

@@ -161,6 +161,18 @@ defmodule Leaf.Policies.PolicyEntitlementTest do
              nil
   end
 
+  test "monthly accrual is only for a fixed yearly amount" do
+    yearly = Map.merge(@quarterly, %{grant_period: :year, grant_timing: :monthly})
+
+    assert %{grant_timing: :monthly, suspension_allowance_weeks: %Decimal{}} =
+             apply_changes(changeset(Map.put(yearly, :suspension_allowance_weeks, "1")))
+
+    assert apply_changes(changeset(%{yearly | grant_period: :quarter})).grant_timing == :daily
+
+    holidays = %{yearly | amount_source: :public_holidays, grant_basis: :employment_date}
+    assert apply_changes(changeset(holidays)).grant_timing == :daily
+  end
+
   test "grants may stop before the entitlement ends" do
     attrs = Map.merge(@quarterly, %{granted_to: ~D[2006-12-31], effective_to: ~D[2007-03-31]})
 

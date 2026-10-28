@@ -186,7 +186,8 @@ defmodule LeafWeb.PolicyLive do
   defp waiting(nil), do: nil
   defp waiting(months), do: "first granted after #{months(months)}"
 
-  defp arrives(:daily), do: "Day by day"
+  defp arrives(:daily), do: "Day by day, evenly over the period"
+  defp arrives(:monthly), do: "Day by day, evenly over each month"
   defp arrives(:period_start), do: "Whole at period start"
 
   defp allowance(nil), do: nil

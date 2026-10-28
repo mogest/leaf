@@ -123,7 +123,8 @@ defmodule Leaf.Ledger.History do
   `granted?` is whether the type is granted whole at a period's start rather than earned as it
   goes, by `timings`, the grant timing of each entitlement the person holds in it.
   """
-  @spec new(Statement.t(), Person.t(), [:daily | :period_start], integer() | nil) :: t()
+  @spec new(Statement.t(), Person.t(), [:daily | :monthly | :period_start], integer() | nil) ::
+          t()
   def new(statement, person, timings, year) do
     %{as_at: as_at} = statement
     %{organisation: organisation} = person

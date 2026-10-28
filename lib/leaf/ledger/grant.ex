@@ -6,10 +6,12 @@ defmodule Leaf.Ledger.Grant do
   span, worth the part of the period that span is. An accrual also lands on each day leave of its
   type is taken inside the span, worth what has accrued since the last, so that leave draws on what
   had accrued by its date and nothing more. Either way the amount is pro-rated in a single division
-  — the hours worked and the days elapsed multiplied together before dividing once — so that the
-  pieces of a span sum back to the span, and a year of accruals to the year's entitlement, instead
-  of drifting by a rounding error per piece. Suspended leave is the exception: it is measured
-  piece by piece, below. A piece lapses when the accrual it was cut from would have, so taking
+  — the hours worked and the share of the period elapsed multiplied together before dividing once —
+  so that the pieces of a span sum back to the span, and a year of accruals to the year's
+  entitlement, instead of drifting by a rounding error per piece. Accrued evenly over each month,
+  that is a division per calendar month, each a twelfth of the year spread over its days, so that
+  suspended leave costs the month it falls in and no other. Suspended leave is the exception: it is
+  measured piece by piece, below. A piece lapses when the accrual it was cut from would have, so taking
   leave does not bring a lapse forward.
 
   Leave of a type that suspends accrual takes its share of the person's working time out of an
@@ -52,7 +54,7 @@ defmodule Leaf.Ledger.Grant do
   # Each piece with the range it was cut from.
   defp pieces(:period_start, measured, _taken), do: [{measured, measured}]
 
-  defp pieces(:daily, measured, taken) do
+  defp pieces(_accruing, measured, taken) do
     {pieces, _next} =
       taken
       |> Enum.filter(&(&1 in measured))
@@ -116,7 +118,7 @@ defmodule Leaf.Ledger.Grant do
   end
 
   defp lands(:period_start, measured), do: {:grant, measured.first}
-  defp lands(:daily, measured), do: {:accrual, measured.last}
+  defp lands(_accruing, measured), do: {:accrual, measured.last}
 
   defp months(:grant, _piece, _amount, _earned), do: nil
 
@@ -141,11 +143,28 @@ defmodule Leaf.Ledger.Grant do
   end
 
   defp amount(span, measured, organisation, holidays, suspended) do
+    span.entitlement.grant_timing
+    |> parts(measured)
+    |> Decimals.total(&amount_within(span, &1, organisation, holidays, suspended))
+  end
+
+  defp parts(:monthly, measured), do: Dates.months(measured)
+  defp parts(_timing, measured), do: [measured]
+
+  defp amount_within(span, measured, organisation, holidays, suspended) do
     {base, num, den} = measure(span.entitlement, measured, span.period, organisation, holidays)
     {num, den} = by_hours_worked(span, organisation, num, den)
     {num, den} = by_time_suspended(span, measured, suspended, num, den)
 
     base |> Decimal.mult(num) |> Decimal.div(den)
+  end
+
+  # The two part months a year that does not start on the 1st begins and ends in share one twelfth
+  # between them, so that the year still comes to twelve.
+  defp measure(%{grant_timing: :monthly} = entitlement, month, period, _organisation, _holidays) do
+    length = Enum.count(period, &(&1.month == month.first.month))
+
+    {entitlement.grant_amount, days(month), 12 * length}
   end
 
   defp measure(%{amount_source: :fixed} = entitlement, measured, period, _organisation, _holidays) do
@@ -176,12 +195,13 @@ defmodule Leaf.Ledger.Grant do
   # A piece the person suspended no time in is left alone, which is also what keeps one they are
   # scheduled no hours over from being divided by none.
   defp by_time_suspended(
-         %{entitlement: %{amount_source: :fixed, grant_timing: :daily}} = span,
+         %{entitlement: %{amount_source: :fixed, grant_timing: timing}} = span,
          measured,
          suspended,
          num,
          den
-       ) do
+       )
+       when timing in [:daily, :monthly] do
     lost =
       Decimals.total(for {date, hours} <- charged(span, suspended), date in measured, do: hours)
 

@@ -134,6 +134,74 @@ defmodule Leaf.LedgerTest do
     assert Decimal.equal?(part_year.balance, "90.74")
   end
 
+  test "accrued monthly, each calendar month earns a twelfth of the year", context do
+    full_time(context.person)
+    annual = leave_type(context, %{})
+    entitlement(context, annual, %{grant_amount: "240", grant_timing: :monthly})
+
+    [accrual] = statement(context.person, annual, ~D[2025-03-03]).movements
+
+    # 4 March is the anniversary, so the 28 days left of March 2024 and the first 3 of March 2025
+    # are one 31-day month between them.
+    assert Decimal.equal?(Decimal.round(accrual.amount, 2), "240")
+
+    assert Enum.map(accrual.months, &Decimal.round(elem(&1, 1), 2)) ==
+             [Decimal.new("18.06") | List.duplicate(Decimal.new("20.00"), 11)] ++
+               [Decimal.new("1.94")]
+
+    assert Decimal.equal?(
+             Decimal.round(statement(context.person, annual, ~D[2024-04-30]).balance, 2),
+             "38.06"
+           )
+  end
+
+  test "accrued monthly, a month on unpaid leave costs that month's twelfth", context do
+    full_time(context.person)
+    annual = leave_type(context, %{})
+    unpaid = leave_type(context, %{name: "Unpaid leave", position: 3, suspends_accrual: true})
+    entitlement(context, annual, %{grant_amount: "240", grant_timing: :monthly})
+
+    february =
+      for date <- Date.range(~D[2025-02-01], ~D[2025-02-28]), Date.day_of_week(date) < 6, do: date
+
+    Fixtures.leave_request(%{
+      person_id: context.person.id,
+      days: Enum.map(february, &%{leave_type_id: unpaid.id, date: &1, amount: "1", unit: :days})
+    })
+
+    assert movements(statement(context.person, annual, ~D[2025-03-03])) ==
+             [{:accrual, ~D[2025-03-03], Decimal.new("220.00"), nil}]
+  end
+
+  test "accrued monthly from a February anniversary, each year still comes to its entitlement",
+       context do
+    person =
+      Fixtures.person(%{
+        organisation_id: context.organisation.id,
+        employment_start_date: ~D[2024-02-10]
+      })
+
+    weekdays(person, ~D[2024-02-10], "8")
+
+    Fixtures.policy_assignment(%{
+      person_id: person.id,
+      leave_policy_id: context.policy.id,
+      effective_from: ~D[2024-02-10]
+    })
+
+    annual = leave_type(context, %{})
+
+    entitlement(context, annual, %{
+      grant_amount: "240",
+      grant_timing: :monthly,
+      effective_from: ~D[2024-02-10]
+    })
+
+    # The first year's two parts of February make 29 days between them, the second's 28.
+    assert Decimal.equal?(statement(person, annual, ~D[2025-02-09]).balance, "240")
+    assert Decimal.equal?(statement(person, annual, ~D[2026-02-09]).balance, "480")
+  end
+
   test "a day off is worth what a day is worth when it comes round", context do
     person = context.person
     full_time(person)
