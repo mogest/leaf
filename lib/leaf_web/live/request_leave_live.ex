@@ -371,9 +371,10 @@ defmodule LeafWeb.RequestLeaveLive do
 
   defp filing(socket, order, entries) do
     worked = Map.new(Leave.working_days(socket.assigns.person, order.span))
+    holidays = Leave.holidays_off(socket.assigns.person, order.span)
 
     %{
-      days: Enum.map(order.span, &day(&1, worked[&1])),
+      days: Enum.map(order.span, &day(&1, worked[&1], &1 in holidays)),
       total: total(socket.assigns.person, entries, order.counted_in)
     }
   end
@@ -381,9 +382,12 @@ defmodule LeafWeb.RequestLeaveLive do
   # A day off is the hours in it, which is what a whole day of somebody's own is worth and not what
   # a day is worth. What it draws is the total's business: every one of these rows would say the
   # same "1 day" as the last.
-  defp day(date, nil), do: %{date: Wording.brief(date), off: "not worked", working: "no"}
+  defp day(date, nil, true),
+    do: %{date: Wording.brief(date), off: "public holiday", working: "no"}
 
-  defp day(date, hours) do
+  defp day(date, nil, false), do: %{date: Wording.brief(date), off: "not worked", working: "no"}
+
+  defp day(date, hours, _holiday?) do
     %{date: Wording.brief(date), off: Wording.figure(hours, :hours), working: nil}
   end
 

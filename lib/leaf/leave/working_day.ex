@@ -29,7 +29,7 @@ defmodule Leaf.Leave.WorkingDay do
   end
 
   defp less_granted_off(hours_per_day, person, range) do
-    off = granted_off(person, range)
+    off = holidays_off(person, range)
 
     Enum.map(hours_per_day, fn {date, hours} -> {date, worked(date, hours, off)} end)
   end
@@ -41,12 +41,14 @@ defmodule Leaf.Leave.WorkingDay do
     end
   end
 
-  # Most ranges hold no public holiday at all, and nothing else here needs the policy, so a range
-  # that holds none does not pay for reading one.
-  defp granted_off(person, range) do
+  @doc "The public holidays in `range` the person is granted off rather than credited for."
+  @spec holidays_off(Person.t(), Date.Range.t()) :: MapSet.t(Date.t())
+  def holidays_off(person, range) do
     person |> observed(range) |> less_credited(person, range)
   end
 
+  # Most ranges hold no public holiday at all, and nothing else here needs the policy, so a range
+  # that holds none does not pay for reading one.
   defp less_credited([], _person, _range), do: MapSet.new()
 
   defp less_credited(dates, person, range) do

@@ -224,6 +224,22 @@ defmodule LeafWeb.RequestLeaveLiveTest do
     assert html =~ "<td>16 hours</td>"
   end
 
+  test "a public holiday a stretch steps over says so", context do
+    calendar = Fixtures.calendar(%{organisation_id: context.person.organisation_id})
+    Fixtures.public_holiday(%{calendar_id: calendar.id, date: @friday})
+    Fixtures.calendar_assignment(%{person_id: context.person.id, calendar_id: calendar.id})
+
+    {:ok, live, _html} = live(context.conn, ~p"/leave/new")
+
+    html =
+      live
+      |> form("#request", request: asking(context, %{"to" => to_string(@friday)}))
+      |> render_change()
+
+    assert html =~ ~r{Fri 6 Mar</th>\s*<td>public holiday</td>}
+    assert html =~ "<td>32 hours</td>"
+  end
+
   test "leave short of a checked balance says only an administrator can approve it", context do
     training =
       Fixtures.leave_type(%{

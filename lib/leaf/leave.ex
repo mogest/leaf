@@ -225,6 +225,10 @@ defmodule Leaf.Leave do
     person |> WorkingDay.hours_per_day(range) |> Enum.filter(&Decimal.positive?(elem(&1, 1)))
   end
 
+  @doc "The public holidays in `range` the person is granted off rather than credited for."
+  @spec holidays_off(Person.t(), Date.Range.t()) :: MapSet.t(Date.t())
+  defdelegate holidays_off(person, range), to: WorkingDay
+
   @doc """
   The hours the person works on each date in `range`, a day they do not work counting as none.
 
